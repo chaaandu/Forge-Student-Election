@@ -193,6 +193,52 @@ describe('Google Sheets error classification', () => {
     expect(health.detail).toMatch(/Editor access/);
   });
 
+  /**
+   * A 403 body, shaped the way Google actually sends it.
+   */
+  const withReason = (reason: string) =>
+    vi.fn(async (url: string) =>
+      isToken(url)
+        ? tokenResponse()
+        : new Response(
+            JSON.stringify({
+              error: { code: 403, status: 'PERMISSION_DENIED', details: [{ reason }] },
+            }),
+            { status: 403, headers: { 'content-type': 'application/json' } },
+          ),
+    );
+
+  it('retries a 403 caused by the Sheets API being disabled', async () => {
+    // This one is fixed by pressing ENABLE in the Cloud console — nothing about
+    // this deployment changes. Classifying it permanent dead-letters every vote
+    // cast before someone notices, and they are then never delivered. The
+    // spreadsheet is shared correctly in this case, so the sharing advice would
+    // also send whoever reads it to the wrong place.
+    const repo = new GoogleSheetsRepository(config, withReason('SERVICE_DISABLED') as never);
+
+    await expect(repo.appendResults([{ position: 'p' } as never])).rejects.toBeInstanceOf(
+      SpreadsheetTransientError,
+    );
+    await expect(repo.appendResults([{ position: 'p' } as never])).rejects.toThrow(/not enabled/i);
+  });
+
+  it('retries a 403 that is really a quota, which Google does not send as 429', async () => {
+    for (const reason of ['rateLimitExceeded', 'userRateLimitExceeded']) {
+      const repo = new GoogleSheetsRepository(config, withReason(reason) as never);
+      await expect(
+        repo.appendResults([{ position: 'p' } as never]),
+        reason,
+      ).rejects.toBeInstanceOf(SpreadsheetTransientError);
+    }
+  });
+
+  it('still dead-letters a 403 that really is the sheet not being shared', async () => {
+    const repo = new GoogleSheetsRepository(config, withReason('forbidden') as never);
+    await expect(repo.appendResults([{ position: 'p' } as never])).rejects.toBeInstanceOf(
+      SpreadsheetPermanentError,
+    );
+  });
+
   it('treats 404 as permanent so it dead-letters instead of retrying forever', async () => {
     const repo = new GoogleSheetsRepository(config, withStatus(404) as never);
     await expect(repo.appendResults([{ position: 'p' } as never])).rejects.toBeInstanceOf(

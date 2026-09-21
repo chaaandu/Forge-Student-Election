@@ -191,6 +191,36 @@ export class GoogleSheetsRepository implements SpreadsheetRepository {
       throw new SpreadsheetTransientError('Google Sheets returned 401 — refreshing the token');
     }
     if (response.status === 403) {
+      // Not every 403 is the same fault, and the difference decides whether a
+      // queued vote is retried or abandoned. Google states the cause in
+      // `error.details[].reason`; two of them are fixed WITHOUT touching this
+      // deployment, so abandoning the row would strand votes that a retry
+      // would have delivered:
+      //
+      //   SERVICE_DISABLED       — the Sheets API is off for the Cloud
+      //                            project. Someone presses ENABLE in the
+      //                            console and the next attempt succeeds.
+      //   rateLimitExceeded      — quota. Transient by definition; Google
+      //   userRateLimitExceeded    just returns it as 403 rather than 429.
+      //
+      // Anything else really is a misconfiguration here (usually the sheet
+      // not being shared), which no amount of retrying fixes.
+      const reason = await reasonOf(response);
+
+      if (reason === 'SERVICE_DISABLED') {
+        throw new SpreadsheetTransientError(
+          `The Google Sheets API is not enabled for this Cloud project yet. ` +
+            `Enable it in the Google Cloud console — queued rows will sync on ` +
+            `the next attempt. The spreadsheet itself is shared correctly.`,
+        );
+      }
+      if (reason === 'rateLimitExceeded' || reason === 'userRateLimitExceeded') {
+        throw new SpreadsheetTransientError(
+          `Google Sheets rate limit reached (403 ${reason})`,
+          retryAfter(response),
+        );
+      }
+
       throw new SpreadsheetPermanentError(
         `Google Sheets returned 403. Share the spreadsheet with ` +
           `${this.config.serviceAccount.client_email} and give it Editor access.`,
@@ -336,6 +366,23 @@ export class GoogleSheetsRepository implements SpreadsheetRepository {
     } catch (error) {
       return { ok: false, mode: 'sheets', detail: (error as Error).message };
     }
+  }
+}
+
+/**
+ * The machine-readable cause Google attaches to an error, if there is one.
+ *
+ * Reading the body consumes it, so this clones first — the caller may still
+ * want it, and a failure to parse must never mask the original status.
+ */
+async function reasonOf(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.clone().json()) as {
+      error?: { details?: { reason?: string }[]; status?: string };
+    };
+    return body.error?.details?.find((d) => d.reason)?.reason ?? body.error?.status;
+  } catch {
+    return undefined;
   }
 }
 

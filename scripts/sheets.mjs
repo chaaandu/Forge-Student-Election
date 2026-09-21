@@ -135,13 +135,37 @@ async function api(path, init = {}) {
     ...init,
     headers: { ...(init.headers ?? {}), authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
   });
+
   if (res.status === 403) {
+    // A 403 has several quite different causes and they need different fixes.
+    // Read Google's own reason rather than guessing — an earlier version always
+    // said "share the sheet", which sent someone to re-do a step they had
+    // already done correctly.
+    const body = await res.clone().json().catch(() => ({}));
+    const reason = body?.error?.details?.[0]?.reason;
+    const detail = body?.error?.details?.[0]?.metadata ?? {};
+
+    if (reason === 'SERVICE_DISABLED') {
+      fail([
+        'The Google Sheets API is not enabled on this Cloud project yet.',
+        '',
+        'The sheet IS shared correctly — this is the other half of step 2.',
+        '',
+        'Open this and press ENABLE:',
+        `  ${detail.activationUrl ?? 'https://console.cloud.google.com/apis/library/sheets.googleapis.com'}`,
+        '',
+        'Then wait about a minute and run this again.',
+      ]);
+    }
+
     const sa = serviceAccount();
     fail([
       'Google returned 403 — the service account cannot open this spreadsheet.',
       '',
       'Open the sheet → Share → paste this address → give it Editor:',
       `  ${sa.client_email}`,
+      '',
+      `Google said: ${body?.error?.message ?? '(no detail)'}`,
     ]);
   }
   if (res.status === 404) {
