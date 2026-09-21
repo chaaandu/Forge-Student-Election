@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { inkOn } from '@/lib/color';
+import { accessibleField } from '@/lib/color';
 
 export interface TagProps {
   children: ReactNode;
@@ -9,8 +9,9 @@ export interface TagProps {
 
 /** A stamped block. Type on a field is black or white — never a tint of it. */
 export function Tag({ children, color }: TagProps) {
-  const field = color ?? 'var(--color-ink)';
-  const ink = color?.startsWith('#') ? inkOn(color) : 'var(--color-paper)';
+  const adjusted = color?.startsWith('#') ? accessibleField(color) : null;
+  const field = adjusted?.field ?? color ?? 'var(--color-ink)';
+  const ink = adjusted?.ink ?? 'var(--color-paper)';
 
   return (
     <span

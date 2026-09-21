@@ -3,7 +3,7 @@ import { BallotProgress } from '@/components/election/BallotProgress';
 import { CandidateGrid } from '@/components/election/CandidateGrid';
 import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Button } from '@/components/ui/Button';
-import { inkOn } from '@/lib/color';
+import { roleFor } from '@/lib/color';
 
 export interface PositionScreenProps {
   step: Position;
@@ -44,8 +44,12 @@ export function PositionScreen({
   onBack,
 }: PositionScreenProps) {
   const selected = selections[step.id];
-  const field = house?.color ?? 'var(--color-ink)';
-  const onField = house?.color ? inkOn(house.color) : 'var(--color-paper)';
+  // A house contest takes that house's colour across the header. `roleFor`
+  // returns a field guaranteed to carry its ink — a raw mid-tone brand colour
+  // can carry neither black nor white.
+  const role = house ? roleFor(house.color) : null;
+  const field = role?.field ?? 'var(--color-ink)';
+  const onField = role?.onField ?? 'var(--color-paper)';
 
   return (
     <div

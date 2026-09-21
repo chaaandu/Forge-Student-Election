@@ -50,17 +50,39 @@
  * artwork cannot drift from the ballot.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /** Inline a font file as a data URI, so the frame makes no network request. */
 function dataUri(path) {
   return `data:font/woff2;base64,${readFileSync(path).toString('base64')}`;
 }
 
-/** Inline a crest. Same reason: an opaque-origin frame cannot fetch our files. */
-function imageUri(path) {
-  const ext = path.endsWith('.png') ? 'png' : path.endsWith('.webp') ? 'webp' : 'jpeg';
-  return `data:image/${ext};base64,${readFileSync(path).toString('base64')}`;
+/**
+ * Inline a crest, downscaled first.
+ *
+ * Same reason as the fonts: an opaque-origin frame cannot fetch our files. But
+ * a crest is drawn about 68 px tall on the sheet, so inlining the display PNG
+ * would put four oversampled images into the document for nothing.
+ */
+const scratch = mkdtempSync(join(tmpdir(), 'mesa-crest-'));
+const CREST_INLINE_WIDTH = 160;
+
+function crestUri(path) {
+  if (path.endsWith('.svg')) {
+    return `data:image/svg+xml;base64,${readFileSync(path).toString('base64')}`;
+  }
+  const small = join(scratch, path.split('/').pop());
+  execFileSync('python3', [
+    'scripts/optimise-crest.py',
+    path,
+    small,
+    String(CREST_INLINE_WIDTH),
+    '32',
+  ]);
+  return `data:image/png;base64,${readFileSync(small).toString('base64')}`;
 }
 
 const AUTHORED = 'apps/web/vendor/threeui/3d-paper/sources/3d-paper-site-of-the-year.html';
@@ -94,7 +116,7 @@ const houses = config.houses.map((h) => {
     name: h.name.toUpperCase(),
     shape: h.shape ?? 'square',
     colour: lift(h.color, 0.22),
-    crest: file && existsSync(file) ? imageUri(file) : null,
+    crest: file && existsSync(file) ? crestUri(file) : null,
   };
 });
 

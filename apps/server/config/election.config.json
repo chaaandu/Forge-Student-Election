@@ -13,28 +13,28 @@
     {
       "id": "samurai",
       "name": "Samurai",
-      "color": "#2D62AE",
+      "color": "#2F57A8",
       "shape": "circle",
       "crestUrl": "/houses/samurai.png"
     },
     {
       "id": "knights",
       "name": "Knights",
-      "color": "#BE3A2B",
+      "color": "#B83325",
       "shape": "square",
       "crestUrl": "/houses/knights.png"
     },
     {
       "id": "gladiators",
       "name": "Gladiators",
-      "color": "#6E9F3F",
+      "color": "#628838",
       "shape": "arc",
       "crestUrl": "/houses/gladiators.png"
     },
     {
       "id": "vikings",
       "name": "Vikings",
-      "color": "#EDB825",
+      "color": "#EEC048",
       "shape": "triangle",
       "crestUrl": "/houses/vikings.png"
     }

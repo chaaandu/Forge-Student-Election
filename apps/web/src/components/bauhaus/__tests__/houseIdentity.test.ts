@@ -2,11 +2,11 @@
 //
 // Reads the live election configuration from disk, so these assertions check
 // what the app actually ships rather than a fixture that can drift.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { House } from '@mesa/election-core';
-import { AA_BODY, contrastRatio, inkOn, roleFor } from '../../../lib/color';
+import { AA_BODY, contrastRatio, roleFor } from '../../../lib/color';
 
 const config = JSON.parse(
   readFileSync(
@@ -53,10 +53,30 @@ describe('house identity matches the crests', () => {
   it('keeps every house readable as a field and as text', () => {
     for (const house of config.houses) {
       const role = roleFor(house.color);
-      expect(contrastRatio(inkOn(house.color), house.color), house.name).toBeGreaterThanOrEqual(
-        AA_BODY,
-      );
-      expect(contrastRatio(role.text, '#F2EDE1'), house.name).toBeGreaterThanOrEqual(AA_BODY);
+      // The field may be adjusted from the crest colour; what matters is that
+      // whatever block ships can carry its ink.
+      expect(contrastRatio(role.onField, role.field), `${house.name} ink on field`)
+        .toBeGreaterThanOrEqual(AA_BODY);
+      expect(contrastRatio(role.text, '#F2EDE1'), `${house.name} text on paper`)
+        .toBeGreaterThanOrEqual(AA_BODY);
+    }
+  });
+
+  it('keeps the crest colour itself untouched for shapes and bars', () => {
+    for (const house of config.houses) {
+      expect(roleFor(house.color).brand).toBe(house.color);
+    }
+  });
+
+  it('keeps every crest small enough for a kiosk to load without thinking', () => {
+    // The supplied shields are ~200 KB each. They render between 20 and 64 px
+    // and are also inlined into the ballot sheet, so `houses:import` resizes
+    // and palette-reduces them. This guards against a large file being dropped
+    // straight in and quietly bloating the landing screen.
+    for (const house of config.houses) {
+      const file = fileURLToPath(new URL(`../../../../public${house.crestUrl}`, import.meta.url));
+      const kb = statSync(file).size / 1024;
+      expect(kb, `${house.name} crest is ${Math.round(kb)} KB`).toBeLessThan(60);
     }
   });
 

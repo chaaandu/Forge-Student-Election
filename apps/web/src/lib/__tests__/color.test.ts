@@ -4,6 +4,7 @@ import {
   BLACK,
   PAPER,
   WHITE,
+  accessibleField,
   contrastRatio,
   inkOn,
   parseHex,
@@ -13,13 +14,16 @@ import {
   toHex,
 } from '../color';
 
-/** The four Bauhaus fields this election uses. */
+/** The four house colours, sampled from the real crests. */
 const HOUSE_COLOURS = {
-  samurai: '#DE2B1F',
-  knights: '#1B4D9B',
-  vikings: '#1E7A4C',
-  gladiators: '#FFC20E',
+  samurai: '#2F57A8',
+  knights: '#B83325',
+  gladiators: '#628838',
+  vikings: '#EEC048',
 };
+
+/** A mid-tone that carries NEITHER black nor white at AA. The hard case. */
+const AWKWARD_MIDTONE = '#628838';
 
 describe('colour maths', () => {
   it('matches known WCAG reference ratios', () => {
@@ -46,18 +50,25 @@ describe('colour maths', () => {
 });
 
 describe('inkOn — type goes on a field as black or white, never a tint', () => {
-  it('puts black on yellow', () => {
-    expect(inkOn(HOUSE_COLOURS.gladiators)).toBe(BLACK);
+  it('puts black on gold', () => {
+    expect(inkOn(HOUSE_COLOURS.vikings)).toBe(BLACK);
   });
 
   it('puts white on deep blue', () => {
-    expect(inkOn(HOUSE_COLOURS.knights)).toBe(WHITE);
+    expect(inkOn(HOUSE_COLOURS.samurai)).toBe(WHITE);
   });
 
-  it('always clears AA on the field it chose', () => {
-    for (const colour of Object.values(HOUSE_COLOURS)) {
-      expect(contrastRatio(inkOn(colour), colour)).toBeGreaterThanOrEqual(AA_BODY);
-    }
+  it('picks the better ink, which is NOT the same as a legible one', () => {
+    // The honest contract: inkOn answers "which is closer", not "is this
+    // readable". For a mid-tone neither answer clears AA, and pretending
+    // otherwise is how an unreadable block ships. accessibleField is the
+    // function that guarantees legibility.
+    const best = inkOn(AWKWARD_MIDTONE);
+    const other = best === BLACK ? WHITE : BLACK;
+    expect(contrastRatio(best, AWKWARD_MIDTONE)).toBeGreaterThan(
+      contrastRatio(other, AWKWARD_MIDTONE),
+    );
+    expect(contrastRatio(best, AWKWARD_MIDTONE)).toBeLessThan(AA_BODY);
   });
 });
 
@@ -67,15 +78,15 @@ describe('readableOn — a colour used as text is darkened until it passes', () 
     expect(readableOn(blue)).toBe(blue);
   });
 
-  it('rescues Bauhaus yellow, which is hopeless as text at full strength', () => {
-    const yellow = HOUSE_COLOURS.gladiators;
-    // The premise: raw yellow is unreadable on paper.
-    expect(contrastRatio(yellow, PAPER)).toBeLessThan(2);
-    // The fix: a darkened yellow that passes.
-    expect(contrastRatio(readableOn(yellow), PAPER)).toBeGreaterThanOrEqual(AA_BODY);
+  it('rescues the Vikings gold, which is hopeless as text at full strength', () => {
+    const gold = HOUSE_COLOURS.vikings;
+    // The premise: the raw gold is unreadable on paper.
+    expect(contrastRatio(gold, PAPER)).toBeLessThan(2);
+    // The fix: a darkened gold that passes.
+    expect(contrastRatio(readableOn(gold), PAPER)).toBeGreaterThanOrEqual(AA_BODY);
   });
 
-  it('rescues every house colour', () => {
+  it('rescues every house colour sampled from the real crests', () => {
     for (const [house, colour] of Object.entries(HOUSE_COLOURS)) {
       const text = readableOn(colour);
       expect(
@@ -85,9 +96,9 @@ describe('readableOn — a colour used as text is darkened until it passes', () 
     }
   });
 
-  it('preserves the hue, so a darkened yellow still reads as that house', () => {
-    const [r, g, b] = parseHex(readableOn(HOUSE_COLOURS.gladiators));
-    // Still yellow: red and green high relative to blue.
+  it('preserves the hue, so a darkened gold still reads as that house', () => {
+    const [r, g, b] = parseHex(readableOn(HOUSE_COLOURS.vikings));
+    // Still gold: red and green high relative to blue.
     expect(r).toBeGreaterThan(b);
     expect(g).toBeGreaterThan(b);
   });
@@ -97,17 +108,59 @@ describe('readableOn — a colour used as text is darkened until it passes', () 
   });
 
   it('honours a stricter target', () => {
-    const strict = readableOn('#DE2B1F', PAPER, 7);
+    const strict = readableOn(HOUSE_COLOURS.knights, PAPER, 7);
     expect(contrastRatio(strict, PAPER)).toBeGreaterThanOrEqual(7);
   });
 });
 
-describe('roleFor — one configured colour, four derived uses', () => {
+describe('accessibleField — a block that is guaranteed to carry type', () => {
+  it('leaves a colour alone when it already carries an ink', () => {
+    const deepBlue = HOUSE_COLOURS.samurai;
+    expect(accessibleField(deepBlue).field).toBe(deepBlue);
+    expect(accessibleField(deepBlue).ink).toBe(WHITE);
+  });
+
+  it('proves the hard case exists: a mid-tone carries neither ink', () => {
+    expect(contrastRatio(BLACK, AWKWARD_MIDTONE)).toBeLessThan(AA_BODY);
+    expect(contrastRatio(WHITE, AWKWARD_MIDTONE)).toBeLessThan(AA_BODY);
+  });
+
+  it('moves the field rather than shipping an unreadable block', () => {
+    const { field, ink } = accessibleField(AWKWARD_MIDTONE);
+    expect(field).not.toBe(AWKWARD_MIDTONE);
+    expect(contrastRatio(ink, field)).toBeGreaterThanOrEqual(AA_BODY);
+  });
+
+  it('keeps the hue, so an adjusted green still reads as that house', () => {
+    const [r, g, b] = parseHex(accessibleField(AWKWARD_MIDTONE).field);
+    expect(g).toBeGreaterThan(r);
+    expect(g).toBeGreaterThan(b);
+  });
+
+  it('never exceeds the minimum shift needed — it darkens or lightens, not both', () => {
+    const before = relativeLuminance(AWKWARD_MIDTONE);
+    const after = relativeLuminance(accessibleField(AWKWARD_MIDTONE).field);
+    expect(Math.abs(after - before)).toBeLessThan(0.3);
+  });
+
+  it('carries type on every real house colour', () => {
+    for (const [house, colour] of Object.entries(HOUSE_COLOURS)) {
+      const { field, ink } = accessibleField(colour);
+      expect(contrastRatio(ink, field), `${house} (${colour} → ${field})`).toBeGreaterThanOrEqual(
+        AA_BODY,
+      );
+    }
+  });
+});
+
+describe('roleFor — one configured colour, five derived uses', () => {
   it('derives a complete, accessible role for every house', () => {
     for (const [house, colour] of Object.entries(HOUSE_COLOURS)) {
       const role = roleFor(colour);
 
-      expect(role.field, house).toBe(colour);
+      // `brand` is the crest colour untouched — shapes, bars and crests use it.
+      expect(role.brand, house).toBe(colour);
+      // `field` may differ: it is the block that must carry type.
       expect(contrastRatio(role.onField, role.field), `${house} ink on field`).toBeGreaterThanOrEqual(
         AA_BODY,
       );

@@ -4,7 +4,7 @@ import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
-import { inkOn } from '@/lib/color';
+import { roleFor } from '@/lib/color';
 
 export interface IdentityConfirmScreenProps {
   voter: VoterProfile;
@@ -31,8 +31,9 @@ export function IdentityConfirmScreen({
   onConfirm,
   onStartOver,
 }: IdentityConfirmScreenProps) {
-  const field = house?.color ?? 'var(--bh-blue)';
-  const onField = house?.color ? inkOn(house.color) : '#FFFFFF';
+  const role = house ? roleFor(house.color) : null;
+  const field = role?.field ?? 'var(--bh-blue)';
+  const onField = role?.onField ?? '#FFFFFF';
   const endsWithHouseGate = steps.at(-1)?.kind === 'house-captain';
 
   return (

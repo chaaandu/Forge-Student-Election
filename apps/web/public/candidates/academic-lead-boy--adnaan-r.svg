@@ -3,6 +3,6 @@
   <circle cx="200" cy="196" r="96" fill="hsl(33 20% 87%)"/>
   <ellipse cx="200" cy="476" rx="172" ry="176" fill="hsl(33 20% 87%)"/>
   <text x="200" y="228" font-family="Georgia, 'Times New Roman', serif" font-size="88"
-        font-weight="600" fill="#BE3A2B" text-anchor="middle" letter-spacing="2"
+        font-weight="600" fill="#B83325" text-anchor="middle" letter-spacing="2"
         opacity="0.9">AR</text>
 </svg>

@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from 'react';
 import type { Candidate } from '@mesa/election-core';
 import { InkMark } from '@/components/ink/InkMark';
-import { inkOn, roleFor } from '@/lib/color';
+import { roleFor } from '@/lib/color';
 
 export interface CandidateCardProps {
   candidate: Candidate;
@@ -41,7 +41,7 @@ export function CandidateCard({
   const literal = accent.startsWith('#') ? accent : undefined;
   const role = literal ? roleFor(literal) : undefined;
   const field = role?.field ?? accent;
-  const onFieldInk = literal ? inkOn(literal) : 'var(--color-ink)';
+  const onFieldInk = role?.onField ?? 'var(--color-ink)';
 
   return (
     <div

@@ -96,9 +96,63 @@ export function readableOn(
   return BLACK;
 }
 
+/**
+ * A block of colour that is guaranteed to carry legible type.
+ *
+ * Mid-tone brand colours are the awkward case: a colour can sit where NEITHER
+ * black nor white reaches AA on it. The real Gladiators green is exactly this —
+ * white on it is 4.47:1, black is worse. Choosing the "best" ink there still
+ * ships a field nobody can read.
+ *
+ * So when the raw colour cannot carry either ink, the FIELD moves instead:
+ * darkened until white passes, or lightened until black does, whichever needs
+ * the smaller shift, so it still reads as that house's colour.
+ */
+export function accessibleField(
+  colour: string,
+  minRatio: number = AA_BODY,
+): { field: string; ink: string } {
+  const ink = inkOn(colour);
+  if (contrastRatio(ink, colour) >= minRatio) return { field: colour, ink };
+
+  const [r, g, b] = parseHex(colour);
+
+  let darker: string | null = null;
+  for (let step = 1; step <= 100; step += 1) {
+    const f = 1 - step / 100;
+    const candidate = toHex([r * f, g * f, b * f]);
+    if (contrastRatio(WHITE, candidate) >= minRatio) {
+      darker = candidate;
+      break;
+    }
+  }
+
+  let lighter: string | null = null;
+  for (let step = 1; step <= 100; step += 1) {
+    const f = step / 100;
+    const candidate = toHex([r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f]);
+    if (contrastRatio(BLACK, candidate) >= minRatio) {
+      lighter = candidate;
+      break;
+    }
+  }
+
+  // Prefer whichever moved the luminance least — that is the one that still
+  // looks like the original.
+  const base = relativeLuminance(colour);
+  const darkShift = darker ? Math.abs(relativeLuminance(darker) - base) : Infinity;
+  const lightShift = lighter ? Math.abs(relativeLuminance(lighter) - base) : Infinity;
+
+  if (darker && darkShift <= lightShift) return { field: darker, ink: WHITE };
+  if (lighter) return { field: lighter, ink: BLACK };
+  return { field: BLACK, ink: WHITE };
+}
+
 /** A house's full presentation, derived once from its single configured colour. */
 export interface ColourRole {
-  /** The saturated block. Never used for text. */
+  /** The crest colour, untouched. For shapes, bars and rules — never type. */
+  brand: string;
+  /** A block that is guaranteed to carry `onField` legibly. May be adjusted. */
   field: string;
   /** Black or white — what goes ON the field. */
   onField: string;
@@ -111,15 +165,14 @@ export interface ColourRole {
 export function roleFor(colour: string, background: string = PAPER): ColourRole {
   const [r, g, b] = parseHex(colour);
   const mix = (amount: number): string =>
-    toHex([
-      r + (255 - r) * amount,
-      g + (255 - g) * amount,
-      b + (255 - b) * amount,
-    ]);
+    toHex([r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount]);
+
+  const { field, ink } = accessibleField(colour);
 
   return {
-    field: colour,
-    onField: inkOn(colour),
+    brand: colour,
+    field,
+    onField: ink,
     text: readableOn(colour, background),
     wash: mix(0.86),
   };

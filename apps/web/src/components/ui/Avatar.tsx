@@ -1,4 +1,4 @@
-import { inkOn } from '@/lib/color';
+import { accessibleField } from '@/lib/color';
 
 export interface AvatarProps {
   name: string;
@@ -17,8 +17,9 @@ const sizes = { sm: 40, md: 58, lg: 82 } as const;
 /** Initials in a hard-edged block. Decorative: the name is always alongside. */
 export function Avatar({ name, color, size = 'md' }: AvatarProps) {
   const box = sizes[size];
-  const field = color ?? 'var(--bh-blue)';
-  const ink = color?.startsWith('#') ? inkOn(color) : '#FFFFFF';
+  const adjusted = color?.startsWith('#') ? accessibleField(color) : null;
+  const field = adjusted?.field ?? color ?? 'var(--bh-blue)';
+  const ink = adjusted?.ink ?? '#FFFFFF';
 
   return (
     <span

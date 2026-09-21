@@ -18,10 +18,14 @@ const employees = JSON.parse(readFileSync('/tmp/employees.json', 'utf8'));
 /**
  * Houses.
  *
- * Colour and form are taken from the real crests, not chosen: each shield is a
- * black field carrying a coloured helm, and the colour below is sampled from
- * that helm. An earlier version of this file had all four rotated — Samurai
- * red, Knights blue — which the crests corrected.
+ * Colour and form are taken from the real crests, not chosen. The values below
+ * are the fallback for a house still on a placeholder; when real artwork is
+ * present, `npm run houses:import` re-samples the helm colour straight from the
+ * PNG and overwrites them, so the artwork is always the source of truth.
+ *
+ * An earlier version of this file had all four rotated — Samurai red, Knights
+ * blue — invented before anyone had seen the crests. That is why the colour is
+ * now read rather than declared.
  *
  * The forms still follow Kandinsky's correspondence exactly (red square, blue
  * circle, yellow triangle, with the arc as the fourth), because the crest
@@ -34,10 +38,10 @@ const employees = JSON.parse(readFileSync('/tmp/employees.json', 'utf8'));
  * as text at full strength.
  */
 const HOUSES = [
-  { id: 'samurai', name: 'Samurai', color: '#2D62AE', shape: 'circle', crestUrl: '/houses/samurai.png' },
-  { id: 'knights', name: 'Knights', color: '#BE3A2B', shape: 'square', crestUrl: '/houses/knights.png' },
-  { id: 'gladiators', name: 'Gladiators', color: '#6E9F3F', shape: 'arc', crestUrl: '/houses/gladiators.png' },
-  { id: 'vikings', name: 'Vikings', color: '#EDB825', shape: 'triangle', crestUrl: '/houses/vikings.png' },
+  { id: 'samurai', name: 'Samurai', color: '#2F57A8', shape: 'circle', crestUrl: '/houses/samurai.png' },
+  { id: 'knights', name: 'Knights', color: '#B83325', shape: 'square', crestUrl: '/houses/knights.png' },
+  { id: 'gladiators', name: 'Gladiators', color: '#628838', shape: 'arc', crestUrl: '/houses/gladiators.png' },
+  { id: 'vikings', name: 'Vikings', color: '#EEC048', shape: 'triangle', crestUrl: '/houses/vikings.png' },
 ];
 
 /**
