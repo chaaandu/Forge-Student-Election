@@ -15,7 +15,7 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm run dev -w @mesa/server",
     "dev:web": "npm run dev -w @mesa/web",
-    "build": "npm run build -w @mesa/election-core && npm run houses:import && npm run paper:build && npm run build -w @mesa/server && npm run build -w @mesa/web",
+    "build": "npm run build -w @mesa/election-core && npm run houses:import && npm run photos:import --silent && npm run paper:build && npm run build -w @mesa/server && npm run build -w @mesa/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -25,10 +25,11 @@
     "test:watch": "vitest",
     "seed": "npm run seed -w @mesa/server",
     "db:reset": "npm run db:reset -w @mesa/server",
-    "verify": "npm run lint && npm run check:branching && npm run check:client-secrets && npm run typecheck && npm run test && npm run build",
+    "verify": "npm run lint && npm run check:branching && npm run check:client-secrets && npm run check:css-vars && npm run typecheck && npm run test && npm run build",
     "gen:secrets": "npm run gen:secrets -w @mesa/server",
     "check:branching": "node scripts/check-no-type-branching.mjs",
     "check:client-secrets": "node scripts/check-client-secrets.mjs",
+    "check:css-vars": "node scripts/check-css-vars.mjs",
     "verify:no-seed": "node scripts/verify-no-seed.mjs",
     "preflight": "npm run verify && npm run verify:no-seed",
     "clean:emit": "find apps/*/src packages/*/src \\( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name 'vite-env.d.ts' -delete",
@@ -38,7 +39,9 @@
     "sheets:check": "node scripts/sheets.mjs check",
     "sheets:setup": "node scripts/sheets.mjs setup",
     "results:publish": "node scripts/publish-results.mjs",
-    "sheets:retry": "node -e \"const t=process.env.ADMIN_API_TOKEN;fetch('http://localhost:'+(process.env.PORT||8787)+'/api/admin/sync/retry',{method:'POST',headers:{authorization:'Bearer '+t}}).then(r=>r.json()).then(j=>console.log(j))\""
+    "sheets:retry": "node -e \"const t=process.env.ADMIN_API_TOKEN;fetch('http://localhost:'+(process.env.PORT||8787)+'/api/admin/sync/retry',{method:'POST',headers:{authorization:'Bearer '+t}}).then(r=>r.json()).then(j=>console.log(j))\"",
+    "photos:import": "node scripts/import-candidate-photos.mjs",
+    "predev": "npm run photos:import --silent"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

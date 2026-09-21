@@ -271,6 +271,13 @@ export function App() {
   const voterHouse = state.voter?.houseId ? houseById.get(state.voter.houseId) : undefined;
   const isSeedData = state.election?.election.isSeedData === true;
 
+  // The welcome screen is the one full-bleed screen. Its dark scene was being
+  // rendered INSIDE the page's cream padding, so a turning sheet in a dark room
+  // sat in a cream picture frame — which reads as a rendering fault, not as a
+  // choice, and made the jump to the light ballot a discontinuity rather than a
+  // transition. Everything else keeps the frame.
+  const isWelcome = state.phase === 'WELCOME';
+
   // ------------------------------------------------------------ render ---
   return (
     /*
@@ -281,12 +288,19 @@ export function App() {
       the frame was uneven AND overflowed by 32px, which ate the bottom margin.
       Letting the child grow with `flex-1` removes the magic number entirely.
     */
-    <div className="flex min-h-screen flex-col p-4 sm:p-6">
+    <div className={`flex min-h-screen flex-col ${isWelcome ? '' : 'p-4 sm:p-6'}`}>
       <a href="#main" className="skip-link">
         Skip to main content
       </a>
 
-      <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
+      {/*
+        `page-main` centres the plate vertically instead of hanging it from the
+        top. The identity pass filled the top 45% of a 1440x900 screen and left
+        55% empty cream below it, which read as an unfinished page rather than
+        as whitespace. It centres SAFELY — a plate taller than the window still
+        starts at the top, so nothing is ever scrolled off above the viewport.
+      */}
+      <main id="main" tabIndex={-1} className="page-main flex flex-1 flex-col outline-none">
         {state.phase === 'LOADING' && (
           <div className="mx-auto w-full max-w-lg">
             <Panel>

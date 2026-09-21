@@ -103,6 +103,31 @@ input {
   transform: translateY(0);
 }
 
+/* ---------------------------------------------------------------- page --- */
+
+/**
+ * Centre the plate in the window rather than hanging it from the top.
+ *
+ * `safe` is the whole point of the declaration. Plain `center` on a flex column
+ * centres overflow in BOTH directions, so a plate taller than the window has
+ * its head pushed above the top edge with no way to scroll back up to it — the
+ * position title and the voter's own name, unreachable. `safe center` falls
+ * back to start-alignment exactly when that would happen.
+ *
+ * The @supports guard is belt and braces: without it, a browser that does not
+ * know `safe` would drop the declaration and fall back to the stretch default,
+ * which is also fine — but stating the fallback makes the intent legible.
+ */
+.page-main {
+  justify-content: flex-start;
+}
+
+@supports (justify-content: safe center) {
+  .page-main {
+    justify-content: safe center;
+  }
+}
+
 /* --------------------------------------------------------------- panel --- */
 
 /**
@@ -121,6 +146,49 @@ input {
 
 .panel--raised {
   box-shadow: var(--shadow-block);
+}
+
+/* ---------------------------------------------------------- action bar --- */
+
+/**
+ * The row carrying Continue, or Confirm & Submit.
+ *
+ * It STICKS to the foot of the window, and that is load-bearing rather than
+ * decorative. Measured in Chrome at the sizes this actually runs on:
+ *
+ *   1440 x 900   review plate 1035px tall — submit 11px below the fold
+ *   1366 x 768   review plate 1035px tall — submit 143px below the fold
+ *   390 x 844    position plate 1715px    — continue ~860px below the fold
+ *
+ * 1366x768 is the ordinary lab laptop. A voter reached the end of their ballot,
+ * saw a white plate that simply STOPPED — no scrollbar hint, no fade, no cut-off
+ * row to imply more — and had no way to finish voting except to guess at
+ * scrolling or call the invigilator over. That is the worst failure this
+ * interface can have: a ballot that cannot be cast.
+ *
+ * Sticky, not fixed, so on the short plates where it is not needed the bar
+ * settles into the foot of the panel and looks like part of it.
+ */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--color-card);
+  border-top: var(--rule-weight) solid var(--color-ink);
+}
+
+/**
+ * While the bar is pinned, the plate's own bottom edge is off screen, so the
+ * bar would run off the foot of the window with no rule closing it. This draws
+ * that edge. At rest it lands exactly on the panel's border and disappears into
+ * it.
+ */
+.action-bar::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--rule-weight);
+  background: var(--color-ink);
 }
 
 /* ---------------------------------------------------------------- type --- */

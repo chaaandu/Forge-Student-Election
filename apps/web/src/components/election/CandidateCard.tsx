@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react';
 import type { Candidate } from '@mesa/election-core';
 import { InkMark } from '@/components/ink/InkMark';
 import { roleFor } from '@/lib/color';
+import { candidatePhoto } from '@/lib/candidatePhoto';
 
 export interface CandidateCardProps {
   candidate: Candidate;
@@ -35,7 +36,8 @@ export function CandidateCard({
   index,
 }: CandidateCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const showPhoto = Boolean(candidate.photoUrl) && !imageFailed;
+  const photo = candidatePhoto(candidate);
+  const showPhoto = Boolean(photo) && !imageFailed;
 
   // Resolve a literal colour so the ink on the field can be chosen correctly.
   const literal = accent.startsWith('#') ? accent : undefined;
@@ -68,7 +70,7 @@ export function CandidateCard({
       >
         {showPhoto ? (
           <img
-            src={candidate.photoUrl}
+            src={photo}
             alt=""
             width={400}
             height={500}
@@ -153,6 +155,10 @@ export function CandidateCard({
         /* A fixed HEIGHT, never an aspect ratio: it is what lets a card widen
            to fill the plate without the page growing taller. */
         .bh-photo { height: clamp(180px, 24vh, 232px); }
+        /* On a phone the grid drops to two narrow columns, and a 200px portrait
+           above a 90px name turned one position into two screens of scrolling.
+           The face is still the largest thing on the card. */
+        @media (max-width: 640px) { .bh-photo { height: 132px } }
         .bh-candidate {
           background: var(--color-card);
           border: 3px solid var(--color-ink);

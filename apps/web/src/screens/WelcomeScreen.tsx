@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { PublicElection } from '@/lib/api';
-import { PaperBackdrop } from '@/components/paper/PaperBackdrop';
+import { PaperBackdrop, supportsWebGL } from '@/components/paper/PaperBackdrop';
 import { CompositionSVG } from '@/components/bauhaus/CompositionSVG';
 import { Shape } from '@/components/bauhaus/Shape';
 import { Button } from '@/components/ui/Button';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 
 export interface WelcomeScreenProps {
   election: PublicElection;
@@ -25,8 +26,16 @@ export interface WelcomeScreenProps {
  */
 export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
   const [backdropReady, setBackdropReady] = useState(false);
+  const reducedMotion = useReducedMotion();
   const leadership = election.positions.filter((p) => p.kind === 'leadership');
   const hasHouseContests = election.positions.some((p) => p.kind === 'house-captain');
+
+  // When no 3D sheet is coming — reduced motion, or a machine without WebGL —
+  // the composition is not a ghost waiting behind something else, it IS the
+  // screen, and it is drawn at full strength. At 40% on #08080a it was a barely
+  // visible smudge, which is what made the no-WebGL case look like a black void
+  // rather than a poster.
+  const artworkAlone = reducedMotion || !supportsWebGL();
 
   return (
     // `flex-1`, not a viewport calc: the page is a flex column with equal
@@ -42,7 +51,10 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
         }}
         aria-hidden="true"
       >
-        <CompositionSVG tone="dark" className="h-full w-full opacity-40" />
+        <CompositionSVG
+          tone="dark"
+          className={`h-full w-full ${artworkAlone ? '' : 'opacity-40'}`}
+        />
       </div>
 
       <PaperBackdrop className="absolute inset-0" onReady={() => setBackdropReady(true)} />
@@ -55,9 +67,22 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
             <Shape form="circle" size={14} color="var(--bh-blue)" />
             <Shape form="triangle" size={14} color="var(--bh-yellow)" />
           </span>
+          {/*
+            On its own ink chip, not floating on the scene.
+
+            Behind this sits either a turning sheet or the composition, and both
+            move light and dark under it — with the composition it landed on a
+            cream square and read "OOL OF BUSINESS". A field with type on it is
+            the house rule for exactly this reason, and it is cheaper than
+            making the artwork dodge the label.
+          */}
           <span
-            className="label"
-            style={{ color: 'rgba(242,237,225,.55)', fontSize: 'var(--text-2xs)' }}
+            className="label px-3 py-1.5"
+            style={{
+              color: 'rgba(242,237,225,.72)',
+              fontSize: 'var(--text-2xs)',
+              background: 'var(--color-ink)',
+            }}
           >
             Mesa School of Business
           </span>

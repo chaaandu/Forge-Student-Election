@@ -3,6 +3,39 @@ import { useReducedMotion } from '@/lib/useReducedMotion';
 
 export type PaperVariant = 'mesa-elections' | 'site-of-the-year';
 
+/**
+ * Does this machine have WebGL at all?
+ *
+ * WHY THE FRAME CANNOT ANSWER THIS FOR US. `onLoad` fires when the iframe's
+ * DOCUMENT loads, not when the scene renders. So on a machine with no usable
+ * WebGL the document loaded perfectly happily, reported itself ready, and the
+ * caller faded out its own static artwork in response — leaving a flat #08080a
+ * void with the panel sitting in the corner of it. Verified in Chrome: that is
+ * exactly what you get, and it is the FIRST thing a voter sees.
+ *
+ * It is not a hypothetical failure either. Managed Windows fleets, remote
+ * desktop sessions and blocklisted integrated drivers all land here, and a
+ * school hall is where all three live.
+ *
+ * Asked in the PARENT rather than by patching the frame, so the hash-verified
+ * vendored document stays byte-for-byte what was published. Cached because
+ * creating a WebGL context is not free and the answer cannot change.
+ */
+let webglSupport: boolean | null = null;
+
+export function supportsWebGL(): boolean {
+  if (webglSupport !== null) return webglSupport;
+  if (typeof document === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    webglSupport = Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
+  } catch {
+    // Some hardened configurations throw rather than return null.
+    webglSupport = false;
+  }
+  return webglSupport;
+}
+
 export interface PaperBackdropProps {
   variant?: PaperVariant;
   /** Fires once the frame reports loaded, so the fallback can cross-fade out. */
@@ -67,12 +100,14 @@ export function PaperBackdrop({
     return () => document.removeEventListener('visibilitychange', update);
   }, []);
 
-  const mounted = hostVisible && documentVisible && !reducedMotion;
+  const usable = !reducedMotion && supportsWebGL();
+  const mounted = hostVisible && documentVisible && usable;
   const ready = mounted && readyVariant === variant;
 
-  // Reduced motion: render nothing at all. The caller's static artwork is the
-  // complete experience, and this is a continuously animating scene.
-  if (reducedMotion) return <div ref={hostRef} className={className} aria-hidden="true" />;
+  // Reduced motion, or no WebGL: render nothing at all, and — crucially — never
+  // call onReady, so the caller keeps its static artwork instead of fading it
+  // out over a void. The static artwork is a complete screen on its own.
+  if (!usable) return <div ref={hostRef} className={className} aria-hidden="true" />;
 
   return (
     <div ref={hostRef} className={className} aria-hidden="true" data-state={ready ? 'ready' : 'loading'}>

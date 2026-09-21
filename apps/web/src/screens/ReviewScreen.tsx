@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
 import { roleFor } from '@/lib/color';
 import { COPY } from '@/lib/copy';
+import { candidatePhoto } from '@/lib/candidatePhoto';
 
 export interface ReviewScreenProps {
   voter: VoterProfile;
@@ -39,7 +40,9 @@ export function ReviewScreen({
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <div className="panel panel--raised overflow-hidden">
+      {/* No `overflow-hidden` — see the note in PositionScreen: it would make
+          this panel the scroll container and the action bar would not stick. */}
+      <div className="panel panel--raised">
         <header
           className="px-6 py-6 sm:px-8"
           style={{
@@ -88,8 +91,14 @@ export function ReviewScreen({
                   decode.
                 */}
                 <span className="bh-thumb" aria-hidden="true">
-                  {candidate?.photoUrl ? (
-                    <img src={candidate.photoUrl} alt="" width={52} height={52} loading="lazy" />
+                  {candidate && candidatePhoto(candidate) ? (
+                    <img
+                      src={candidatePhoto(candidate)}
+                      alt=""
+                      width={52}
+                      height={52}
+                      loading="lazy"
+                    />
                   ) : (
                     <span className="bh-thumb__initials">
                       {(candidate?.name ?? '?')
@@ -130,28 +139,37 @@ export function ReviewScreen({
           })}
         </ul>
 
-        <div className="px-6 py-8 sm:px-8">
+        <div className="px-6 pb-7 pt-8 sm:px-8">
           <p
             className="mx-auto max-w-lg text-center text-balance"
             style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}
           >
             {COPY.review.warning}
           </p>
+        </div>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button variant="secondary" size="lg" onClick={onBack}>
-              <span aria-hidden="true">←</span> Back
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={onSubmit}
-              disabled={!complete}
-              disabledReason="Every position needs a pick before you can submit."
-            >
-              Confirm &amp; Submit Vote
-            </Button>
-          </div>
+        {/*
+          Only the buttons stick, not the warning above them.
+
+          The warning is what a voter must read once; the button is what they
+          must be able to REACH at any scroll position, and on a 1366x768 laptop
+          it was 143px below the fold. Pinning the warning too would cost a
+          quarter of that screen permanently — and it is restated in the
+          confirmation dialog, which nothing can get past.
+        */}
+        <div className="action-bar flex flex-wrap justify-center gap-3 px-6 py-5 sm:px-8">
+          <Button variant="secondary" size="lg" onClick={onBack}>
+            <span aria-hidden="true">←</span> Back
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={onSubmit}
+            disabled={!complete}
+            disabledReason="Every position needs a pick before you can submit."
+          >
+            Confirm &amp; Submit Vote
+          </Button>
         </div>
       </div>
 

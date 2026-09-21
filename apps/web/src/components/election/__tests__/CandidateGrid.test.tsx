@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Candidate } from '@mesa/election-core';
-import { CandidateGrid } from '../CandidateGrid';
+import { CandidateGrid, columnsFor, columnsForNarrow } from '../CandidateGrid';
 import { BallotProgress } from '../BallotProgress';
 import { opticalScale } from '@/components/bauhaus/Shape';
 import type { Position } from '@mesa/election-core';
@@ -73,11 +73,65 @@ describe('CandidateGrid keeps every position the same size', () => {
     expect(new Set(photoClasses(4)).size).toBe(1);
   });
 
-  it('lets a short field widen into the plate instead of leaving it empty', () => {
-    const columns = grid(2).style.gridTemplateColumns || grid(2).getAttribute('style') || '';
-    expect(columns).toContain('auto-fit');
-    // Capped, so two candidates widen but do not become letterboxes.
-    expect(columns).toContain('300px');
+  it('puts this election\'s every field on ONE row', () => {
+    // The fields here run 2, 3 and 4. All on one row means all the same
+    // height — that is the promise, and it is the reason the count comes from
+    // the field rather than from `auto-fit`, which fitted three across in a
+    // 1024px plate and orphaned the fourth onto a row of its own.
+    for (const n of [2, 3, 4]) {
+      expect(columnsFor(n), `${n} candidates`).toBe(n);
+      expect(grid(n).style.getPropertyValue('--cols'), `${n} candidates`).toBe(String(n));
+    }
+  });
+
+  it('balances the rows rather than orphaning a card when a field is larger', () => {
+    // Not this election, but the config decides the field and someone will
+    // eventually add a fifth name. 5 must not be 4+1.
+    expect(columnsFor(5)).toBe(3);
+    expect(columnsFor(6)).toBe(3);
+    expect(columnsFor(7)).toBe(4);
+    expect(columnsFor(8)).toBe(4);
+    expect(columnsFor(1)).toBe(1);
+  });
+
+  it('caps the card width so a short field widens without becoming a letterbox', () => {
+    expect(css(2)).toMatch(/repeat\(var\(--cols\),\s*minmax\(0,\s*300px\)\)/);
+  });
+
+  /**
+   * The narrow tiers are driven by the count too, NOT by `auto-fit`.
+   *
+   * auto-fit cannot do this job. Its repetition count is worked out from the
+   * track's maximum where that maximum is definite — so `minmax(140px, 300px)`
+   * fitted exactly ONE card on a 600px tablet and left the rest of the plate
+   * empty, the mirror image of the desktop bug. Making the maximum flexible
+   * fixes the count but hands the choice back to the space, which is what
+   * orphaned the fourth card to begin with.
+   */
+  it('keeps the count in charge at every width', () => {
+    // Every grid-template-columns DECLARATION, not the stylesheet as a whole —
+    // the comment above them names auto-fit to explain why it is not used, and
+    // a bare string check would trip over its own explanation.
+    const declarations = [...css(4).matchAll(/grid-template-columns:([^};]*)/g)].map((m) => m[1]);
+    expect(declarations.length).toBe(3);
+    for (const declaration of declarations) expect(declaration).not.toContain('auto-fit');
+
+    expect(css(4)).toMatch(/@media\s*\(min-width:\s*480px\)/);
+    expect(css(4)).toMatch(/@media\s*\(min-width:\s*940px\)/);
+  });
+
+  it('pairs a four-candidate field off at tablet width rather than orphaning one', () => {
+    expect(columnsForNarrow(4)).toBe(2);
+    expect(grid(4).style.getPropertyValue('--cols-narrow')).toBe('2');
+    // Up to three still fits a single row at roughly 160px a card.
+    for (const n of [1, 2, 3]) expect(columnsForNarrow(n), `${n} candidates`).toBe(n);
+  });
+
+  it('gives a phone one clear card', () => {
+    // Two 144px cards side by side wrap most of these names onto three lines.
+    // A name a voter has to decipher is the worse trade: the action bar is
+    // pinned, so the extra scroll costs them nothing.
+    expect(css(4)).toMatch(/\.bh-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*300px\)/);
   });
 
   it('centres the row', () => {

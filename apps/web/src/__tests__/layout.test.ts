@@ -24,17 +24,19 @@ const screens = readdirSync(fileURLToPath(new URL('../screens', import.meta.url)
 
 describe('the page frame', () => {
   const app = read('App.tsx');
-  // The outermost element of the render tree.
-  const wrapper = app.match(/<div className="([^"]*min-h-screen[^"]*)"/)?.[1] ?? '';
+  // The outermost element of the render tree. It carries a template literal —
+  // the welcome screen is deliberately full-bleed so the paper backdrop can
+  // reach the edges — so match either quoting.
+  const wrapper = app.match(/<div className=\{?[`"]([^`"]*min-h-screen[^`"]*)[`"]/)?.[1] ?? '';
 
   it('exists and fills the viewport', () => {
     expect(wrapper, 'could not find the page wrapper').not.toBe('');
     expect(wrapper).toMatch(/\bmin-h-screen\b/);
   });
 
-  it('pads equally on all four sides', () => {
+  it('pads the voting screens equally on all four sides', () => {
     // A symmetric `p-*` utility, at every breakpoint it defines.
-    const symmetric = [...wrapper.matchAll(/(?:^|\s)(?:[a-z]+:)?p-(\d+)/g)];
+    const symmetric = [...wrapper.matchAll(/(?:^|\s|')(?:[a-z]+:)?p-(\d+)/g)];
     expect(symmetric.length, `padding utilities in "${wrapper}"`).toBeGreaterThan(0);
 
     // …and no axis-specific padding, which is how the sides and the top drifted
@@ -46,6 +48,14 @@ describe('the page frame', () => {
 
   it('lets the content grow instead of sizing it against the viewport', () => {
     expect(app).toMatch(/<main[^>]*className="[^"]*flex-1/);
+  });
+
+  it('drops the padding ONLY for the full-bleed welcome screen', () => {
+    // The one exception, pinned so it stays an exception. Everything past
+    // check-in is a framed plate; the welcome screen is the paper itself and
+    // has to reach the edges. If this ever reads as an unconditional '', the
+    // frame is gone from every screen.
+    expect(wrapper).toMatch(/isWelcome \? '' : '[^']*\bp-\d/);
   });
 });
 

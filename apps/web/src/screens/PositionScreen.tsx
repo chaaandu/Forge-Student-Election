@@ -60,7 +60,13 @@ export function PositionScreen({
       key={step.id}
       style={{ ['--from' as string]: `${direction * 26}px` }}
     >
-      <div className="panel panel--raised overflow-hidden">
+      {/*
+        No `overflow-hidden`. It would make this panel the scroll container for
+        the sticky action bar below, which then sticks to the panel instead of
+        to the window — i.e. it would not stick at all. Nothing needs clipping
+        here: the corners are square, so there is nothing to clip them to.
+      */}
+      <div className="panel panel--raised">
         {/* The numbered field. */}
         <header
           className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-6 sm:px-8"
@@ -111,10 +117,7 @@ export function PositionScreen({
           />
         </div>
 
-        <div
-          className="flex flex-wrap items-center gap-3 px-6 py-6 sm:px-8"
-          style={{ borderTop: 'var(--rule-weight) solid var(--color-ink)' }}
-        >
+        <div className="action-bar flex flex-wrap items-center gap-3 px-6 py-5 sm:px-8">
           <Button variant="secondary" size="lg" onClick={onBack}>
             <span aria-hidden="true">←</span> Back
           </Button>

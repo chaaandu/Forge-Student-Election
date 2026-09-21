@@ -22,6 +22,15 @@ packages/*/src/**/*.d.ts.map
 .env.*
 !.env.example
 
+# Google service account keys. The real one lives outside the repo entirely
+# (~/.mesa-elections/service-account.json); these patterns are a backstop for a
+# key downloaded straight into the project by accident.
+*service-account*.json
+*-iam-gserviceaccount*.json
+*.iam.gserviceaccount.com.json
+gcp-*.json
+**/forge-student-elections-*.json
+
 # Real voter data — personal information, never commit.
 # The candidate list and ballot structure DO get committed (they are public and
 # worth versioning); the roll of 145 names and school email addresses does not.
@@ -46,3 +55,14 @@ access-codes-*.txt
 .DS_Store
 .vscode/
 .idea/
+
+# Original candidate photographs. These are real students' photos, often many
+# megabytes each. `npm run photos:import` writes the cropped, compressed
+# versions to apps/web/public/candidates/ — those are what ship.
+assets/candidate-photos/*
+!assets/candidate-photos/README.md
+
+# Spreadsheets dropped into the repo root are source data about real people
+# (rolls, headshot slots). They are inputs, not source code.
+/*.xlsx
+/*.csv
