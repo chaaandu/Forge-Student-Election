@@ -3,8 +3,8 @@ import { join, resolve } from 'node:path';
 import type {
   BallotSelectionRow,
   CandidateRow,
-  ExcelHealth,
-  ExcelRepository,
+  SpreadsheetHealth,
+  SpreadsheetRepository,
   ResultRow,
   VoterParticipationRow,
 } from './types.js';
@@ -16,8 +16,8 @@ import type {
  * fully exercised in development, so the first time it runs against a real
  * workbook is not the first time it runs at all.
  */
-export class NullExcelRepository implements ExcelRepository {
-  readonly mode = 'null' as const;
+export class LocalSpoolRepository implements SpreadsheetRepository {
+  readonly mode = 'spool' as const;
 
   constructor(private readonly dir: string) {
     mkdirSync(resolve(dir), { recursive: true });
@@ -45,10 +45,10 @@ export class NullExcelRepository implements ExcelRepository {
     this.write('results.jsonl', rows);
   }
 
-  async health(): Promise<ExcelHealth> {
+  async health(): Promise<SpreadsheetHealth> {
     return {
       ok: true,
-      mode: 'null',
+      mode: 'spool',
       detail: `Spooling to ${resolve(this.dir)} — no Microsoft 365 connection is configured.`,
     };
   }

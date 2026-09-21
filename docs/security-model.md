@@ -36,7 +36,9 @@ and `voterId` / `voterType` in the body are *never read*, not even to compare.
 | T9 | Replaying a captured submission | session token is single-use for a ballot and revoked on success; idempotency key already consumed | `VotingService` | `security.test.ts` |
 | T10 | Stealing a session token | opaque 256-bit token, SHA-256 at rest, 20-minute TTL, bound to IP-hash + UA-hash, `Bearer` only (never a cookie, so CSRF is structurally impossible) | `sessions.ts` | `sessions.test.ts` |
 | T11 | Brute-forcing access codes | 6 chars from a 32-symbol Crockford alphabet (~10^9), scrypt + per-voter salt + global pepper, constant-time compare, 5 attempts then a 15-minute lock, plus IP rate limit | `AccessCodeProvider` | `accesscode.test.ts` |
-| T12 | Harvesting the voter roll (names + emails) | search requires a kiosk token, min 2 chars, max 8 results, emails masked (`ch•••@mesa.edu`), rate-limited per IP; the full roll is never sent to the browser | `routes/auth.ts` | `roll.test.ts` |
+| T12 | Harvesting the voter roll (names + emails) | search requires a kiosk token, min 2 chars, max 8 results, emails masked (`ch•••@mesa.edu`), rate-limited; the full roll is never sent to the browser | `routes/auth.ts` | `security.test.ts` |
+| T21 | A booth voting as an absent classmate | **not prevented in software** under `supervised`; carried by the invigilator, backed by already-voted marks in roll search and by `/monitor`. See §3.3. | — | `security.test.ts` |
+| T22 | Results silently never reaching the spreadsheet | production refuses `SPREADSHEET_MODE=spool`; `/api/admin/sync/status` reports outbox depth and sheet health | `config/env.ts` | `security.test.ts` |
 | T13 | Reading results early / at all | admin routes require `ADMIN_API_TOKEN` compared in constant time; no results endpoint is reachable with a voter session | `requireAdmin` | `admin.test.ts` |
 | T14 | Tampering with stored ballots | `BEFORE UPDATE`/`BEFORE DELETE` triggers abort; hash-chained audit log detects history edits | `schema.sql` | `immutability.test.ts` |
 | T15 | Tampering with candidates/voters mid-election | configuration is loaded once at boot and hashed; `config_version` is stamped on every ballot; a changed file mid-election is visible in the audit log | `configStore.ts` | `config.test.ts` |
@@ -86,11 +88,42 @@ the same class of risk as a paper ballot paper and is managed procedurally (ID c
 handout). **Stated plainly: this mode is weaker than Entra and is a deliberate trade for
 kiosk practicality.**
 
-### 3.3 `dev`
+### 3.3 `supervised` — what Mesa actually uses
 
-Pick any voter, no proof. `loadIdentityProvider()` throws at boot if
-`NODE_ENV === 'production'`, and the UI shows a permanent red banner. It exists so that
-development and tests never need real credentials.
+**The voter selects their own name at a booth. No credential is presented.**
+
+This is a deliberate operating decision, not a missing feature. The election runs in one
+room: a Mesa employee is present, students come to a booth one at a time, and the
+invigilator knows who is in front of them. Identity is established by that person — exactly
+as it is at a polling station, where someone checks you off a roll before handing you a
+ballot paper.
+
+**What the software still guarantees, unchanged:**
+
+- one ballot per voter, ever (T1, T2);
+- no ballot for a voter already marked as voted;
+- a ballot containing positions the voter is not eligible for is rejected whole (T6);
+- every check-in and every ballot is in the tamper-evident audit log.
+
+**What it does not guarantee:** that the person at the booth is who they selected. Nothing in
+software checks this. A student could select the name of an absent classmate who has not yet
+voted.
+
+**What backs the invigilator up:**
+
+| Control | Effect |
+| --- | --- |
+| Identity confirmation is a full screen with the name set large | readable across a booth, so the invigilator can glance and check |
+| Roll search marks who has already voted | a used name is visibly used before it is picked, and cannot vote again |
+| `/monitor` — a live list of who has voted | the room can be reconciled against attendance at any moment, and afterwards |
+| `IDENTITY_VERIFIED` audit events | after the fact, who checked in and when can be reconstructed |
+
+**When this is the wrong choice:** any election that is not physically supervised, or where
+the invigilator does not know the electorate by sight. Switch `AUTH_MODE` to `access-code` or
+`entra` — both are fully implemented and tested, and it is a one-line environment change.
+
+This mode is permitted in production. The boot banner states plainly that identity rests on
+the invigilator, and the audit log records which mode ran.
 
 ### 3.4 Sessions
 
@@ -184,6 +217,9 @@ Said plainly, because a security document that only lists wins is marketing:
 - **Coerced voting.** Nothing prevents someone standing over a voter. Unsolvable in any
   remote/kiosk system; a polling-booth layout problem.
 - **Access-code handover.** A voter can give their slip away (§3.2). Entra mode removes this.
+- **Voting as an absent classmate under `supervised` mode.** The software cannot see who is at
+  the booth. This is the deliberate trade described in §3.3, carried by the invigilator rather
+  than by code.
 - **Exactly-once Excel delivery.** At-least-once with a `dedupe_key` and a reconciliation
   report. Duplicates in the workbook are possible after a crash at the wrong instant; the
   authoritative count is never affected.
@@ -191,7 +227,9 @@ Said plainly, because a security document that only lists wins is marketing:
   casual abuse. A determined attacker on the LAN can disrupt availability; the mitigation is
   operational (the election is a supervised in-person event on a controlled network).
 - **Rate-limit state is per-process.** Correct for the single-node deployment; a shared store
-  would be required if the API were ever scaled out.
+  would be required if the API were ever scaled out. Limits are keyed per *voter*, not per IP,
+  because an election hall is one address with a queue behind it — an IP-keyed limit would
+  throttle the election itself.
 - **Compromise of the kiosk machine itself** (keylogger, malicious extension). Out of scope;
   managed devices are assumed.
 
@@ -207,8 +245,15 @@ shorter than 32 characters, or equal to the example value; the same applies to
 
 ## 10. Pre-election checklist
 
-- [ ] `AUTH_MODE` is `entra` or `access-code`. **Never `dev`.**
-- [ ] `NODE_ENV=production`; the server confirms it refused the dev provider.
+- [ ] `AUTH_MODE` is the one you intend. `supervised` is valid **only if a Mesa employee is
+      physically present for the whole voting window** — that person *is* the identity
+      check (§3.3).
+- [ ] `NODE_ENV=production`.
+- [ ] `SPREADSHEET_MODE` is `sheets` (or `excel`) — **never `spool`**, which writes to a local
+      file and reaches no spreadsheet at all. The server refuses `spool` in production.
+- [ ] The Google spreadsheet is shared with the service account's email with **Editor**
+      access, and every tab has its column names in row 1.
+- [ ] `/monitor` opens with the admin token, and the invigilator has the URL and the token.
 - [ ] `ADMIN_API_TOKEN`, `ACCESS_CODE_PEPPER`, `HASH_SALT`, `KIOSK_TOKEN` are freshly
       generated (`npm run gen:secrets`) and ≥ 32 chars.
 - [ ] TLS terminated in front of the app; HSTS on.

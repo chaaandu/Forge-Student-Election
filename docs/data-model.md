@@ -254,10 +254,14 @@ config load ─▶ voter row (has_voted=0)
 - **Different storage** → implement `ElectionRepository`; the services depend on the
   interface, not on SQLite.
 
-## 7. Excel workbook shape
+## 7. Results spreadsheet shape
 
-Four tables in one workbook. Column order is read from the table header at runtime, not
-assumed, so the workbook can be rearranged without breaking sync.
+Four tabs in one spreadsheet. **Column names go in row 1 of each tab**; the server reads them
+at runtime rather than assuming an order, so whoever owns the sheet can reorder or rename
+columns without values silently landing in the wrong place.
+
+Identical for Google Sheets (what Mesa uses) and Excel via Graph — `SpreadsheetRepository` is
+the only module that knows this shape.
 
 **`Voters`** — `voter_id · name · email · type · house · has_voted · voted_at`
 Updated when a voter casts a ballot. Attributable by design: who voted is not secret.
@@ -277,5 +281,10 @@ Written on demand by `ResultsService`. `weighting_applied` carries the label fro
 voting-logic.md §6 so a reader of the spreadsheet can see *"Student-only (100%)"* next to
 house captain rows and never mistakes the 75/25 rule for having been applied.
 
-These shapes are not assumed permanent. `ExcelRepository` is the only module that knows
+These shapes are not assumed permanent. `SpreadsheetRepository` is the only module that knows
 them; everything upstream passes domain objects.
+
+**Google Sheets access:** an API key can only *read* public sheets. Writing requires a
+**service account** — create one in Google Cloud, enable the Sheets API, download the JSON
+key, and share the spreadsheet with the service account's email address (Editor). Access can
+then be revoked from the sheet's own sharing dialog, like any other collaborator.

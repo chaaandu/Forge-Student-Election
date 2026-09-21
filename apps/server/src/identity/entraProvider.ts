@@ -29,6 +29,7 @@ export interface HttpClient {
 export class EntraIdentityProvider implements IdentityProvider {
   readonly mode = 'entra' as const;
   readonly supportsRollSearch = false;
+  readonly requiresSupervision = false;
 
   constructor(
     private readonly db: Db,

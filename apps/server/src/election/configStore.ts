@@ -67,6 +67,10 @@ export function publicElection(config: ElectionConfig) {
       status: config.election.status,
       ...(config.election.opensAt ? { opensAt: config.election.opensAt } : {}),
       ...(config.election.closesAt ? { closesAt: config.election.closesAt } : {}),
+      // The banner in the UI keys off this, not off the auth mode. Voting on
+      // demo candidates is the genuinely dangerous state; supervised check-in
+      // is a deliberate operating choice and needs no alarm.
+      isSeedData: config.election.isSeedData === true,
     },
     houses: config.houses,
     positions: config.positions,

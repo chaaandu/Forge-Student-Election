@@ -8,7 +8,8 @@ import { BOARD } from '@/lib/copy';
 export interface WelcomeScreenProps {
   election: PublicElection;
   onCheckIn: () => void;
-  isDevelopmentMode: boolean;
+  /** True while demo candidates and demo voters are loaded. */
+  isSeedData: boolean;
 }
 
 /**
@@ -18,7 +19,7 @@ export interface WelcomeScreenProps {
  * calm, one obvious action, and nothing left over from the person before.
  * Ambient motion is limited to the blinking status light — no constant noise.
  */
-export function WelcomeScreen({ election, onCheckIn, isDevelopmentMode }: WelcomeScreenProps) {
+export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
   const destinations = election.positions
     .filter((p) => p.kind === 'leadership')
     .sort((a, b) => a.order - b.order);
@@ -95,12 +96,19 @@ export function WelcomeScreen({ election, onCheckIn, isDevelopmentMode }: Welcom
         </p>
       )}
 
-      {isDevelopmentMode && <DevelopmentBanner />}
+      {isSeedData && <SeedDataBanner />}
     </div>
   );
 }
 
-export function DevelopmentBanner() {
+/**
+ * The banner warns about demo data, not about the auth mode.
+ *
+ * Supervised check-in is a deliberate operating choice and needs no alarm on a
+ * voter's screen. Voting on fake candidates is the state that must never pass
+ * unnoticed.
+ */
+export function SeedDataBanner() {
   return (
     <p
       role="status"
@@ -113,7 +121,7 @@ export function DevelopmentBanner() {
         border: '1px solid var(--color-stop)',
       }}
     >
-      Development mode — identity is not verified and votes are not real
+      Demo data — these are not the real candidates and no vote here counts
     </p>
   );
 }

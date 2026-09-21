@@ -7,9 +7,13 @@ import { IdempotencyRepository } from './db/idempotencyRepository.js';
 import { OutboxRepository } from './db/outboxRepository.js';
 import { assertNotSeedDataInProduction, loadElection } from './election/configStore.js';
 import { createIdentityProvider, type AnyIdentityProvider } from './identity/index.js';
-import { GraphExcelRepository } from './excel/graphExcelRepository.js';
-import { NullExcelRepository } from './excel/nullExcelRepository.js';
-import type { ExcelRepository } from './excel/types.js';
+import { ExcelGraphRepository } from './spreadsheet/excelGraphRepository.js';
+import {
+  GoogleSheetsRepository,
+  loadServiceAccount,
+} from './spreadsheet/googleSheetsRepository.js';
+import { LocalSpoolRepository } from './spreadsheet/spoolRepository.js';
+import type { SpreadsheetRepository } from './spreadsheet/types.js';
 import { ResultsService } from './services/resultsService.js';
 import { SessionService } from './services/sessionService.js';
 import { SyncWorker } from './services/syncWorker.js';
@@ -28,7 +32,7 @@ export interface AppContext {
   readonly sessions: SessionService;
   readonly voting: VotingService;
   readonly results: ResultsService;
-  readonly excel: ExcelRepository;
+  readonly excel: SpreadsheetRepository;
   readonly sync: SyncWorker;
   readonly identity: AnyIdentityProvider;
 }
@@ -36,7 +40,7 @@ export interface AppContext {
 export interface CreateContextOptions {
   readonly env?: Env;
   /** Injected in tests so the Excel path can be exercised without Microsoft 365. */
-  readonly excel?: ExcelRepository;
+  readonly excel?: SpreadsheetRepository;
   /** Skip writing the roll into the database (already seeded). */
   readonly skipVoterSync?: boolean;
 }
@@ -48,6 +52,50 @@ export interface CreateContextOptions {
  * dependencies explicitly and each one can be constructed in isolation by a
  * test. There are no module-level singletons.
  */
+/**
+ * Choose the spreadsheet mirror.
+ *
+ * Isolated so the decision is one readable function rather than a ternary
+ * buried in the wiring, and so a future target (a CSV drop, nothing at all) is
+ * one more case here and no change anywhere above.
+ */
+function createSpreadsheetRepository(env: Env): SpreadsheetRepository {
+  switch (env.SPREADSHEET_MODE) {
+    case 'sheets':
+      return new GoogleSheetsRepository({
+        spreadsheetId: env.SHEETS_SPREADSHEET_ID ?? '',
+        tabs: {
+          voters: env.SHEETS_TAB_VOTERS,
+          candidates: env.SHEETS_TAB_CANDIDATES,
+          ballots: env.SHEETS_TAB_BALLOTS,
+          results: env.SHEETS_TAB_RESULTS,
+        },
+        serviceAccount: loadServiceAccount(
+          env.GOOGLE_SERVICE_ACCOUNT_JSON,
+          env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE,
+        ),
+      });
+
+    case 'excel':
+      return new ExcelGraphRepository({
+        tenantId: env.EXCEL_TENANT_ID ?? '',
+        clientId: env.EXCEL_CLIENT_ID ?? '',
+        clientSecret: env.EXCEL_CLIENT_SECRET ?? '',
+        driveId: env.EXCEL_DRIVE_ID ?? '',
+        workbookId: env.EXCEL_WORKBOOK_ID ?? '',
+        tables: {
+          voters: env.EXCEL_TABLE_VOTERS,
+          candidates: env.EXCEL_TABLE_CANDIDATES,
+          ballots: env.EXCEL_TABLE_BALLOTS,
+          results: env.EXCEL_TABLE_RESULTS,
+        },
+      });
+
+    case 'spool':
+      return new LocalSpoolRepository(env.EXCEL_SPOOL_DIR);
+  }
+}
+
 export function createContext(options: CreateContextOptions = {}): AppContext {
   const env = options.env ?? loadEnv();
   const { config, voters, configVersion } = loadElection(
@@ -86,23 +134,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     },
   });
 
-  const excel =
-    options.excel ??
-    (env.EXCEL_MODE === 'graph'
-      ? new GraphExcelRepository({
-          tenantId: env.EXCEL_TENANT_ID ?? '',
-          clientId: env.EXCEL_CLIENT_ID ?? '',
-          clientSecret: env.EXCEL_CLIENT_SECRET ?? '',
-          driveId: env.EXCEL_DRIVE_ID ?? '',
-          workbookId: env.EXCEL_WORKBOOK_ID ?? '',
-          tables: {
-            voters: env.EXCEL_TABLE_VOTERS,
-            candidates: env.EXCEL_TABLE_CANDIDATES,
-            ballots: env.EXCEL_TABLE_BALLOTS,
-            results: env.EXCEL_TABLE_RESULTS,
-          },
-        })
-      : new NullExcelRepository(env.EXCEL_SPOOL_DIR));
+  const excel = options.excel ?? createSpreadsheetRepository(env);
 
   return {
     env,

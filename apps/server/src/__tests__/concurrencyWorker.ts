@@ -13,8 +13,8 @@ const [, , configPath, rollPath, dbPath, voterId, startAtRaw, selectionsRaw] = p
 
 const env = loadEnv({
   NODE_ENV: 'test',
-  AUTH_MODE: 'dev',
-  EXCEL_MODE: 'null',
+  AUTH_MODE: 'supervised',
+  SPREADSHEET_MODE: 'spool',
   SYNC_ENABLED: 'false',
   ELECTION_CONFIG_PATH: configPath,
   VOTER_ROLL_PATH: rollPath,

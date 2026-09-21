@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { AppContext } from '../context.js';
 import { errorHandler, notFoundHandler } from './errorHandler.js';
 import { createRateLimiter } from './rateLimit.js';
@@ -8,6 +9,8 @@ import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { ballotRoutes } from './routes/ballots.js';
 import { electionRoutes } from './routes/election.js';
+
+const MONITOR_PAGE = fileURLToPath(new URL('./monitor.html', import.meta.url));
 
 export interface AppOptions {
   /** Directory of the built SPA. Serving it here makes the deployment same-origin. */
@@ -65,6 +68,19 @@ export function createApp(ctx: AppContext, options: AppOptions = {}): Express {
       configVersion: ctx.configVersion,
       authMode: ctx.identity.mode,
     });
+  });
+
+  /**
+   * The invigilator's monitor.
+   *
+   * Served by the API rather than the voting SPA, so it is unreachable from a
+   * booth by navigating the voter flow. The page itself is public; every byte
+   * of data it renders comes from /api/admin/monitor, which requires the admin
+   * token.
+   */
+  app.get('/monitor', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(MONITOR_PAGE);
   });
 
   app.use('/api/election', electionRoutes(ctx));

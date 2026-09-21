@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ExcelPermanentError,
-  ExcelTransientError,
+  SpreadsheetPermanentError,
+  SpreadsheetTransientError,
   type BallotSelectionRow,
-  type ExcelHealth,
-  type ExcelRepository,
+  type SpreadsheetHealth,
+  type SpreadsheetRepository,
   type ResultRow,
   type VoterParticipationRow,
-} from '../excel/types.js';
-import { GraphExcelRepository } from '../excel/graphExcelRepository.js';
+} from '../spreadsheet/types.js';
+import { ExcelGraphRepository } from '../spreadsheet/excelGraphRepository.js';
 import {
   checkIn,
   createHarness,
@@ -21,7 +21,7 @@ import {
 } from './helpers.js';
 
 /** A workbook that can be told to fail, throttle, then recover. */
-class FakeExcel implements ExcelRepository {
+class FakeSheet implements SpreadsheetRepository {
   readonly mode = 'null' as const;
   failures = 0;
   mode_: 'ok' | 'transient' | 'permanent' = 'ok';
@@ -32,11 +32,11 @@ class FakeExcel implements ExcelRepository {
   private guard(): void {
     if (this.mode_ === 'transient') {
       this.failures += 1;
-      throw new ExcelTransientError('Graph returned 429', 1);
+      throw new SpreadsheetTransientError('Graph returned 429', 1);
     }
     if (this.mode_ === 'permanent') {
       this.failures += 1;
-      throw new ExcelPermanentError('table "Ballots" not found');
+      throw new SpreadsheetPermanentError('table "Ballots" not found');
     }
   }
 
@@ -55,17 +55,17 @@ class FakeExcel implements ExcelRepository {
     this.guard();
     this.results.push(...rows);
   }
-  async health(): Promise<ExcelHealth> {
+  async health(): Promise<SpreadsheetHealth> {
     return { ok: this.mode_ === 'ok', mode: 'fake', detail: this.mode_ };
   }
 }
 
 let harness: TestHarness;
 let server: TestServer;
-let excel: FakeExcel;
+let excel: FakeSheet;
 
 beforeEach(async () => {
-  excel = new FakeExcel();
+  excel = new FakeSheet();
   harness = createHarness({ excel });
   server = await startServer(harness);
 });
@@ -75,7 +75,7 @@ afterEach(async () => {
   harness.dispose();
 });
 
-describe('Excel is a mirror, not the source of truth', () => {
+describe('the spreadsheet is a mirror, not the source of truth', () => {
   it('records the vote even when the workbook is completely unavailable', async () => {
     excel.mode_ = 'transient';
 
@@ -192,7 +192,7 @@ describe('Excel is a mirror, not the source of truth', () => {
   });
 });
 
-describe('GraphExcelRepository error classification', () => {
+describe('ExcelGraphRepository error classification', () => {
   const config = {
     tenantId: 't',
     clientId: 'c',
@@ -211,10 +211,10 @@ describe('GraphExcelRepository error classification', () => {
         ? tokenResponse()
         : new Response('', { status: 429, headers: { 'retry-after': '30' } }),
     );
-    const repo = new GraphExcelRepository(config, fetcher as never);
+    const repo = new ExcelGraphRepository(config, fetcher as never);
 
     await expect(repo.appendResults([{ position: 'p' } as never])).rejects.toBeInstanceOf(
-      ExcelTransientError,
+      SpreadsheetTransientError,
     );
   });
 
@@ -222,7 +222,7 @@ describe('GraphExcelRepository error classification', () => {
     const fetcher = vi.fn(async (url: string) =>
       url.includes('login.microsoftonline') ? tokenResponse() : new Response('', { status: 503 }),
     );
-    const repo = new GraphExcelRepository(config, fetcher as never);
+    const repo = new ExcelGraphRepository(config, fetcher as never);
     await expect(repo.health()).resolves.toMatchObject({ ok: false });
   });
 
@@ -230,9 +230,9 @@ describe('GraphExcelRepository error classification', () => {
     const fetcher = vi.fn(async (url: string) =>
       url.includes('login.microsoftonline') ? tokenResponse() : new Response('', { status: 404 }),
     );
-    const repo = new GraphExcelRepository(config, fetcher as never);
+    const repo = new ExcelGraphRepository(config, fetcher as never);
     await expect(repo.appendResults([{ position: 'p' } as never])).rejects.toBeInstanceOf(
-      ExcelPermanentError,
+      SpreadsheetPermanentError,
     );
   });
 
@@ -251,7 +251,7 @@ describe('GraphExcelRepository error classification', () => {
       return new Response('{}', { status: 201 });
     });
 
-    const repo = new GraphExcelRepository(config, fetcher as never);
+    const repo = new ExcelGraphRepository(config, fetcher as never);
     await repo.appendBallotSelections([
       {
         ballotId: 'B1',
@@ -277,7 +277,7 @@ describe('GraphExcelRepository error classification', () => {
           status: 401,
         }),
     );
-    const repo = new GraphExcelRepository({ ...config, clientSecret: SECRET }, fetcher as never);
+    const repo = new ExcelGraphRepository({ ...config, clientSecret: SECRET }, fetcher as never);
     const health = await repo.health();
 
     expect(health.ok).toBe(false);

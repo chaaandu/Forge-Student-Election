@@ -6,7 +6,7 @@ import type { Server } from 'node:http';
 import { loadEnv } from '../config/env.js';
 import { createContext, type AppContext } from '../context.js';
 import { createApp } from '../http/app.js';
-import type { ExcelRepository } from '../excel/types.js';
+import type { SpreadsheetRepository } from '../spreadsheet/types.js';
 
 export const TEST_KIOSK_TOKEN = 'test-kiosk-token-0123456789abcdef';
 export const TEST_ADMIN_TOKEN = 'test-admin-token-0123456789abcdef';
@@ -91,7 +91,7 @@ export function createHarness(
   options: {
     config?: Record<string, unknown>;
     voters?: unknown[];
-    excel?: ExcelRepository;
+    excel?: SpreadsheetRepository;
     envOverrides?: Record<string, string>;
   } = {},
 ): TestHarness {
@@ -105,8 +105,8 @@ export function createHarness(
 
   const env = loadEnv({
     NODE_ENV: 'test',
-    AUTH_MODE: 'dev',
-    EXCEL_MODE: 'null',
+    AUTH_MODE: 'supervised',
+    SPREADSHEET_MODE: 'spool',
     SYNC_ENABLED: 'false',
     KIOSK_TOKEN: TEST_KIOSK_TOKEN,
     ADMIN_API_TOKEN: TEST_ADMIN_TOKEN,
@@ -156,9 +156,9 @@ export async function startServer(harness: TestHarness): Promise<TestServer> {
   };
 }
 
-/** Check in as a voter and return the bearer token (dev identity provider). */
+/** Check in as a voter and return the bearer token (supervised booth flow). */
 export async function checkIn(server: TestServer, voterId: string): Promise<string> {
-  const response = await fetch(`${server.url}/api/auth/dev`, {
+  const response = await fetch(`${server.url}/api/auth/select`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-kiosk-token': TEST_KIOSK_TOKEN },
     body: JSON.stringify({ voterId }),

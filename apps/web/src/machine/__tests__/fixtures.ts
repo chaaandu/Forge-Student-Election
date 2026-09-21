@@ -45,7 +45,7 @@ export const election: PublicElection = {
     { id: 'n1', name: 'Nilgiri One', positionId: 'house-captain-nilgiri', active: true },
   ],
   window: { open: true },
-  auth: { mode: 'dev', supportsRollSearch: true },
+  auth: { mode: 'supervised', supportsRollSearch: true, requiresSupervision: true },
   configVersion: 'test',
 };
 

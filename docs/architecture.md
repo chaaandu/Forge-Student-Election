@@ -142,12 +142,15 @@ if (!hasVoted) { createBallot(); markVoted(); }   // WRONG
 *and* the write itself re-asserts the precondition (`WHERE has_voted = 0`), so the check is
 not load-bearing.
 
-## 6. Excel: the outbox pattern (ADR-5)
+## 6. The results spreadsheet: the outbox pattern (ADR-5)
 
-Excel/Graph is a **downstream mirror, never the source of truth**. Calling Graph inside the
-ballot transaction would mean a vote is lost whenever Microsoft is slow, rate-limits us, or
-the network blips — and it would hold the single writer lock for the duration of an HTTP
-round-trip to Microsoft, serialising the entire election behind Graph's latency.
+The spreadsheet is a **downstream mirror, never the source of truth**. One port, three
+implementations: **Google Sheets** (what Mesa uses, authenticated with a service account),
+Excel via Microsoft Graph, and a local JSONL spool for development. Calling any of them
+inside the ballot transaction would mean a vote is lost whenever the provider is slow,
+rate-limits us, or the network blips — and it would hold the single writer lock for the
+duration of an HTTP round-trip, serialising the entire election behind someone else's
+latency.
 
 Instead:
 
@@ -186,8 +189,12 @@ IdentityProvider (interface)
  ├── AccessCodeProvider      Voter looks up their name, then enters a one-time code
  │                           handed out physically by the returning officer. The code
  │                           is stored only as a salted hash. KIOSK FALLBACK.
- └── DevIdentityProvider     Pick a voter, no proof. Refuses to load when
-                             NODE_ENV=production. DEVELOPMENT ONLY.
+ └── SupervisedIdentityProvider
+                             The voter selects their own name at a booth with a
+                             Mesa employee present. No credential, by design:
+                             identity is established by that person, as it is at
+                             a polling station. Permitted in production.
+                             WHAT MESA USES — see security-model.md §3.3.
 ```
 
 Selecting a name in the UI is *navigation*, not authentication. The session token issued
@@ -260,12 +267,27 @@ document; code contains no candidate, house, position or count. *Why:* the brief
 re-running the election next year without code changes, and hard-coded rules are how
 election bugs happen. *Cost:* a validation layer and richer types. *Accepted.*
 
-**ADR-2 — Server-bound identity with pluggable providers.** *Decision:* authentication is an
-interface with an Entra implementation for production and a physically-distributed one-time
-code fallback for kiosks; front-end name selection is never an authentication mechanism.
-*Why:* "don't rely purely on frontend identity selection" is a hard requirement, but a school
-hall may not have per-student device logins. *Alternative rejected:* trusting a chosen
-`voterId` — allows trivial impersonation of any non-voter. *Accepted.*
+**ADR-2 — Identity is a pluggable port; Mesa chose physical supervision.** *Decision:*
+authentication is an interface with three implementations — Entra ID, printed access codes,
+and supervised booth selection. Mesa runs `supervised`: the voter picks their own name in a
+room with an employee present. *Why:* the requirement is that the *system* must not rely on
+front-end identity selection as a security mechanism, and it does not — the session is
+server-issued and the ballot endpoint reads the voter from that session, never from the
+request body, so a manipulated client still cannot vote twice or vote for a position it is
+not entitled to. What identity *means* is an operational question, and for a single
+supervised room an invigilator who knows the students is a stronger and cheaper control than
+distributing 128 credentials. *What is given up:* software cannot detect a voter selecting an
+absent classmate's name. *Mitigated by:* already-voted marks in roll search, a large
+confirmation screen, and a live `/monitor` view for reconciliation. *Reversible:* one
+environment variable switches to `access-code` or `entra`, both fully tested. *Accepted, with
+the trade documented in security-model.md §3.3.*
+
+**ADR-8 — An invigilator monitor, served outside the voting SPA.** *Decision:* `/monitor` is
+a self-contained page served by the API, gated by the admin token, polling
+`/api/admin/monitor`. *Why:* the people running the room need to see who has voted and chase
+who has not; putting that inside the voter SPA would make it reachable from a booth by
+navigating the flow. It reports participation only — no query anywhere in the system can
+reveal how a person voted. *Accepted.*
 
 **ADR-3 — SQLite (WAL) as the authoritative store.** *Decision:* single-node SQLite with
 `BEGIN IMMEDIATE` transactions. *Why:* the strongest available isolation (serialised writers)

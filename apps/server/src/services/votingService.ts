@@ -51,7 +51,7 @@ function canonicalSelections(selections: BallotSelections): string {
  * Everything in the system exists to make this method's guarantees true:
  * exactly one ballot per voter, validated against the server's own voter
  * record, recorded atomically together with the participation mark, the audit
- * entry and the Excel outbox — or not at all.
+ * entry and the spreadsheet outbox — or not at all.
  *
  * See docs/architecture.md §4 for the step-by-step contract.
  */
@@ -217,8 +217,8 @@ export class VotingService {
         throw error;
       }
 
-      // 6. Enqueue the Excel mirror in the same transaction, so "recorded" and
-      //    "queued to sync" can never disagree.
+      // 6. Enqueue the spreadsheet mirror in the same transaction, so "recorded"
+      //    and "queued to sync" can never disagree.
       this.outbox.enqueue(
         'participation',
         `participation:${current.id}`,

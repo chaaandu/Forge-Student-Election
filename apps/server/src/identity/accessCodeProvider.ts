@@ -18,6 +18,7 @@ export const LOCKOUT_MINUTES = 15;
 export class AccessCodeProvider implements IdentityProvider {
   readonly mode = 'access-code' as const;
   readonly supportsRollSearch = true;
+  readonly requiresSupervision = false;
 
   constructor(
     private readonly repo: ElectionRepository,

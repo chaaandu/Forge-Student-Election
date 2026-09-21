@@ -13,7 +13,7 @@ import { SplitFlap } from '@/components/board/SplitFlap';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { WelcomeScreen, DevelopmentBanner } from '@/screens/WelcomeScreen';
+import { WelcomeScreen, SeedDataBanner } from '@/screens/WelcomeScreen';
 import { CheckInScreen } from '@/screens/CheckInScreen';
 import { IdentityConfirmScreen } from '@/screens/IdentityConfirmScreen';
 import { GateScreen } from '@/screens/GateScreen';
@@ -270,7 +270,7 @@ export function App() {
   const step = currentStep(state);
   const stepHouse = step?.houseId ? houseById.get(step.houseId) : undefined;
   const voterHouse = state.voter?.houseId ? houseById.get(state.voter.houseId) : undefined;
-  const isDev = state.election?.auth.mode === 'dev';
+  const isSeedData = state.election?.election.isSeedData === true;
 
   // ------------------------------------------------------------ render ---
   return (
@@ -302,7 +302,7 @@ export function App() {
                 ? { action: { label: 'Start again', onClick: handleReset } }
                 : { action: { label: 'Back to the board', onClick: handleReset } })}
             />
-            {isDev && <DevelopmentBanner />}
+            {isSeedData && <SeedDataBanner />}
           </div>
         )}
 
@@ -310,7 +310,7 @@ export function App() {
           <WelcomeScreen
             election={state.election}
             onCheckIn={() => dispatch({ type: 'BEGIN_CHECK_IN' })}
-            isDevelopmentMode={isDev}
+            isSeedData={isSeedData}
           />
         )}
 

@@ -10,7 +10,7 @@ import { COPY, BOARD } from '@/lib/copy';
 
 export interface CheckInScreenProps {
   election: PublicElection;
-  onIdentified: (voter: Awaited<ReturnType<typeof api.devCheckIn>>) => void;
+  onIdentified: (voter: Awaited<ReturnType<typeof api.selectVoter>>) => void;
   onBack: () => void;
 }
 
@@ -71,7 +71,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
       const result =
         mode === 'access-code'
           ? await api.verifyCode(voterId, accessCode ?? '')
-          : await api.devCheckIn(voterId);
+          : await api.selectVoter(voterId);
       onIdentified(result);
     } catch (checkInError) {
       if (checkInError instanceof ApiError) {

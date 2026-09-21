@@ -9,7 +9,7 @@ import {
 import type { ElectionRepository } from '../db/electionRepository.js';
 import type { AuditRepository } from '../db/auditRepository.js';
 import type { OutboxRepository } from '../db/outboxRepository.js';
-import type { ResultRow } from '../excel/types.js';
+import type { ResultRow } from '../spreadsheet/types.js';
 
 /**
  * Results are aggregates over anonymous ballots, computed by the pure engine in
@@ -68,7 +68,7 @@ export class ResultsService {
   }
 
   /** Flatten results for the workbook, one row per candidate per position. */
-  toExcelRows(results: ElectionResults): ResultRow[] {
+  toSpreadsheetRows(results: ElectionResults): ResultRow[] {
     const rows: ResultRow[] = [];
     for (const position of results.positions) {
       for (const candidate of position.candidates) {
@@ -97,11 +97,11 @@ export class ResultsService {
   }
 
   /** Queue a results snapshot for the workbook via the same outbox as ballots. */
-  publishToExcel(results: ElectionResults, now: Date = new Date()): void {
+  publishToSpreadsheet(results: ElectionResults, now: Date = new Date()): void {
     this.outbox.enqueue(
       'results_snapshot',
       `results:${results.generatedAt}`,
-      this.toExcelRows(results),
+      this.toSpreadsheetRows(results),
       now,
     );
   }

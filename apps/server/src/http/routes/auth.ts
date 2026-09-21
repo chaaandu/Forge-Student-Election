@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { buildSteps } from '@mesa/election-core';
 import type { AppContext } from '../../context.js';
-import { AccessCodeProvider, DevIdentityProvider, EntraIdentityProvider } from '../../identity/index.js';
+import {
+  AccessCodeProvider,
+  EntraIdentityProvider,
+  SupervisedIdentityProvider,
+} from '../../identity/index.js';
 import { ForbiddenError, UnauthorizedError } from '../../services/errors.js';
 import { newId } from '../../lib/crypto.js';
 import { bindingOf, maskEmail, requireKioskToken } from '../middleware.js';
@@ -10,7 +14,7 @@ import { createRateLimiter } from '../rateLimit.js';
 
 const lookupSchema = z.object({ query: z.string().min(2).max(80) });
 const verifySchema = z.object({ voterId: z.string().min(1).max(64), code: z.string().min(1).max(32) });
-const devSchema = z.object({ voterId: z.string().min(1).max(64) });
+const selectSchema = z.object({ voterId: z.string().min(1).max(64) });
 const exchangeSchema = z.object({ code: z.string().min(1).max(128) });
 
 const HANDOFF_TTL_MS = 120_000;
@@ -53,7 +57,7 @@ export function authRoutes(ctx: AppContext): Router {
     res.json({
       mode: ctx.identity.mode,
       supportsRollSearch: ctx.identity.supportsRollSearch,
-      isDevelopmentMode: ctx.identity.mode === 'dev',
+      requiresSupervision: ctx.identity.requiresSupervision,
     });
   });
 
@@ -118,12 +122,18 @@ export function authRoutes(ctx: AppContext): Router {
     res.json(issueSession(ctx, outcome.voter, req));
   });
 
-  /** Development only: identify with no proof. */
-  router.post('/dev', requireKioskToken(ctx), lookupLimit, (req, res) => {
-    if (!(ctx.identity instanceof DevIdentityProvider)) {
-      throw new ForbiddenError('development sign-in is not enabled');
+  /**
+   * Supervised check-in: the voter selects their own name.
+   *
+   * No credential is presented, by design — see SupervisedIdentityProvider.
+   * Everything that protects the ballot itself (one vote, eligibility,
+   * validation, audit) runs exactly as it does in the other modes.
+   */
+  router.post('/select', requireKioskToken(ctx), lookupLimit, (req, res) => {
+    if (!(ctx.identity instanceof SupervisedIdentityProvider)) {
+      throw new ForbiddenError('this election requires a sign-in or an access code');
     }
-    const { voterId } = devSchema.parse(req.body);
+    const { voterId } = selectSchema.parse(req.body);
     const outcome = ctx.identity.identify(voterId);
     if (!outcome.ok) {
       res.status(404).json({ error: { code: outcome.code, message: outcome.message } });

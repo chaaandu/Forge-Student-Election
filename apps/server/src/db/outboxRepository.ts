@@ -48,9 +48,9 @@ function toRow(raw: RawRow): OutboxRow {
  * The transactional outbox.
  *
  * Rows are enqueued inside the ballot transaction, so "the vote is recorded"
- * and "the vote is queued for Excel" commit together or not at all. The worker
- * then drains asynchronously: Excel being down delays the mirror, never the
- * election. See ADR-5.
+ * and "the vote is queued for the spreadsheet" commit together or not at all. The
+ * worker then drains asynchronously: the spreadsheet being down delays the
+ * mirror, never the election. See ADR-5.
  */
 export class OutboxRepository {
   constructor(private readonly db: Db) {}

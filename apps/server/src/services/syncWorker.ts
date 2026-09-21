@@ -2,10 +2,10 @@ import type { AuditRepository } from '../db/auditRepository.js';
 import type { OutboxRepository, OutboxRow } from '../db/outboxRepository.js';
 import type {
   BallotSelectionRow,
-  ExcelRepository,
+  SpreadsheetRepository,
   VoterParticipationRow,
-} from '../excel/types.js';
-import { ExcelPermanentError } from '../excel/types.js';
+} from '../spreadsheet/types.js';
+import { SpreadsheetPermanentError } from '../spreadsheet/types.js';
 
 export interface SyncWorkerOptions {
   readonly intervalMs: number;
@@ -21,7 +21,7 @@ export interface SyncRunSummary {
 }
 
 /**
- * Drains the outbox into Excel.
+ * Drains the outbox into the configured spreadsheet.
  *
  * The vote is already durable before this runs, so every failure mode here is a
  * delay, not a loss. Transient failures back off and retry; permanent ones
@@ -34,7 +34,7 @@ export class SyncWorker {
 
   constructor(
     private readonly outbox: OutboxRepository,
-    private readonly excel: ExcelRepository,
+    private readonly excel: SpreadsheetRepository,
     private readonly audit: AuditRepository,
     private readonly options: SyncWorkerOptions,
   ) {}
@@ -72,7 +72,7 @@ export class SyncWorker {
           synced += 1;
         } catch (error) {
           const message = (error as Error).message;
-          const permanent = error instanceof ExcelPermanentError;
+          const permanent = error instanceof SpreadsheetPermanentError;
           const outcome = this.outbox.markFailed(
             row.id,
             message,
@@ -148,7 +148,7 @@ export class SyncWorker {
         return;
       }
       default:
-        throw new ExcelPermanentError(`Unknown outbox kind "${row.kind}"`);
+        throw new SpreadsheetPermanentError(`Unknown outbox kind "${row.kind}"`);
     }
   }
 }

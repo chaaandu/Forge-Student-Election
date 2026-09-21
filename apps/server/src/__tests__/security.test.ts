@@ -11,9 +11,15 @@ import {
   type TestHarness,
   type TestServer,
 } from './helpers.js';
-import { InsecureIdentityProviderError, createIdentityProvider } from '../identity/index.js';
+import { SupervisedIdentityProvider, createIdentityProvider } from '../identity/index.js';
 import { EnvironmentError, loadEnv } from '../config/env.js';
 import { maskEmail } from '../http/middleware.js';
+
+const STUDENT_BALLOT_NILGIRI = {
+  president: 'p1',
+  'vice-president': 'v1',
+  'house-captain-nilgiri': 'n1',
+};
 
 let harness: TestHarness;
 let server: TestServer;
@@ -255,11 +261,21 @@ describe('production guards', () => {
     KIOSK_TOKEN: 'k'.repeat(40),
     HASH_SALT: 's'.repeat(40),
     ACCESS_CODE_PEPPER: 'p'.repeat(40),
+    SPREADSHEET_MODE: 'sheets',
+    SHEETS_SPREADSHEET_ID: 'sheet-id',
+    GOOGLE_SERVICE_ACCOUNT_JSON: '{"client_email":"a@b.iam.gserviceaccount.com","private_key":"k"}',
   } as NodeJS.ProcessEnv;
 
-  it('refuses to start in production with AUTH_MODE=dev', () => {
-    expect(() => loadEnv({ ...base, AUTH_MODE: 'dev' })).toThrow(EnvironmentError);
-    expect(() => loadEnv({ ...base, AUTH_MODE: 'dev' })).toThrow(/no identity verification/);
+  it('allows supervised mode in production — it is a deliberate operating choice', () => {
+    // Supervised booth voting is how this election is actually run: an
+    // invigilator is present and establishes identity. Refusing to boot would
+    // be refusing the chosen process, not protecting it.
+    expect(() => loadEnv({ ...base, AUTH_MODE: 'supervised' })).not.toThrow();
+  });
+
+  it('rejects an unknown AUTH_MODE rather than falling back to something weaker', () => {
+    expect(() => loadEnv({ ...base, AUTH_MODE: 'none' })).toThrow(EnvironmentError);
+    expect(() => loadEnv({ ...base, AUTH_MODE: '' })).toThrow(EnvironmentError);
   });
 
   it('refuses a placeholder secret', () => {
@@ -280,15 +296,84 @@ describe('production guards', () => {
     expect(() => loadEnv(base)).not.toThrow();
   });
 
-  it('refuses to construct the dev identity provider in production', () => {
-    const env = loadEnv(base);
+  it('refuses to run a real election with results spooling to a local file', () => {
+    // The most plausible go-live mistake: everything works, nothing reaches the
+    // spreadsheet, and nobody notices until the count.
+    expect(() => loadEnv({ ...base, SPREADSHEET_MODE: 'spool' })).toThrow(
+      /only writes to a local file/,
+    );
+  });
+
+  it('refuses Google Sheets without credentials, and says an API key will not do', () => {
+    const { GOOGLE_SERVICE_ACCOUNT_JSON: _omit, ...withoutKey } = base as Record<string, string>;
+    expect(() => loadEnv(withoutKey as NodeJS.ProcessEnv)).toThrow(
+      /API key cannot write to a sheet/,
+    );
+  });
+
+  it('refuses Google Sheets without a spreadsheet id', () => {
+    const { SHEETS_SPREADSHEET_ID: _omit, ...withoutId } = base as Record<string, string>;
+    expect(() => loadEnv(withoutId as NodeJS.ProcessEnv)).toThrow(/SHEETS_SPREADSHEET_ID/);
+  });
+
+  it('still enforces secret quality under supervised mode', () => {
+    // No voter credential does not mean no secrets: the admin token and the
+    // kiosk token still gate results and the roll.
     expect(() =>
-      createIdentityProvider(
-        { ...env, AUTH_MODE: 'dev' },
-        harness.ctx.db,
-        harness.ctx.repo,
-        'test-election',
-      ),
-    ).toThrow(InsecureIdentityProviderError);
+      loadEnv({ ...base, AUTH_MODE: 'supervised', ADMIN_API_TOKEN: 'short' }),
+    ).toThrow(/ADMIN_API_TOKEN/);
+  });
+});
+
+describe('supervised booth mode', () => {
+  it('declares that identity rests on a person, so the UI can say so', () => {
+    const env = loadEnv({
+      NODE_ENV: 'test',
+      AUTH_MODE: 'supervised',
+    } as NodeJS.ProcessEnv);
+    const provider = createIdentityProvider(
+      env,
+      harness.ctx.db,
+      harness.ctx.repo,
+      'test-election',
+    );
+
+    expect(provider).toBeInstanceOf(SupervisedIdentityProvider);
+    expect(provider.requiresSupervision).toBe(true);
+    expect(provider.supportsRollSearch).toBe(true);
+  });
+
+  it('still refuses a name that is not on the roll', () => {
+    const provider = new SupervisedIdentityProvider(harness.ctx.repo);
+    const outcome = provider.identify('not-a-real-voter');
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.message).toMatch(/not on the roll/i);
+  });
+
+  it('exposes who has already voted, so a booth cannot silently re-use a name', async () => {
+    const token = await checkIn(server, 'stu-1');
+    await submitBallot(server, token, STUDENT_BALLOT);
+
+    const response = await fetch(`${server.url}/api/auth/lookup`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-kiosk-token': TEST_KIOSK_TOKEN },
+      body: JSON.stringify({ query: 'Student One' }),
+    });
+    const body = await response.json();
+
+    expect(body.results[0]).toMatchObject({ id: 'stu-1', hasVoted: true });
+  });
+
+  it('gives one vote per voter even though anyone may select any name', async () => {
+    // The point of the trade: supervision covers "is this you", but the
+    // software still covers "has this person already voted".
+    const first = await checkIn(server, 'stu-2');
+    expect((await submitBallot(server, first, STUDENT_BALLOT_NILGIRI)).status).toBe(201);
+
+    const second = await checkIn(server, 'stu-2');
+    const result = await submitBallot(server, second, STUDENT_BALLOT_NILGIRI);
+    expect(result.status).toBe(409);
+    expect(result.body.error.code).toBe('ALREADY_VOTED');
   });
 });

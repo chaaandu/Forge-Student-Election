@@ -10,12 +10,19 @@ export interface PublicElection {
     status: 'draft' | 'open' | 'closed';
     opensAt?: string;
     closesAt?: string;
+    /** True while demo candidates and demo voters are configured. */
+    isSeedData?: boolean;
   };
   houses: House[];
   positions: Position[];
   candidates: Candidate[];
   window: { open: true } | { open: false; reason: 'NOT_STARTED' | 'CLOSED' | 'DRAFT'; at?: string };
-  auth: { mode: 'entra' | 'access-code' | 'dev'; supportsRollSearch: boolean };
+  auth: {
+    mode: 'entra' | 'access-code' | 'supervised';
+    supportsRollSearch: boolean;
+    /** Identity rests on the invigilator; switches on booth-facing affordances. */
+    requiresSupervision: boolean;
+  };
   configVersion: string;
 }
 
@@ -141,8 +148,9 @@ export const api = {
       body: JSON.stringify({ voterId, code }),
     }),
 
-  devCheckIn: (voterId: string) =>
-    request<CheckInResult>('/api/auth/dev', {
+  /** Supervised check-in: the voter selects their own name at the booth. */
+  selectVoter: (voterId: string) =>
+    request<CheckInResult>('/api/auth/select', {
       method: 'POST',
       headers: { 'x-kiosk-token': KIOSK_TOKEN },
       body: JSON.stringify({ voterId }),

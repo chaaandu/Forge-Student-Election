@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>Mesa Elections — Invigilator</title>
+<!--
+  The invigilator's screen. Deliberately a plain, self-contained page served by
+  the API rather than part of the voting SPA: different audience, different
+  device, and it must never be reachable from a booth by wandering through the
+  voter flow.
+
+  It shows WHO has voted. It cannot show HOW anyone voted — no such query
+  exists anywhere in this system.
+-->
+<style>
+  :root{
+    --ink:#0A0E14; --board:#121821; --surface:#161D28; --line:#263040;
+    --text:#E9E5DD; --muted:#9AA7B6; --dim:#7B8797;
+    --signal:#FFB020; --go:#3BD671; --stop:#FF6B5E;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+  h1{font-size:20px;font-weight:650;margin:0}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .mono{font-family:var(--mono)}
+  .up{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-family:var(--mono)}
+
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px}
+  .live{display:inline-flex;align-items:center;gap:8px;color:var(--go)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--go);animation:p 2s ease-in-out infinite}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.dot{animation:none}}
+
+  .tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:20px}
+  .tile{background:var(--board);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .tile .n{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--signal);line-height:1.1}
+  .tile .l{color:var(--dim);margin-top:2px}
+  .bar{height:4px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--go);transition:width .4s ease}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  input[type=search],input[type=password]{background:var(--surface);border:1px solid var(--line);
+    color:var(--text);border-radius:8px;padding:10px 14px;font:inherit;min-height:44px;min-width:240px}
+  button{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px;
+    padding:10px 16px;font:inherit;min-height:44px;cursor:pointer}
+  button:hover{border-color:var(--muted);background:var(--surface)}
+  button[aria-pressed=true]{background:var(--signal);color:#1A1200;border-color:transparent;font-weight:600}
+  button.primary{background:var(--signal);color:#1A1200;border-color:transparent;font-weight:600}
+  :focus-visible{outline:none;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--signal)}
+
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;color:var(--dim);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--ink)}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr.voted td:first-child{border-left:2px solid var(--go)}
+  .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-family:var(--mono);
+    text-transform:uppercase;letter-spacing:.1em;border:1px solid}
+  .yes{color:var(--go);border-color:color-mix(in srgb,var(--go) 40%,transparent);
+    background:color-mix(in srgb,var(--go) 12%,transparent)}
+  .no{color:var(--dim);border-color:var(--line)}
+  .warn{background:#3A1A18;border:1px solid var(--stop);color:var(--stop);padding:10px 14px;
+    border-radius:8px;margin-bottom:16px;text-align:center}
+  .gate{max-width:420px;margin:15vh auto;background:var(--board);border:1px solid var(--line);
+    border-radius:14px;padding:28px}
+  .err{color:var(--stop);margin-top:10px;font-size:13px}
+  .empty{color:var(--muted);padding:28px 10px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="gate" class="gate">
+    <h1>Invigilator sign-in</h1>
+    <p class="sub">Enter the admin token for this election. It is kept in this tab only.</p>
+    <form id="gateForm" style="margin-top:18px">
+      <input type="password" id="token" placeholder="Admin token" autocomplete="off"
+             style="width:100%" aria-label="Admin token" />
+      <button class="primary" type="submit" style="width:100%;margin-top:12px">Open monitor</button>
+      <p class="err" id="gateErr" role="alert" hidden></p>
+    </form>
+  </div>
+
+  <div id="app" hidden>
+    <div id="seed" class="warn" hidden>
+      Demo data — these are not the real candidates or voters, and nothing here counts.
+    </div>
+
+    <header>
+      <div>
+        <h1 id="title">Mesa Elections</h1>
+        <p class="sub"><span id="status" class="up"></span> · <span id="mode" class="up"></span></p>
+      </div>
+      <div style="text-align:right">
+        <span class="live"><span class="dot"></span><span class="up">Live</span></span>
+        <p class="sub" id="updated">—</p>
+        <button id="signout" style="margin-top:8px;padding:6px 12px;min-height:0">Sign out</button>
+      </div>
+    </header>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="controls">
+      <input type="search" id="q" placeholder="Search a name…" aria-label="Search voters" />
+      <button data-f="all" aria-pressed="true">All</button>
+      <button data-f="no" aria-pressed="false">Not yet voted</button>
+      <button data-f="yes" aria-pressed="false">Voted</button>
+      <span class="sub" id="count" style="margin-left:auto"></span>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Type</th><th>House</th><th>Voted</th><th>Time</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="empty" id="empty" hidden>No one matches that search.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = 'mesa.monitor.token';
+  var token = sessionStorage.getItem(KEY) || '';
+  var filter = 'all';
+  var query = '';
+  var data = null;
+  var timer = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function show(authed) {
+    $('gate').hidden = authed;
+    $('app').hidden = !authed;
+  }
+
+  async function load() {
+    try {
+      var res = await fetch('/api/admin/monitor', {
+        headers: { authorization: 'Bearer ' + token },
+        cache: 'no-store'
+      });
+      if (res.status === 403 || res.status === 401) { signOut('That token was not accepted.'); return; }
+      if (!res.ok) { $('updated').textContent = 'Update failed — retrying'; return; }
+      data = await res.json();
+      render();
+    } catch (e) {
+      // A dropped connection must not blank the screen the invigilator is using.
+      $('updated').textContent = 'Connection lost — retrying';
+    }
+  }
+
+  function pct(a, b) { return b === 0 ? 0 : Math.round((a / b) * 100); }
+
+  function tile(n, total, label) {
+    return '<div class="tile"><div class="n">' + n + '<span style="font-size:15px;color:var(--dim)">/' +
+      total + '</span></div><div class="l">' + label + '</div>' +
+      '<div class="bar"><i style="width:' + pct(n, total) + '%"></i></div></div>';
+  }
+
+  function render() {
+    if (!data) return;
+    $('title').textContent = data.election.name;
+    $('status').textContent = data.election.status;
+    $('mode').textContent = data.authMode + ' check-in';
+    $('seed').hidden = !data.election.isSeedData;
+    $('updated').textContent = 'Updated ' + new Date(data.generatedAt).toLocaleTimeString();
+
+    var t = data.turnout;
+    var html = tile(t.overall.voted, t.overall.eligible, 'Total turnout');
+    Object.keys(t.byType).forEach(function (k) {
+      html += tile(t.byType[k].voted, t.byType[k].eligible, k.charAt(0).toUpperCase() + k.slice(1) + 's');
+    });
+    Object.keys(data.byHouse).forEach(function (k) {
+      var h = data.byHouse[k];
+      if (h.eligible > 0) html += tile(h.voted, h.eligible, h.name);
+    });
+    $('tiles').innerHTML = html;
+
+    var q = query.trim().toLowerCase();
+    var list = data.voters.filter(function (v) {
+      if (filter === 'yes' && !v.hasVoted) return false;
+      if (filter === 'no' && v.hasVoted) return false;
+      if (q && v.name.toLowerCase().indexOf(q) === -1 && v.email.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+
+    $('count').textContent = list.length + ' of ' + data.voters.length + ' shown';
+    $('empty').hidden = list.length > 0;
+    $('rows').innerHTML = list.map(function (v) {
+      return '<tr class="' + (v.hasVoted ? 'voted' : '') + '">' +
+        '<td>' + esc(v.name) + '<div class="sub">' + esc(v.email) + '</div></td>' +
+        '<td class="sub">' + v.type + '</td>' +
+        '<td class="sub">' + (v.house ? esc(v.house) : '—') + '</td>' +
+        '<td><span class="pill ' + (v.hasVoted ? 'yes' : 'no') + '">' +
+          (v.hasVoted ? 'voted' : 'not yet') + '</span></td>' +
+        '<td class="sub mono">' + (v.votedAt ? new Date(v.votedAt).toLocaleTimeString() : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+
+  function start() {
+    show(true);
+    load();
+    if (timer) clearInterval(timer);
+    timer = setInterval(load, 3000);
+  }
+
+  function signOut(message) {
+    sessionStorage.removeItem(KEY);
+    token = '';
+    if (timer) clearInterval(timer);
+    show(false);
+    if (message) { $('gateErr').textContent = message; $('gateErr').hidden = false; }
+  }
+
+  $('gateForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    token = $('token').value.trim();
+    if (!token) return;
+    sessionStorage.setItem(KEY, token);
+    $('gateErr').hidden = true;
+    start();
+  });
+
+  $('signout').addEventListener('click', function () { signOut(''); });
+  $('q').addEventListener('input', function (e) { query = e.target.value; render(); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-f]'), function (b) {
+    b.addEventListener('click', function () {
+      filter = b.getAttribute('data-f');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-f]'), function (o) {
+        o.setAttribute('aria-pressed', String(o === b));
+      });
+      render();
+    });
+  });
+
+  if (token) start(); else show(false);
+})();
+</script>
+</body>
+</html>

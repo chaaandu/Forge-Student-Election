@@ -1,6 +1,6 @@
 import type { VoterRecord } from '../db/electionRepository.js';
 
-export type IdentityMode = 'entra' | 'access-code' | 'dev';
+export type IdentityMode = 'entra' | 'access-code' | 'supervised';
 
 export interface IdentityResult {
   readonly ok: true;
@@ -32,6 +32,12 @@ export type IdentityOutcome = IdentityResult | IdentityFailure;
  */
 export interface IdentityProvider {
   readonly mode: IdentityMode;
-  /** True when the UI should offer roll search (code/dev), false for a redirect flow (entra). */
+  /** True when the UI offers roll search; false for a redirect flow (entra). */
   readonly supportsRollSearch: boolean;
+  /**
+   * Whether identity rests on a human invigilator rather than on a credential.
+   * Required, not optional: every provider must answer it, and the UI switches
+   * on booth-facing affordances when it is true.
+   */
+  readonly requiresSupervision: boolean;
 }

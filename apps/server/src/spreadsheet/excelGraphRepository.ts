@@ -1,12 +1,12 @@
 import type {
   BallotSelectionRow,
   CandidateRow,
-  ExcelHealth,
-  ExcelRepository,
+  SpreadsheetHealth,
+  SpreadsheetRepository,
   ResultRow,
   VoterParticipationRow,
 } from './types.js';
-import { ExcelPermanentError, ExcelTransientError } from './types.js';
+import { SpreadsheetPermanentError, SpreadsheetTransientError } from './types.js';
 
 export interface GraphConfig {
   readonly tenantId: string;
@@ -35,7 +35,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
  *
  * Credentials are read from the environment and never leave the server.
  */
-export class GraphExcelRepository implements ExcelRepository {
+export class ExcelGraphRepository implements SpreadsheetRepository {
   readonly mode = 'graph' as const;
 
   private token?: { value: string; expiresAt: number };
@@ -65,14 +65,14 @@ export class GraphExcelRepository implements ExcelRepository {
     );
 
     if (response.status === 429 || response.status >= 500) {
-      throw new ExcelTransientError(
+      throw new SpreadsheetTransientError(
         `Token endpoint returned ${response.status}`,
         retryAfter(response),
       );
     }
     if (!response.ok) {
       // The body can contain the client secret in an error echo; it is not logged.
-      throw new ExcelPermanentError(
+      throw new SpreadsheetPermanentError(
         `Graph token request failed with ${response.status}. Check EXCEL_CLIENT_ID / ` +
           `EXCEL_CLIENT_SECRET / EXCEL_TENANT_ID and the app registration's permissions.`,
       );
@@ -103,22 +103,22 @@ export class GraphExcelRepository implements ExcelRepository {
         },
       });
     } catch (error) {
-      throw new ExcelTransientError(
+      throw new SpreadsheetTransientError(
         `Network error talking to Microsoft Graph: ${(error as Error).message}`,
       );
     }
 
     if (response.status === 429 || response.status >= 500) {
-      throw new ExcelTransientError(`Graph returned ${response.status}`, retryAfter(response));
+      throw new SpreadsheetTransientError(`Graph returned ${response.status}`, retryAfter(response));
     }
     if (response.status === 401 || response.status === 403) {
       this.token = undefined; // force a refresh; the next attempt may succeed
-      throw new ExcelTransientError(
+      throw new SpreadsheetTransientError(
         `Graph returned ${response.status} — token refreshed, will retry once`,
       );
     }
     if (!response.ok) {
-      throw new ExcelPermanentError(
+      throw new SpreadsheetPermanentError(
         `Graph returned ${response.status} for ${new URL(url).pathname}. ` +
           `Check that the table exists and the app has write access to the workbook.`,
       );
@@ -135,7 +135,7 @@ export class GraphExcelRepository implements ExcelRepository {
     const body = (await response.json()) as { values?: string[][] };
     const headers = body.values?.[0];
     if (!headers || headers.length === 0) {
-      throw new ExcelPermanentError(`Table "${table}" has no header row.`);
+      throw new SpreadsheetPermanentError(`Table "${table}" has no header row.`);
     }
     const normalised = headers.map((h) => String(h).trim().toLowerCase());
     this.headerCache.set(table, normalised);
@@ -237,7 +237,7 @@ export class GraphExcelRepository implements ExcelRepository {
     );
   }
 
-  async health(): Promise<ExcelHealth> {
+  async health(): Promise<SpreadsheetHealth> {
     try {
       await this.headers(this.config.tables.ballots);
       return { ok: true, mode: 'graph', detail: 'Workbook reachable and tables resolved.' };

@@ -35,7 +35,11 @@ const schema = z.object({
   VOTER_ROLL_PATH: z.string().default('./config/voters.json'),
   DATABASE_PATH: z.string().default('./data/elections.sqlite'),
 
-  AUTH_MODE: z.enum(['entra', 'access-code', 'dev']).default('dev'),
+  // supervised  — voter picks their name at a booth with an invigilator present.
+  //                Identity is established by that person, not by software.
+  // access-code  — one-time codes handed out against student ID.
+  // entra        — Microsoft Entra ID sign-in.
+  AUTH_MODE: z.enum(['entra', 'access-code', 'supervised']).default('supervised'),
   KIOSK_TOKEN: z.string().default('dev-kiosk-token'),
   ACCESS_CODE_PEPPER: z.string().default('dev-access-code-pepper'),
   HASH_SALT: z.string().default('dev-hash-salt'),
@@ -46,7 +50,22 @@ const schema = z.object({
   MICROSOFT_CLIENT_SECRET: z.string().optional(),
   MICROSOFT_REDIRECT_URI: z.string().optional(),
 
-  EXCEL_MODE: z.enum(['graph', 'null']).default('null'),
+  // sheets — Google Sheets via a service account. What Mesa uses.
+  // excel  — Excel on Microsoft 365 via Graph.
+  // spool  — write JSONL to disk. Development; exercises the identical sync path.
+  SPREADSHEET_MODE: z.enum(['sheets', 'excel', 'spool']).default('spool'),
+
+  // Google Sheets
+  SHEETS_SPREADSHEET_ID: z.string().optional(),
+  SHEETS_TAB_VOTERS: z.string().default('Voters'),
+  SHEETS_TAB_CANDIDATES: z.string().default('Candidates'),
+  SHEETS_TAB_BALLOTS: z.string().default('Ballots'),
+  SHEETS_TAB_RESULTS: z.string().default('Results'),
+  /** The service account key file, inline. Preferred: nothing lands on disk. */
+  GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  /** Or a path to it. Easier locally. */
+  GOOGLE_SERVICE_ACCOUNT_KEY_FILE: z.string().optional(),
+
   EXCEL_TENANT_ID: z.string().optional(),
   EXCEL_CLIENT_ID: z.string().optional(),
   EXCEL_CLIENT_SECRET: z.string().optional(),
@@ -82,12 +101,6 @@ export class EnvironmentError extends Error {
 function productionGuards(env: Env): string[] {
   const problems: string[] = [];
 
-  if (env.AUTH_MODE === 'dev') {
-    problems.push(
-      'AUTH_MODE=dev performs no identity verification. Set AUTH_MODE=entra or access-code.',
-    );
-  }
-
   const secrets: [string, string][] = [
     ['ADMIN_API_TOKEN', env.ADMIN_API_TOKEN],
     ['KIOSK_TOKEN', env.KIOSK_TOKEN],
@@ -115,7 +128,17 @@ function productionGuards(env: Env): string[] {
       problems.push('MICROSOFT_REDIRECT_URI must be https in production.');
   }
 
-  if (env.EXCEL_MODE === 'graph') {
+  if (env.SPREADSHEET_MODE === 'sheets') {
+    if (!env.SHEETS_SPREADSHEET_ID)
+      problems.push('SHEETS_SPREADSHEET_ID is required when SPREADSHEET_MODE=sheets.');
+    if (!env.GOOGLE_SERVICE_ACCOUNT_JSON && !env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE)
+      problems.push(
+        'Google Sheets needs a service account: set GOOGLE_SERVICE_ACCOUNT_JSON or ' +
+          'GOOGLE_SERVICE_ACCOUNT_KEY_FILE. An API key cannot write to a sheet.',
+      );
+  }
+
+  if (env.SPREADSHEET_MODE === 'excel') {
     for (const key of [
       'EXCEL_TENANT_ID',
       'EXCEL_CLIENT_ID',
@@ -123,8 +146,15 @@ function productionGuards(env: Env): string[] {
       'EXCEL_DRIVE_ID',
       'EXCEL_WORKBOOK_ID',
     ] as const) {
-      if (!env[key]) problems.push(`${key} is required when EXCEL_MODE=graph.`);
+      if (!env[key]) problems.push(`${key} is required when SPREADSHEET_MODE=excel.`);
     }
+  }
+
+  if (env.SPREADSHEET_MODE === 'spool') {
+    problems.push(
+      'SPREADSHEET_MODE=spool only writes to a local file. Set it to sheets (or excel) so ' +
+        'results actually reach the spreadsheet.',
+    );
   }
 
   return problems;

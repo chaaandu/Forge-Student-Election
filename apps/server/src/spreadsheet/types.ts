@@ -1,10 +1,14 @@
 /**
- * The Excel port.
+ * The spreadsheet port.
  *
- * Excel is a downstream mirror, never the source of truth (ADR-5). This
- * interface is the only place in the system that knows the workbook's shape;
- * everything upstream passes domain objects. Swapping Excel for Google Sheets,
- * a CSV drop, or nothing at all is an implementation of this interface.
+ * The spreadsheet is a downstream mirror, never the source of truth (ADR-5).
+ * This interface is the only place in the system that knows a sheet's shape;
+ * everything upstream passes domain objects.
+ *
+ * Three implementations ship: Google Sheets (the one Mesa uses), Excel via
+ * Microsoft Graph, and a local JSONL spool for development. Swapping in a CSV
+ * drop — or nothing at all — is another implementation of this interface, not a
+ * change anywhere above it.
  */
 
 export interface VoterParticipationRow {
@@ -53,24 +57,24 @@ export interface ResultRow {
   readonly generatedAt: string;
 }
 
-export interface ExcelHealth {
+export interface SpreadsheetHealth {
   readonly ok: boolean;
   readonly mode: string;
   readonly detail: string;
 }
 
-export interface ExcelRepository {
-  readonly mode: 'graph' | 'null';
+export interface SpreadsheetRepository {
+  readonly mode: 'sheets' | 'graph' | 'spool';
   appendVoterParticipation(rows: readonly VoterParticipationRow[]): Promise<void>;
   appendBallotSelections(rows: readonly BallotSelectionRow[]): Promise<void>;
   upsertCandidates(rows: readonly CandidateRow[]): Promise<void>;
   appendResults(rows: readonly ResultRow[]): Promise<void>;
-  health(): Promise<ExcelHealth>;
+  health(): Promise<SpreadsheetHealth>;
 }
 
 /** Worth retrying: throttling, transient network, 5xx. */
-export class ExcelTransientError extends Error {
-  override readonly name = 'ExcelTransientError';
+export class SpreadsheetTransientError extends Error {
+  override readonly name = 'SpreadsheetTransientError';
   constructor(
     message: string,
     readonly retryAfterSeconds?: number,
@@ -80,8 +84,8 @@ export class ExcelTransientError extends Error {
 }
 
 /** Not worth retrying: bad credentials, missing table, malformed request. */
-export class ExcelPermanentError extends Error {
-  override readonly name = 'ExcelPermanentError';
+export class SpreadsheetPermanentError extends Error {
+  override readonly name = 'SpreadsheetPermanentError';
   constructor(message: string) {
     super(message);
   }

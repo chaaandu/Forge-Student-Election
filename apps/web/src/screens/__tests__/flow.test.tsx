@@ -8,7 +8,7 @@ import type * as ApiModule from '@/lib/api';
 /** A controllable API. Every test decides what the server says and when. */
 const mocks = vi.hoisted(() => ({
   election: vi.fn(),
-  devCheckIn: vi.fn(),
+  selectVoter: vi.fn(),
   submitBallot: vi.fn(),
   endSession: vi.fn(),
   lookup: vi.fn(),
@@ -55,7 +55,7 @@ afterEach(() => {
 async function checkInAs(voter: typeof student | typeof employee) {
   const user = userEvent.setup();
   mockRollFor(voter);
-  mocks.devCheckIn.mockResolvedValue({ token: 'tok', expiresAt: '2099-01-01', voter });
+  mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099-01-01', voter });
 
   render(<App />);
   await screen.findByRole('button', { name: /check in to vote/i });
@@ -130,7 +130,7 @@ describe('the student journey', () => {
   it('is told how many gates they have before starting', async () => {
     const user = userEvent.setup();
     mockRollFor(student);
-    mocks.devCheckIn.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: student });
+    mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: student });
     render(<App />);
     await user.click(await screen.findByRole('button', { name: /check in to vote/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
@@ -318,7 +318,7 @@ describe('blocked states', () => {
   it('shows a themed AND plain message when a voter has already voted at check-in', async () => {
     const user = userEvent.setup();
     mockRollFor(student);
-    mocks.devCheckIn.mockResolvedValue({
+    mocks.selectVoter.mockResolvedValue({
       token: 'tok',
       expiresAt: '2099',
       voter: { ...student, hasVoted: true },

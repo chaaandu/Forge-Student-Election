@@ -16,7 +16,11 @@ export function electionRoutes(ctx: AppContext): Router {
     res.json({
       ...publicElection(ctx.config),
       window,
-      auth: { mode: ctx.identity.mode, supportsRollSearch: ctx.identity.supportsRollSearch },
+      auth: {
+        mode: ctx.identity.mode,
+        supportsRollSearch: ctx.identity.supportsRollSearch,
+        requiresSupervision: ctx.identity.requiresSupervision,
+      },
       configVersion: ctx.configVersion,
     });
   });

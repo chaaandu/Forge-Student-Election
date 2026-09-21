@@ -24,7 +24,15 @@ function start(): void {
         `  ─────────────────────────────────────────────\n` +
         `  election      ${ctx.config.election.name} (${ctx.config.election.status})\n` +
         `  config        ${ctx.configVersion}\n` +
-        `  auth mode     ${ctx.identity.mode}${ctx.identity.mode === 'dev' ? '  ⚠  NO IDENTITY VERIFICATION' : ''}\n` +
+        `  auth mode     ${ctx.identity.mode}\n` +
+        (ctx.identity.requiresSupervision
+          ? `                ⚠  Voters select their own name. Identity rests on the\n` +
+            `                   invigilator in the room, not on this software.\n` +
+            `                   One-vote enforcement is unaffected.\n`
+          : '') +
+        (ctx.config.election.isSeedData
+          ? `  ⚠  DEMO DATA   these are not real candidates or real voters\n`
+          : '') +
         `  excel mode    ${ctx.excel.mode}\n` +
         `  voters        ${ctx.voters.length}\n` +
         `  listening     http://localhost:${ctx.env.PORT}\n`,
