@@ -4,10 +4,17 @@ build/
 coverage/
 *.tsbuildinfo
 
-# tsc must never emit beside sources; if it does, these catch it
-apps/web/src/**/*.js
-apps/web/src/**/*.js.map
-apps/web/src/**/*.d.ts
+# Compiled output belongs in dist/. If tsc is ever invoked without a project
+# file it emits beside the sources instead; these rules stop that reaching a
+# commit. Run `npm run clean:emit` to clear any that appear.
+apps/*/src/**/*.js
+apps/*/src/**/*.js.map
+apps/*/src/**/*.d.ts
+apps/*/src/**/*.d.ts.map
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
 !apps/web/src/vite-env.d.ts
 
 # Secrets — never commit

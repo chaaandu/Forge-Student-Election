@@ -30,7 +30,8 @@
     "check:branching": "node scripts/check-no-type-branching.mjs",
     "check:client-secrets": "node scripts/check-client-secrets.mjs",
     "verify:no-seed": "node scripts/verify-no-seed.mjs",
-    "preflight": "npm run verify && npm run verify:no-seed"
+    "preflight": "npm run verify && npm run verify:no-seed",
+    "clean:emit": "find apps/*/src packages/*/src \\( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name 'vite-env.d.ts' -delete"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
