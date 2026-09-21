@@ -155,31 +155,83 @@ of ten.
 settling, deliberately *not* confetti: confetti reads as a prize, and nothing
 here should suggest the voter won something or chose well.
 
-## 5. `Composition3D` — the welcome piece
+## 5. The welcome backdrop — ThreeUI `3d-paper`
 
-Cube, disc, prism and half-cylinder in the primaries, under an **orthographic**
-camera. That is the point: an axonometric projection with no perspective
-convergence is how the Bauhaus and the Constructivists drew objects, and it
-keeps the image reading as a poster rather than as a render.
+The welcome screen is deliberately a different world from the ballot. Outside,
+it is a dark room with a single translucent sheet turning in it; the moment a
+voter checks in, everything becomes the light Bauhaus plates. Stepping out of
+the atmosphere and into the form *is* the transition.
 
-Shading is quantised to three hard bands from screen-space derivatives, so every
-facet is flat, and each solid wears an inverted-hull black outline that carries
-the 2D keylines into three dimensions. No smooth shading, no specular, no
-shadow.
+The backdrop is ThreeUI's `3d-paper`, integrated from its registered source
+rather than reproduced.
 
-**Five rules it obeys, all verified:**
+### Provenance
 
-1. **Decoration, never dependency.** `CompositionSVG` is the real artwork —
-   complete, readable, instant. The 3D layer fades in over it and is
-   `aria-hidden`.
-2. **Never in the app bundle.** `import('three')` is dynamic; the production
-   check confirms `index.html` references the three chunk **zero** times. App
-   bundle 280 KB, three 747 KB, lazily.
-3. **Never loaded when it should not be.** Skipped under `prefers-reduced-motion`
-   and after a WebGL capability probe fails.
-4. **Never a burden.** DPR capped at 2, rendering paused on tab hide, every
-   geometry, material and renderer disposed on unmount.
-5. **The CTA works first.** "Begin voting" is interactive from first paint.
+| | |
+| --- | --- |
+| Retrieved from | `https://threeui.com/source-code/3d-paper.json` |
+| Vendored verbatim at | `apps/web/vendor/threeui/` (see its README) |
+| Hashes | all six registered files match the SHA-256 published in the brief |
+| Re-checked by | `src/shaders/__tests__/vendoredSource.test.ts`, every test run |
+
+Nothing was eyeballed from the preview. `scripts/build-paper-variant.mjs`
+re-verifies the source hash, then applies an enumerated set of **content-only**
+patches to produce `public/paper/mesa-elections.html`. A test asserts the
+authored `<script>` block carrying three.js r149 and the paper simulation is
+**byte-identical** between the two documents — the strongest available statement
+that the engine was not touched.
+
+### What was changed, and why
+
+| Change | Reason |
+| --- | --- |
+| Certificate content | The authored variant reads "SITE OF THE YEAR / NOCTURNE STUDIO / SEASON XP" — a design award for a fictional studio. It now carries the election, the real houses (with their Bauhaus forms), and the 75/25 weighting. House names and colours are read from `election.config.json`, so the artwork cannot drift from the ballot. |
+| Background word | NOCTURNE → MESA |
+| Accents | lime/cyan → the Mesa yellow and a blue lifted for the dark sheet |
+| Fonts inlined as data URIs | The authored file fetches Google Fonts at runtime. A hall kiosk must not depend on a third-party request mid-election. Inlining also sidesteps CORS: the frame is sandboxed *without* `allow-same-origin`, so it has an opaque origin and a same-origin font file would be refused too. |
+| Redraw on `document.fonts.ready` | The authored file builds the `CanvasTexture` synchronously, so a late webfont bakes the fallback into the texture permanently. |
+
+### Two deliberate deviations from the authored integration
+
+1. **Served from `/public` via `src`, not inlined via `srcDoc`.** The authored
+   `ThreeDPaper.tsx` statically imports all four variants with `?raw` — roughly
+   **2.5 MB into the JavaScript bundle**, against an application bundle of
+   275 KB, landing on the one screen that must be interactive immediately.
+   Serving the document keeps it out of the bundle and lets the browser cache
+   it.
+2. **The `three` npm package was removed.** The frame embeds its own three.js
+   r149, so a second copy for our own scene was pure weight. The Bauhaus
+   `Composition3D` that used it is gone; `CompositionSVG` (dark tone) is the
+   instant, reduced-motion and no-WebGL artwork.
+
+Both are recorded here rather than made quietly, and the authored component is
+vendored unmodified so the original integration remains available.
+
+### Rules it obeys
+
+1. **Decoration, never dependency.** `aria-hidden`, `tabIndex={-1}`, no meaning.
+   "Begin voting" is interactive from first paint.
+2. **Never loaded when it should not be.** Skipped entirely under
+   `prefers-reduced-motion`; paused when the tab is hidden or the host scrolls
+   out of view, exactly as the authored component does.
+3. **No access to the election.** The sandbox stays as authored
+   (`allow-scripts`, no `allow-same-origin`), so the frame cannot reach the
+   parent document, its storage, or the session token.
+4. **Zero external requests.** Asserted by test.
+
+### Not verified
+
+The rendered result has **not** been checked in a browser — this environment has
+no display and no headless browser, and WebGL cannot run here. What *is* verified:
+the document serves, both script blocks parse, the engine block is byte-identical
+to the authored source, the content is correct, and nothing reaches the network.
+Someone must open it on the kiosk hardware before election day.
+
+## 5b. `Composition3D` — removed
+
+An earlier Bauhaus WebGL piece (elementary solids under an orthographic camera)
+was replaced by the paper backdrop above. It is gone, along with the `three`
+dependency it needed. `CompositionSVG` remains as the static artwork.
 
 ## 6. Gamification — and its one hard limit
 

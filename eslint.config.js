@@ -4,7 +4,17 @@ import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '.excel-spool/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '.excel-spool/**',
+      // Vendored third-party source, kept byte-identical to the published
+      // release and verified by hash. Not ours to lint or to fix.
+      'apps/web/vendor/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

@@ -30,7 +30,9 @@ describe('the invigilator monitor', () => {
   it('serves the page without a token but returns no data without one', async () => {
     const page = await fetch(`${server.url}/monitor`);
     expect(page.status).toBe(200);
-    expect(await page.text()).toContain('Invigilator sign-in');
+    const html = await page.text();
+    expect(html).toContain('Invigilator');
+    expect(html).toContain('Admin token');
 
     // The page is public; the data behind it is not.
     expect((await fetch(`${server.url}/api/admin/monitor`)).status).toBe(403);

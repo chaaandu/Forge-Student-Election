@@ -1,8 +1,9 @@
 # Mesa Elections
 
-A student and employee election system for Mesa School of Business, designed as a
-Bauhaus poster series: primaries, elementary forms, heavy black rules. Each
-position is a plate; the ballot is a portfolio of them. Students vote for six leadership positions plus their own
+A student and employee election system for Mesa School of Business. The welcome
+screen is a dark room with a single translucent sheet turning in it; the ballot
+itself is a Bauhaus poster series — primaries, elementary forms, heavy black
+rules, one plate per position. Students vote for six leadership positions plus their own
 house captain; employees vote for the six leadership positions. Results combine
 the two electorates with configured weights (75% student / 25% employee) that are
 resolved **per position**, so house captain contests are scored student-only at
@@ -18,7 +19,7 @@ invigilator gets a live `/monitor` view of who has voted. Results mirror to **Go
 Sheets**.
 
 ```
-304 tests · lint clean · typecheck clean · production build clean
+319 tests · lint clean · typecheck clean · production build clean
 ```
 
 ---
@@ -349,7 +350,7 @@ npx vitest run --project web          # machine, components, full journeys
 | --- | --- |
 | `core` (77) | weighting including both zero-turnout policies, ties, unknown candidates, config validation, eligibility, step sequences, ballot validation |
 | `server` (133) | one-vote enforcement, **eight-process concurrency**, idempotency, forged payloads, roll masking, admin authz, audit chain tampering, immutability triggers, Google Sheets auth/errors/header-ordering, spreadsheet failure/throttle/recovery, the invigilator monitor, end-to-end weighted results, shared-kiosk rate limits |
-| `web` (97) | the state machine, the colour system (field-vs-ink, hue-preserving darkening), the ink-mark and button accessibility contracts, measured token and house-colour contrast, and full student and employee journeys through the real UI |
+| `web` (112) | the state machine, the colour system (field-vs-ink, hue-preserving darkening), the ink-mark and button accessibility contracts, measured token and house-colour contrast, and full student and employee journeys through the real UI |
 
 Tests that matter most: `concurrency.test.ts` (eight OS processes, one ballot),
 `flow.test.tsx` → *"NEVER shows success before the server responds"*, and

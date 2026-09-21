@@ -15,7 +15,7 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm run dev -w @mesa/server",
     "dev:web": "npm run dev -w @mesa/web",
-    "build": "npm run build -w @mesa/election-core && npm run build -w @mesa/server && npm run build -w @mesa/web",
+    "build": "npm run build -w @mesa/election-core && npm run paper:build && npm run build -w @mesa/server && npm run build -w @mesa/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -31,7 +31,8 @@
     "check:client-secrets": "node scripts/check-client-secrets.mjs",
     "verify:no-seed": "node scripts/verify-no-seed.mjs",
     "preflight": "npm run verify && npm run verify:no-seed",
-    "clean:emit": "find apps/*/src packages/*/src \\( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name 'vite-env.d.ts' -delete"
+    "clean:emit": "find apps/*/src packages/*/src \\( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name 'vite-env.d.ts' -delete",
+    "paper:build": "node scripts/build-paper-variant.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

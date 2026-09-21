@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import type { PublicElection } from '@/lib/api';
-import { Composition3D } from '@/components/bauhaus/Composition3D';
+import { PaperBackdrop } from '@/components/paper/PaperBackdrop';
 import { CompositionSVG } from '@/components/bauhaus/CompositionSVG';
-import { HouseMark } from '@/components/bauhaus/HouseMark';
 import { Shape } from '@/components/bauhaus/Shape';
 import { Button } from '@/components/ui/Button';
 
@@ -13,108 +12,111 @@ export interface WelcomeScreenProps {
 }
 
 /**
- * The poster.
+ * The welcome screen: two worlds, joined.
  *
- * A Bauhaus exhibition plate: a colour field carrying the title, a composition
- * of elementary forms, and one unmissable action. Asymmetric, gridded, cropped
- * by the frame.
+ * Outside the ballot it is the ThreeUI paper — a dark room with a single
+ * translucent sheet turning in it. The moment a voter checks in, everything
+ * becomes the light Bauhaus plates. The transition from one to the other is the
+ * point: you step out of the atmosphere and into the form.
  *
- * The composition below is a real SVG. It renders instantly, needs no WebGL,
- * and is what a reduced-motion voter sees; the 3D version fades in on top as
- * decoration. "Begin voting" is interactive from first paint either way.
+ * The backdrop is decoration and carries no meaning: it is `aria-hidden`, never
+ * loaded under reduced motion, and the panel below works identically without
+ * it. "Begin voting" is interactive from first paint.
  */
 export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
-  const [sceneReady, setSceneReady] = useState(false);
+  const [backdropReady, setBackdropReady] = useState(false);
   const leadership = election.positions.filter((p) => p.kind === 'leadership');
   const houses = election.houses;
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <div className="panel panel--raised overflow-hidden">
-        {/* Masthead: a black field, type reversed out of it. */}
-        <div
-          className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 sm:px-8"
-          style={{ background: 'var(--color-ink)', color: 'var(--color-paper)' }}
-        >
-          <span className="label" style={{ color: 'var(--color-paper)' }}>
-            Mesa School of Business
+    <div className="welcome relative flex min-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden">
+      {/* Static artwork first, so the screen is never empty or white. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: '#08080a',
+          opacity: backdropReady ? 0 : 1,
+          transition: 'opacity 600ms ease-out',
+        }}
+        aria-hidden="true"
+      >
+        <CompositionSVG tone="dark" className="h-full w-full opacity-40" />
+      </div>
+
+      <PaperBackdrop className="absolute inset-0" onReady={() => setBackdropReady(true)} />
+
+      {/* Everything below is the real, readable screen. */}
+      <div className="relative flex flex-1 flex-col justify-between gap-8 p-4 sm:p-8">
+        <div className="flex items-center justify-between gap-4">
+          <span className="inline-flex items-end gap-1.5">
+            <Shape form="square" size={14} color="var(--bh-red)" />
+            <Shape form="circle" size={14} color="var(--bh-blue)" />
+            <Shape form="triangle" size={14} color="var(--bh-yellow)" />
           </span>
-          <span className="flex items-center gap-2">
-            <Shape form="circle" size={12} color="var(--bh-yellow)" />
-            <span className="label" style={{ color: 'var(--color-paper)' }}>
-              Voting open
-            </span>
+          <span
+            className="label"
+            style={{ color: 'rgba(242,237,225,.55)', fontSize: 'var(--text-2xs)' }}
+          >
+            Mesa School of Business
           </span>
         </div>
 
-        <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr)' }}>
-          <div className="grid items-stretch md:grid-cols-[1.05fr_1fr]">
-            {/* Title block */}
-            <div className="flex flex-col justify-center px-6 py-10 sm:px-8 sm:py-12">
-              <h1
-                className="poster"
-                style={{ fontSize: 'var(--text-poster)', color: 'var(--color-ink)' }}
-              >
+        <div className="max-w-xl">
+          <div className="panel panel--raised overflow-hidden">
+            <div
+              className="px-6 py-3 sm:px-8"
+              style={{ background: 'var(--color-ink)', color: 'var(--color-paper)' }}
+            >
+              <span className="label" style={{ color: 'var(--bh-yellow)' }}>
+                Voting open
+              </span>
+            </div>
+
+            <div className="px-6 py-7 sm:px-8">
+              <h1 className="poster" style={{ fontSize: 'clamp(2.25rem, 7vw, 4rem)' }}>
                 {election.election.name}
               </h1>
 
-              <div className="bar mt-6" style={{ maxWidth: 220 }} />
+              <div className="bar mt-5" style={{ maxWidth: 180 }} />
 
-              <p className="mt-6" style={{ fontSize: 'var(--text-md)', maxWidth: '34ch' }}>
+              <p className="mt-5" style={{ fontSize: 'var(--text-md)', maxWidth: '38ch' }}>
                 {leadership.length} leadership positions
-                {houses.length > 0 ? ', plus your house captain' : ''}. About two minutes. You
+                {houses.length > 0 ? ', plus your house captain' : ''}. About two minutes — you
                 can change your choices right up until you submit.
               </p>
 
-              <div className="mt-8">
+              <div className="mt-7">
                 <Button variant="primary" size="lg" onClick={onCheckIn} autoFocus>
                   Begin voting <span aria-hidden="true">→</span>
                 </Button>
               </div>
             </div>
-
-            {/* Composition block */}
-            <div
-              className="relative min-h-[260px] border-t-[3px] border-[var(--color-ink)] md:min-h-0 md:border-l-[3px] md:border-t-0"
-              style={{ background: 'var(--color-paper)' }}
-            >
-              <CompositionSVG
-                className="absolute inset-0 h-full w-full"
-                {...({} as Record<string, never>)}
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  opacity: sceneReady ? 1 : 0,
-                  transition: 'opacity 600ms var(--ease-out)',
-                  background: 'var(--color-paper)',
-                }}
-              >
-                <Composition3D onReady={() => setSceneReady(true)} />
-              </div>
-            </div>
           </div>
+
+          {isSeedData && (
+            <div className="mt-5">
+              <SeedDataBanner />
+            </div>
+          )}
         </div>
 
         {/* House strip: colour AND form, so identity never rests on colour. */}
         {houses.length > 0 && (
-          <div
-            className="flex flex-wrap items-center gap-x-7 gap-y-3 px-6 py-5 sm:px-8"
-            style={{ borderTop: 'var(--rule-weight) solid var(--color-ink)' }}
-          >
-            <span className="label">Houses</span>
+          <ul className="flex flex-wrap items-center gap-x-7 gap-y-3 p-0">
             {houses.map((house) => (
-              <HouseMark key={house.id} house={house} withName />
+              <li key={house.id} className="inline-flex items-center gap-2.5">
+                <Shape form={house.shape ?? 'square'} size={18} color={house.color} />
+                <span
+                  className="label"
+                  style={{ color: 'rgba(242,237,225,.72)', fontSize: 'var(--text-2xs)' }}
+                >
+                  {house.name}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
-
-      {isSeedData && (
-        <div className="mt-6">
-          <SeedDataBanner />
-        </div>
-      )}
     </div>
   );
 }
@@ -130,7 +132,7 @@ export function SeedDataBanner() {
   return (
     <p
       role="status"
-      className="label mx-auto max-w-2xl px-5 py-3 text-center"
+      className="label px-5 py-3 text-center"
       style={{
         color: 'var(--color-ink)',
         background: 'var(--bh-yellow)',
