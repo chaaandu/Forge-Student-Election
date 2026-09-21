@@ -239,21 +239,35 @@ exportable; the sync drains afterwards.
 
 ### Setting it up
 
-> **An API key will not work.** API keys can only *read* public sheets. Writing needs a
-> service account. Same effort, actually works.
+**Six manual steps, about ten minutes** — then one command. The full walkthrough
+is [`docs/google-sheets-setup.md`](docs/google-sheets-setup.md). In short:
 
-1. [Google Cloud console](https://console.cloud.google.com) → create/pick a project →
-   **enable the Google Sheets API**.
-2. **Service accounts** → create one → **Keys → Add key → JSON** → download it.
-3. Open the downloaded file and copy the `client_email`
-   (`something@project.iam.gserviceaccount.com`).
-4. Open your spreadsheet → **Share** → paste that email → give it **Editor**.
-5. Create four tabs — `Voters`, `Candidates`, `Ballots`, `Results` — and put the column names
-   in **row 1** of each (shapes in [`docs/data-model.md §7`](docs/data-model.md)). Column
-   order is read at runtime, so you can rearrange them freely.
-6. Set `SPREADSHEET_MODE=sheets`, `SHEETS_SPREADSHEET_ID` (the id from the sheet URL), and
-   paste the whole key file into `GOOGLE_SERVICE_ACCOUNT_JSON`.
-7. Check `/api/admin/sync/status` — a 403 there tells you exactly which email to share with.
+1. Create a Google Sheet; copy its id from the URL.
+2. Google Cloud → new project → **enable the Sheets API** → create a **service
+   account** → download its **JSON key**.
+3. **Share the sheet with the service account's email, as Editor.** This is the
+   step people miss; a `403` means you skipped it.
+4. Put `SPREADSHEET_MODE=sheets`, `SHEETS_SPREADSHEET_ID` and
+   `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` in `apps/server/.env`.
+5. `npm run sheets:check` then `npm run sheets:setup` — creates all six tabs,
+   headers, formatting, and a Dashboard of live formulas, and seeds the roll and
+   candidates.
+6. Insert the two charts from the Dashboard ranges (two clicks each).
+
+> **An API key will not work.** API keys can only *read* public sheets. Writing
+> needs a service account you share the sheet with.
+
+| Tab | Contents | When |
+| --- | --- | --- |
+| `Dashboard` | turnout, turnout by house, who is winning, every candidate | live formulas |
+| `Roll` | everyone eligible | seeded at setup |
+| `Voters` | one row per person as they vote | live |
+| `Ballots` | one row per selection — **anonymous, no voter reference** | live |
+| `Candidates` | the candidate list | seeded at setup |
+| `Results` | a timestamped snapshot per publish | `npm run results:publish` |
+
+Votes reach the sheet within seconds. **Results are published deliberately, not
+automatically** — a count is something you release when you mean to.
 
 `SPREADSHEET_MODE=spool` (the default in development) runs the identical sync path but writes
 JSONL to `.excel-spool/`, so the first time this runs against a real sheet is not the first

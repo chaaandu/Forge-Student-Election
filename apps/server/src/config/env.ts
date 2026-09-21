@@ -57,10 +57,12 @@ const schema = z.object({
 
   // Google Sheets
   SHEETS_SPREADSHEET_ID: z.string().optional(),
+  SHEETS_TAB_ROLL: z.string().default('Roll'),
   SHEETS_TAB_VOTERS: z.string().default('Voters'),
   SHEETS_TAB_CANDIDATES: z.string().default('Candidates'),
   SHEETS_TAB_BALLOTS: z.string().default('Ballots'),
   SHEETS_TAB_RESULTS: z.string().default('Results'),
+  SHEETS_TAB_DASHBOARD: z.string().default('Dashboard'),
   /** The service account key file, inline. Preferred: nothing lands on disk. */
   GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   /** Or a path to it. Easier locally. */

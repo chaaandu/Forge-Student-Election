@@ -34,7 +34,11 @@
     "clean:emit": "find apps/*/src packages/*/src \\( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name 'vite-env.d.ts' -delete",
     "paper:build": "node scripts/build-paper-variant.mjs",
     "houses:import": "node scripts/import-house-logos.mjs",
-    "data:build": "node scripts/build-election-data.mjs"
+    "data:build": "node scripts/build-election-data.mjs",
+    "sheets:check": "node scripts/sheets.mjs check",
+    "sheets:setup": "node scripts/sheets.mjs setup",
+    "results:publish": "node scripts/publish-results.mjs",
+    "sheets:retry": "node -e \"const t=process.env.ADMIN_API_TOKEN;fetch('http://localhost:'+(process.env.PORT||8787)+'/api/admin/sync/retry',{method:'POST',headers:{authorization:'Bearer '+t}}).then(r=>r.json()).then(j=>console.log(j))\""
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
