@@ -121,6 +121,30 @@ describe('the invigilator monitor', () => {
     expect(page).toContain('max-width:1360px');
   });
 
+  it('keeps the summary column in view while the roll is scrolled', async () => {
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+    const side = page.match(/\.side\s*\{([^}]*)\}/)?.[1] ?? '';
+
+    expect(page, 'the summary column is not marked as the sticky one').toContain('class="side"');
+    expect(side).toMatch(/position:\s*sticky/);
+
+    // Without this the column stretches to the row height, so it is already as
+    // tall as the list it should stick within and simply never moves. It is the
+    // whole mechanism, and it fails silently, so it is pinned here.
+    expect(side, 'sticky without align-self:start does nothing in a grid').toMatch(
+      /align-self:\s*start/,
+    );
+
+    // A sticky element taller than the viewport hides its own bottom; four
+    // houses is enough to reach that on a laptop.
+    expect(side).toMatch(/max-height:\s*calc\(100vh/);
+    expect(side).toMatch(/overflow:\s*auto/);
+
+    // Not on a phone-width screen, where the layout is a single column and
+    // sticking the summary would pin it on top of the roll.
+    expect(page).toMatch(/@media\s*\(min-width:\s*941px\)\s*\{\s*\.side/);
+  });
+
   it('flags a practice run so nobody mistakes it for the real thing', async () => {
     const body = await (await monitor()).json();
     expect(body.election).toHaveProperty('isSeedData');

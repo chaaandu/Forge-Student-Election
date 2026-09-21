@@ -40,6 +40,30 @@
   /* ------------------------------------------------------------ grid --- */
   .cols{display:grid;gap:20px;margin-top:20px;grid-template-columns:340px minmax(0,1fr)}
   @media (max-width:940px){ .cols{grid-template-columns:minmax(0,1fr)} }
+  /*
+    The summary column follows the scroll, so turnout stays readable while an
+    invigilator works down a list of 145 names.
+
+    `align-self:start` is what makes this work at all. A grid item stretches to
+    the height of its row by default, so without it the column is already as
+    tall as the list beside it — and an element cannot stick within a box it
+    already fills. It never moves, with no error to explain why.
+
+    The height cap is for the other direction: with four houses the summary can
+    itself outgrow a laptop screen, and a sticky element taller than the
+    viewport hides its own bottom. It scrolls internally instead, and
+    `overscroll-behavior` stops that scroll running on into the page behind it
+    once it reaches the end.
+
+    Only above the breakpoint. Below it the layout is one column, where sticking
+    the summary would pin it over the list it sits above.
+  */
+  @media (min-width:941px){
+    .side{
+      position:sticky; top:24px; align-self:start;
+      max-height:calc(100vh - 48px); overflow:auto; overscroll-behavior:contain;
+    }
+  }
 
   .panel{background:var(--card);border:3px solid var(--ink);padding:20px}
   .panel + .panel{margin-top:20px}
@@ -121,7 +145,7 @@
     </header>
 
     <div class="cols">
-      <div>
+      <div class="side">
         <section class="panel">
           <h2>Turnout</h2>
           <p class="big" id="turnout">—</p>
