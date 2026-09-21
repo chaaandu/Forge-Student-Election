@@ -1,0 +1,28 @@
+{
+  "name": "@mesa/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoritative election API: identity, ballot submission, one-vote enforcement, Excel sync, results.",
+  "main": "./dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.json && node ../../scripts/copy-server-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "seed": "tsx src/scripts/seed.ts",
+    "db:reset": "tsx src/scripts/reset.ts",
+    "gen:secrets": "tsx src/scripts/genSecrets.ts"
+  },
+  "dependencies": {
+    "@mesa/election-core": "*",
+    "better-sqlite3": "^12.4.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.3"
+  }
+}

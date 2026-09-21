@@ -1,0 +1,160 @@
+/**
+ * Split-flap tiles.
+ *
+ * Mechanic adapted from React Bits' SplitFlapText (MIT + Commons Clause,
+ * © David Haz) — see THIRD_PARTY_NOTICES.md and ADR-7. Re-implemented as a
+ * controlled component with a real-text layer for assistive technology; this
+ * stylesheet covers only the decorative layer, which is always aria-hidden.
+ */
+
+.flap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flap-gap, 3px);
+  font-family: var(--font-board);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  user-select: none;
+}
+
+.flap--sm {
+  font-size: var(--text-sm);
+}
+.flap--md {
+  font-size: var(--text-md);
+}
+.flap--lg {
+  font-size: var(--text-xl);
+}
+.flap--xl {
+  font-size: clamp(1.75rem, 5.5vw, 3.25rem);
+}
+
+.flap__tile {
+  position: relative;
+  width: 0.76em;
+  height: 1.12em;
+  overflow: hidden;
+  border-radius: var(--radius-flap);
+  background: var(--color-flap);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    inset 0 -1px 0 rgb(0 0 0 / 0.4);
+  perspective: 520px;
+  color: var(--flap-color, var(--color-signal));
+}
+
+/* The hinge line across the middle: the one detail that reads as "split-flap". */
+.flap__tile::before {
+  content: '';
+  position: absolute;
+  z-index: 8;
+  top: calc(50% - 0.5px);
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--color-ink);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.flap__half,
+.flap__leaf {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  background: var(--color-flap);
+  backface-visibility: hidden;
+}
+
+.flap__half--top,
+.flap__leaf--front {
+  top: 0;
+}
+.flap__half--bottom,
+.flap__leaf--back {
+  bottom: 0;
+  background: color-mix(in srgb, var(--color-flap) 92%, black);
+}
+
+.flap__char {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flap__half--top .flap__char,
+.flap__leaf--front .flap__char {
+  top: 0;
+}
+.flap__half--bottom .flap__char,
+.flap__leaf--back .flap__char {
+  bottom: 0;
+}
+
+.flap__leaf {
+  z-index: 6;
+  will-change: transform;
+}
+.flap__leaf--front {
+  transform-origin: center bottom;
+  animation: flap-front var(--dur-flap) var(--ease-mech) both;
+}
+.flap__leaf--back {
+  transform-origin: center top;
+  transform: rotateX(90deg);
+  animation: flap-back var(--dur-flap) var(--ease-mech) both;
+}
+
+@keyframes flap-front {
+  from {
+    transform: rotateX(0deg);
+    filter: brightness(1.06);
+  }
+  to {
+    transform: rotateX(-90deg);
+    filter: brightness(0.55);
+  }
+}
+@keyframes flap-back {
+  0%,
+  45% {
+    transform: rotateX(90deg);
+    filter: brightness(0.6);
+  }
+  100% {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+}
+
+/* Under reduced motion the leaves never render at all (the component skips the
+   animation entirely); this is belt and braces for a mid-flight preference
+   change. */
+@media (prefers-reduced-motion: reduce) {
+  .flap__leaf {
+    animation: none !important;
+    display: none;
+  }
+}
+
+.flap--signal {
+  --flap-color: var(--color-signal);
+}
+.flap--go {
+  --flap-color: var(--color-go);
+}
+.flap--stop {
+  --flap-color: var(--color-stop);
+}
+.flap--neutral {
+  --flap-color: var(--color-text);
+}

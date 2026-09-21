@@ -1,0 +1,125 @@
+@import './fonts.css';
+@import './tokens.css';
+@import 'tailwindcss';
+
+/* Expose the tokens to Tailwind utilities so components can use either. */
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-board: var(--color-board);
+  --color-flap: var(--color-flap);
+  --color-surface: var(--color-surface);
+  --color-surface-hi: var(--color-surface-hi);
+  --color-line: var(--color-line);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-dim: var(--color-text-dim);
+  --color-signal: var(--color-signal);
+  --color-go: var(--color-go);
+  --color-stop: var(--color-stop);
+  --color-brand: var(--color-brand);
+  --font-board: var(--font-board);
+  --font-ui: var(--font-ui);
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* A kiosk: nothing here should be selectable by a stray double-click, but
+     candidate names and errors must stay readable and copyable by a screen
+     reader, so this is not `user-select: none`. */
+  overscroll-behavior: none;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+/* One focus treatment, everywhere, and it is always visible. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-control);
+}
+
+::selection {
+  background: var(--color-signal);
+  color: var(--color-signal-ink);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: the first tab stop on every screen. */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: 100;
+  transform: translateY(-200%);
+  background: var(--color-signal);
+  color: var(--color-signal-ink);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 140ms var(--ease-glide);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* The mechanical grain of the board: a faint scanline over the panel only. */
+.board-grain {
+  position: relative;
+}
+.board-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.014) 0 1px,
+    transparent 1px 3px
+  );
+  border-radius: inherit;
+}

@@ -1,0 +1,115 @@
+/**
+ * Mesa Departures — design tokens.
+ *
+ * The single source of truth for colour, type, space, radius, elevation and
+ * motion. No component may invent a value; if something is missing, it belongs
+ * here. Contrast ratios in the comments are measured, not estimated, and are
+ * asserted in src/styles/__tests__/contrast.test.ts.
+ *
+ * Swapping in real Mesa brand assets means editing --color-brand* and the
+ * Wordmark component. Nothing else should need to change.
+ */
+
+:root {
+  /* ---------------------------------------------------- board surfaces --- */
+  --color-ink: #0a0e14;
+  --color-board: #121821;
+  --color-flap: #1c2430;
+  --color-flap-edge: #2a3442;
+  --color-surface: #161d28;
+  --color-surface-hi: #1e2735;
+  --color-line: #263040;
+
+  /* ------------------------------------------------------------- text --- */
+  --color-text: #e9e5dd; /* 15.1:1 on ink — body */
+  --color-text-muted: #9aa7b6; /*  7.4:1 on ink — secondary */
+  --color-text-dim: #7b8797; /*  4.6:1 on ink — tertiary */
+
+  /* ----------------------------------------------------------- signal --- */
+  --color-signal: #ffb020; /* 10.2:1 on ink — board text, primary CTA */
+  --color-signal-hi: #ffc04d;
+  --color-signal-ink: #1a1200; /* text ON amber */
+  --color-go: #3bd671; /*  9.7:1 — confirmed / boarding */
+  --color-stop: #ff6b5e; /*  5.6:1 — errors only */
+  --color-stop-soft: #3a1a18;
+
+  /* ------------------------------------------------------------ brand --- */
+  /* Terracotta. Large text and accents only; never body copy. */
+  --color-brand: #c97b4e; /* 4.9:1 */
+  --color-brand-soft: #e8a97d; /* 8.1:1 */
+
+  /* ---------------------------------------------------------- type --- */
+  --font-board: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-2xs: 0.75rem;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.375rem;
+  --text-3xl: 3.25rem;
+  --text-4xl: 4.5rem;
+
+  /* ---------------------------------------------------------- space --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* ------------------------------------------------- radius & depth --- */
+  --radius-flap: 3px;
+  --radius-control: 8px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.28);
+  --shadow-modal: 0 24px 64px rgb(0 0 0 / 0.55);
+  --focus-ring: 0 0 0 2px var(--color-ink), 0 0 0 4px var(--color-signal);
+
+  /* --------------------------------------------------------- motion --- */
+  --dur-flap: 110ms;
+  --dur-stagger: 35ms;
+  --dur-select: 160ms;
+  --dur-step: 260ms;
+  --dur-enter: 220ms;
+  --ease-mech: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-glide: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Minimum interactive target. Large enough for a hurried tap or an
+     unfamiliar trackpad; the brief's kiosks are shared machines. */
+  --hit: 44px;
+}
+
+/**
+ * Reduced motion.
+ *
+ * Every animation collapses to an opacity fade or nothing at all. The
+ * experience stays complete — the board still says the same things in the same
+ * places, it just stops moving.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-flap: 0ms;
+    --dur-stagger: 0ms;
+    --dur-select: 1ms;
+    --dur-step: 1ms;
+    --dur-enter: 120ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
+  }
+}

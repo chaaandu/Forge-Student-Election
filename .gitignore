@@ -1,0 +1,34 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# tsc must never emit beside sources; if it does, these catch it
+apps/web/src/**/*.js
+apps/web/src/**/*.js.map
+apps/web/src/**/*.d.ts
+!apps/web/src/vite-env.d.ts
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Authoritative election data — never commit
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Generated access codes contain plaintext credentials
+access-codes-*.csv
+access-codes-*.txt
+
+# Local Excel sync spool (development NullExcelRepository)
+.excel-spool/
+
+.DS_Store
+.vscode/
+.idea/
