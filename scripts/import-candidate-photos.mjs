@@ -12,13 +12,14 @@
  *
  * Every photo is cover-cropped to one size and compressed, so a 4 MB phone
  * picture becomes about 50 KB and every card looks the same. Originals are
- * left untouched.
+ * left untouched, and can be cleared out once imported — the converted photo
+ * is what ships, and re-running will not undo it.
  *
  * Anyone without a photo keeps their initials placeholder — a partial set is
  * fine, and you can re-run this as more arrive.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
 const DROP = 'assets/candidate-photos';
@@ -60,6 +61,9 @@ for (const file of files) {
 
 const matched = [];
 const missing = [];
+// Already imported on an earlier run, original since cleared out. Not a
+// gap — they have a photograph, there is just nothing left to convert.
+const settled = [];
 const unused = new Set(files);
 
 for (const candidate of config.candidates) {
@@ -71,7 +75,7 @@ for (const candidate of config.candidates) {
     byKey.get(key(`${candidate.positionId} ${candidate.name}`));
 
   if (!file) {
-    missing.push(candidate.name);
+    (existsSync(join(OUT, `${candidate.id}.jpg`)) ? settled : missing).push(candidate.name);
     continue;
   }
   unused.delete(file);
@@ -88,14 +92,24 @@ for (const candidate of config.candidates) {
   });
 }
 
-// Anyone whose photo has been withdrawn goes back to their placeholder,
-// so re-running after deleting a file restores the previous state exactly
-// rather than leaving an orphan behind.
+// Drop an orphan whose candidate has left the slate.
+//
+// Deliberately keyed on the CONFIG, not on what is sitting in the drop folder.
+// The imported photos are committed and are what ships; the drop folder holds
+// gitignored originals of real students, several hundred megabytes of them,
+// which are reasonably cleared out once they have been imported. An earlier
+// version pruned anyone whose source file was absent, which meant emptying the
+// drop folder silently deleted every photo — and because `predev` and `build`
+// both run this script, the deletion landed on the next `npm run dev` rather
+// than when anyone asked for it.
+//
+// So a photo now leaves the ballot when the candidate does, or when the
+// imported file itself is deleted. Removing the original does nothing.
 for (const stale of readdirSync(OUT).filter((f) => f.endsWith('.jpg'))) {
   const id = stale.slice(0, -'.jpg'.length);
-  if (!config.candidates.some((c) => c.id === id && !missing.includes(c.name))) {
+  if (!config.candidates.some((c) => c.id === id)) {
     rmSync(join(OUT, stale));
-    console.log(`  - removed ${stale} (no source photo any more)`);
+    console.log(`  - removed ${stale} (no longer on the ballot)`);
   }
 }
 
@@ -109,6 +123,10 @@ if (matched.length > 0) {
   }
 }
 
+if (settled.length > 0) {
+  console.log(`\nAlready have a photo (${settled.length}) — nothing to convert.`);
+}
+
 if (missing.length > 0) {
   console.log(`\nStill on initials (${missing.length}):`);
   for (const name of missing) console.log(`  · ${name}`);
@@ -120,8 +138,9 @@ if (unused.size > 0) {
   for (const file of unused) console.log(`  ? ${file}`);
 }
 
+const withPhoto = matched.length + settled.length;
 console.log(
   missing.length === 0
     ? '\n✓ Every candidate has a photo.\n'
-    : `\n${config.candidates.length - missing.length} of ${config.candidates.length} done.\n`,
+    : `\n${withPhoto} of ${config.candidates.length} done.\n`,
 );
