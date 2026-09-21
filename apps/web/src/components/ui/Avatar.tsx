@@ -1,12 +1,12 @@
 export interface AvatarProps {
   name: string;
-  /** House or brand colour. Falls back to the signal amber. */
+  /** House colour. Falls back to ink. */
   color?: string;
   size?: 'sm' | 'md' | 'lg';
 }
 
 function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = name.replace(/['’]/g, '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
   const first = parts[0]?.[0] ?? '';
   const last = parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '';
@@ -14,29 +14,31 @@ function initials(name: string): string {
 }
 
 const sizes = {
-  sm: { box: 36, text: 'var(--text-xs)' },
+  sm: { box: 38, text: 'var(--text-xs)' },
   md: { box: 56, text: 'var(--text-md)' },
-  lg: { box: 76, text: 'var(--text-lg)' },
+  lg: { box: 78, text: 'var(--text-lg)' },
 } as const;
 
-/** Initials avatar. Decorative — the name is always rendered alongside it. */
+/** Initials, set in the printed face. Decorative: the name is always alongside. */
 export function Avatar({ name, color, size = 'md' }: AvatarProps) {
   const { box, text } = sizes[size];
-  const accent = color ?? 'var(--color-signal)';
+  const accent = color ?? 'var(--color-ink-soft)';
 
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center font-board font-bold"
+      className="inline-flex shrink-0 items-center justify-center"
       style={{
         width: box,
         height: box,
         fontSize: text,
-        letterSpacing: '0.06em',
-        borderRadius: 'var(--radius-control)',
+        fontFamily: 'var(--font-display)',
+        fontWeight: 600,
+        letterSpacing: '0.02em',
+        borderRadius: 'var(--radius-sm)',
         color: accent,
-        background: `color-mix(in srgb, ${accent} 14%, var(--color-surface))`,
-        border: `1px solid color-mix(in srgb, ${accent} 34%, transparent)`,
+        background: 'var(--color-sheet-sunk)',
+        border: `1px solid ${accent}33`,
       }}
     >
       {initials(name)}

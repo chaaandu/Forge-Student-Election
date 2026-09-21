@@ -1,39 +1,34 @@
 {
   "election": {
-    "id": "mesa-demo-2026",
-    "name": "Mesa Student Elections 2026",
+    "id": "mesa-forge-c27",
+    "name": "Mesa Student Elections",
     "status": "open",
     "weights": {
       "student": 0.75,
       "employee": 0.25
     },
-    "zeroTurnoutPolicy": "renormalise",
-    "isSeedData": true
+    "zeroTurnoutPolicy": "renormalise"
   },
   "houses": [
     {
-      "id": "aravalli",
-      "name": "Aravalli",
-      "color": "#E4572E",
-      "motto": "Steady and unbothered"
+      "id": "samurai",
+      "name": "Samurai",
+      "color": "#A6362B"
     },
     {
-      "id": "nilgiri",
-      "name": "Nilgiri",
-      "color": "#2E86AB",
-      "motto": "Cool heads, long games"
+      "id": "knights",
+      "name": "Knights",
+      "color": "#3C5A73"
     },
     {
-      "id": "satpura",
-      "name": "Satpura",
-      "color": "#6A4C93",
-      "motto": "Quiet until it counts"
+      "id": "vikings",
+      "name": "Vikings",
+      "color": "#3F6B5C"
     },
     {
-      "id": "vindhya",
-      "name": "Vindhya",
-      "color": "#1B998B",
-      "motto": "Show up, then show off"
+      "id": "gladiators",
+      "name": "Gladiators",
+      "color": "#8A6220"
     }
   ],
   "positions": [
@@ -66,7 +61,7 @@
     {
       "id": "academic-lead-boy",
       "title": "Academic Lead — Boy",
-      "shortTitle": "Academic Lead (B)",
+      "shortTitle": "Academic Lead (Boy)",
       "order": 3,
       "kind": "leadership",
       "eligibility": {
@@ -79,7 +74,7 @@
     {
       "id": "academic-lead-girl",
       "title": "Academic Lead — Girl",
-      "shortTitle": "Academic Lead (G)",
+      "shortTitle": "Academic Lead (Girl)",
       "order": 4,
       "kind": "leadership",
       "eligibility": {
@@ -92,7 +87,7 @@
     {
       "id": "community-lead-boy",
       "title": "Community Lead — Boy",
-      "shortTitle": "Community Lead (B)",
+      "shortTitle": "Community Lead (Boy)",
       "order": 5,
       "kind": "leadership",
       "eligibility": {
@@ -105,7 +100,7 @@
     {
       "id": "community-lead-girl",
       "title": "Community Lead — Girl",
-      "shortTitle": "Community Lead (G)",
+      "shortTitle": "Community Lead (Girl)",
       "order": 6,
       "kind": "leadership",
       "eligibility": {
@@ -116,301 +111,236 @@
       }
     },
     {
-      "id": "house-captain-aravalli",
-      "title": "House Captain — Aravalli",
-      "shortTitle": "Aravalli Captain",
+      "id": "house-captain-samurai",
+      "title": "House Captain — Samurai",
+      "shortTitle": "Samurai Captain",
       "order": 7,
       "kind": "house-captain",
-      "houseId": "aravalli",
+      "houseId": "samurai",
       "eligibility": {
         "voterTypes": [
           "student"
         ],
-        "houseId": "aravalli"
+        "houseId": "samurai"
       }
     },
     {
-      "id": "house-captain-nilgiri",
-      "title": "House Captain — Nilgiri",
-      "shortTitle": "Nilgiri Captain",
+      "id": "house-captain-knights",
+      "title": "House Captain — Knights",
+      "shortTitle": "Knights Captain",
       "order": 8,
       "kind": "house-captain",
-      "houseId": "nilgiri",
+      "houseId": "knights",
       "eligibility": {
         "voterTypes": [
           "student"
         ],
-        "houseId": "nilgiri"
+        "houseId": "knights"
       }
     },
     {
-      "id": "house-captain-satpura",
-      "title": "House Captain — Satpura",
-      "shortTitle": "Satpura Captain",
+      "id": "house-captain-vikings",
+      "title": "House Captain — Vikings",
+      "shortTitle": "Vikings Captain",
       "order": 9,
       "kind": "house-captain",
-      "houseId": "satpura",
+      "houseId": "vikings",
       "eligibility": {
         "voterTypes": [
           "student"
         ],
-        "houseId": "satpura"
+        "houseId": "vikings"
       }
     },
     {
-      "id": "house-captain-vindhya",
-      "title": "House Captain — Vindhya",
-      "shortTitle": "Vindhya Captain",
+      "id": "house-captain-gladiators",
+      "title": "House Captain — Gladiators",
+      "shortTitle": "Gladiators Captain",
       "order": 10,
       "kind": "house-captain",
-      "houseId": "vindhya",
+      "houseId": "gladiators",
       "eligibility": {
         "voterTypes": [
           "student"
         ],
-        "houseId": "vindhya"
+        "houseId": "gladiators"
       }
     }
   ],
   "candidates": [
     {
-      "id": "president-1",
-      "name": "Om Prakash Nair",
+      "id": "president--yashansh-savla",
+      "name": "Yashansh Savla",
       "positionId": "president",
-      "tagline": "Fewer announcements, more follow-through.",
-      "photoUrl": "/candidates/president-1.svg",
+      "photoUrl": "/candidates/president--yashansh-savla.svg",
       "active": true
     },
     {
-      "id": "president-2",
-      "name": "Priya Raghavan",
+      "id": "president--sairaj-g",
+      "name": "Sairaj G",
       "positionId": "president",
-      "tagline": "Every club gets a budget and a deadline.",
-      "photoUrl": "/candidates/president-2.svg",
+      "photoUrl": "/candidates/president--sairaj-g.svg",
       "active": true
     },
     {
-      "id": "president-3",
-      "name": "Veer Chopra",
+      "id": "president--abhishek-gaur",
+      "name": "Abhishek Gaur",
       "positionId": "president",
-      "tagline": "I will read the feedback forms. All of them.",
-      "photoUrl": "/candidates/president-3.svg",
+      "photoUrl": "/candidates/president--abhishek-gaur.svg",
       "active": true
     },
     {
-      "id": "vice-president-1",
-      "name": "Dev Narang",
+      "id": "president--itish-pande",
+      "name": "Itish Pande",
+      "positionId": "president",
+      "photoUrl": "/candidates/president--itish-pande.svg",
+      "active": true
+    },
+    {
+      "id": "vice-president--preethi-s",
+      "name": "Preethi S",
       "positionId": "vice-president",
-      "tagline": "One calendar. One source of truth.",
-      "photoUrl": "/candidates/vice-president-1.svg",
+      "photoUrl": "/candidates/vice-president--preethi-s.svg",
       "active": true
     },
     {
-      "id": "vice-president-2",
-      "name": "Ananya Sharma",
+      "id": "vice-president--abhishek-kambalath",
+      "name": "Abhishek Kambalath",
       "positionId": "vice-president",
-      "tagline": "Small fixes, shipped weekly.",
-      "photoUrl": "/candidates/vice-president-2.svg",
+      "photoUrl": "/candidates/vice-president--abhishek-kambalath.svg",
       "active": true
     },
     {
-      "id": "vice-president-3",
-      "name": "Nikhil Varma",
+      "id": "vice-president--divyam-arora",
+      "name": "Divyam Arora",
       "positionId": "vice-president",
-      "tagline": "The library stays open until eleven.",
-      "photoUrl": "/candidates/vice-president-3.svg",
+      "photoUrl": "/candidates/vice-president--divyam-arora.svg",
       "active": true
     },
     {
-      "id": "academic-lead-boy-1",
-      "name": "Sahil Dutta",
+      "id": "academic-lead-boy--adnaan-r",
+      "name": "Adnaan R",
       "positionId": "academic-lead-boy",
-      "tagline": "Consistency over noise.",
-      "photoUrl": "/candidates/academic-lead-boy-1.svg",
+      "photoUrl": "/candidates/academic-lead-boy--adnaan-r.svg",
       "active": true
     },
     {
-      "id": "academic-lead-boy-2",
-      "name": "Kabir Sethi",
+      "id": "academic-lead-boy--udhav-kothari",
+      "name": "Udhav Kothari",
       "positionId": "academic-lead-boy",
-      "tagline": "Ask me in the corridor, not in a form.",
-      "photoUrl": "/candidates/academic-lead-boy-2.svg",
+      "photoUrl": "/candidates/academic-lead-boy--udhav-kothari.svg",
       "active": true
     },
     {
-      "id": "academic-lead-boy-3",
-      "name": "Rohan Iyer",
-      "positionId": "academic-lead-boy",
-      "tagline": "Minutes published within 24 hours.",
-      "photoUrl": "/candidates/academic-lead-boy-3.svg",
-      "active": true
-    },
-    {
-      "id": "academic-lead-girl-1",
-      "name": "Saanvi Gupta",
+      "id": "academic-lead-girl--kalika-srivastava",
+      "name": "Kalika Srivastava",
       "positionId": "academic-lead-girl",
-      "tagline": "Clubs first, committees second.",
-      "photoUrl": "/candidates/academic-lead-girl-1.svg",
+      "photoUrl": "/candidates/academic-lead-girl--kalika-srivastava.svg",
       "active": true
     },
     {
-      "id": "academic-lead-girl-2",
-      "name": "Tara Venkatesh",
+      "id": "academic-lead-girl--jenessa-bhathena",
+      "name": "Jenessa Bhathena",
       "positionId": "academic-lead-girl",
-      "tagline": "Make the quiet voices louder.",
-      "photoUrl": "/candidates/academic-lead-girl-2.svg",
+      "photoUrl": "/candidates/academic-lead-girl--jenessa-bhathena.svg",
       "active": true
     },
     {
-      "id": "academic-lead-girl-3",
-      "name": "Zoya Ahmed",
-      "positionId": "academic-lead-girl",
-      "tagline": "Show the receipts every month.",
-      "photoUrl": "/candidates/academic-lead-girl-3.svg",
-      "active": true
-    },
-    {
-      "id": "community-lead-boy-1",
-      "name": "Yash Agarwal",
+      "id": "community-lead-boy--akash-ghorpade",
+      "name": "Akash Ghorpade",
       "positionId": "community-lead-boy",
-      "tagline": "Fewer announcements, more follow-through.",
-      "photoUrl": "/candidates/community-lead-boy-1.svg",
+      "photoUrl": "/candidates/community-lead-boy--akash-ghorpade.svg",
       "active": true
     },
     {
-      "id": "community-lead-boy-2",
-      "name": "Rudra Pillai",
+      "id": "community-lead-boy--risheet-gangar",
+      "name": "Risheet Gangar",
       "positionId": "community-lead-boy",
-      "tagline": "Every club gets a budget and a deadline.",
-      "photoUrl": "/candidates/community-lead-boy-2.svg",
+      "photoUrl": "/candidates/community-lead-boy--risheet-gangar.svg",
       "active": true
     },
     {
-      "id": "community-lead-boy-3",
-      "name": "Ishaan Rao",
+      "id": "community-lead-boy--archit-pathak",
+      "name": "Archit Pathak",
       "positionId": "community-lead-boy",
-      "tagline": "I will read the feedback forms. All of them.",
-      "photoUrl": "/candidates/community-lead-boy-3.svg",
+      "photoUrl": "/candidates/community-lead-boy--archit-pathak.svg",
       "active": true
     },
     {
-      "id": "community-lead-girl-1",
-      "name": "Sanya Kapoor",
+      "id": "community-lead-girl--kavya-zala",
+      "name": "Kavya Zala",
       "positionId": "community-lead-girl",
-      "tagline": "One calendar. One source of truth.",
-      "photoUrl": "/candidates/community-lead-girl-1.svg",
+      "photoUrl": "/candidates/community-lead-girl--kavya-zala.svg",
       "active": true
     },
     {
-      "id": "community-lead-girl-2",
-      "name": "Meera Nambiar",
+      "id": "community-lead-girl--rishika-choudhary",
+      "name": "Rishika Choudhary",
       "positionId": "community-lead-girl",
-      "tagline": "Small fixes, shipped weekly.",
-      "photoUrl": "/candidates/community-lead-girl-2.svg",
+      "photoUrl": "/candidates/community-lead-girl--rishika-choudhary.svg",
       "active": true
     },
     {
-      "id": "community-lead-girl-3",
-      "name": "Naina Kohli",
+      "id": "community-lead-girl--riya-kothavade",
+      "name": "Riya Kothavade",
       "positionId": "community-lead-girl",
-      "tagline": "The library stays open until eleven.",
-      "photoUrl": "/candidates/community-lead-girl-3.svg",
+      "photoUrl": "/candidates/community-lead-girl--riya-kothavade.svg",
       "active": true
     },
     {
-      "id": "house-captain-aravalli-1",
-      "name": "Neel Rastogi",
-      "positionId": "house-captain-aravalli",
-      "tagline": "Consistency over noise.",
-      "photoUrl": "/candidates/house-captain-aravalli-1.svg",
+      "id": "house-captain-samurai--adnaan-r",
+      "name": "Adnaan R",
+      "positionId": "house-captain-samurai",
+      "photoUrl": "/candidates/house-captain-samurai--adnaan-r.svg",
       "active": true
     },
     {
-      "id": "house-captain-aravalli-2",
-      "name": "Rhea Saxena",
-      "positionId": "house-captain-aravalli",
-      "tagline": "Ask me in the corridor, not in a form.",
-      "photoUrl": "/candidates/house-captain-aravalli-2.svg",
+      "id": "house-captain-samurai--zalak-gogri",
+      "name": "Zalak Gogri",
+      "positionId": "house-captain-samurai",
+      "photoUrl": "/candidates/house-captain-samurai--zalak-gogri.svg",
       "active": true
     },
     {
-      "id": "house-captain-aravalli-3",
-      "name": "Tanmay Ghosh",
-      "positionId": "house-captain-aravalli",
-      "tagline": "Minutes published within 24 hours.",
-      "photoUrl": "/candidates/house-captain-aravalli-3.svg",
+      "id": "house-captain-knights--preet-jain",
+      "name": "Preet Jain",
+      "positionId": "house-captain-knights",
+      "photoUrl": "/candidates/house-captain-knights--preet-jain.svg",
       "active": true
     },
     {
-      "id": "house-captain-nilgiri-1",
-      "name": "Vivaan Kulkarni",
-      "positionId": "house-captain-nilgiri",
-      "tagline": "Clubs first, committees second.",
-      "photoUrl": "/candidates/house-captain-nilgiri-1.svg",
+      "id": "house-captain-knights--arpita-mahata",
+      "name": "Arpita Mahata",
+      "positionId": "house-captain-knights",
+      "photoUrl": "/candidates/house-captain-knights--arpita-mahata.svg",
       "active": true
     },
     {
-      "id": "house-captain-nilgiri-2",
-      "name": "Kavya Reddy",
-      "positionId": "house-captain-nilgiri",
-      "tagline": "Make the quiet voices louder.",
-      "photoUrl": "/candidates/house-captain-nilgiri-2.svg",
+      "id": "house-captain-vikings--dhyay-amit-popat",
+      "name": "Dhyay Amit Popat",
+      "positionId": "house-captain-vikings",
+      "photoUrl": "/candidates/house-captain-vikings--dhyay-amit-popat.svg",
       "active": true
     },
     {
-      "id": "house-captain-nilgiri-3",
-      "name": "Arjun Mehta",
-      "positionId": "house-captain-nilgiri",
-      "tagline": "Show the receipts every month.",
-      "photoUrl": "/candidates/house-captain-nilgiri-3.svg",
+      "id": "house-captain-vikings--maitree-shah",
+      "name": "Maitree Shah",
+      "positionId": "house-captain-vikings",
+      "photoUrl": "/candidates/house-captain-vikings--maitree-shah.svg",
       "active": true
     },
     {
-      "id": "house-captain-satpura-1",
-      "name": "Karan Malhotra",
-      "positionId": "house-captain-satpura",
-      "tagline": "Fewer announcements, more follow-through.",
-      "photoUrl": "/candidates/house-captain-satpura-1.svg",
+      "id": "house-captain-gladiators--aarav-shrivastava",
+      "name": "Aarav Shrivastava",
+      "positionId": "house-captain-gladiators",
+      "photoUrl": "/candidates/house-captain-gladiators--aarav-shrivastava.svg",
       "active": true
     },
     {
-      "id": "house-captain-satpura-2",
-      "name": "Nitya Bansal",
-      "positionId": "house-captain-satpura",
-      "tagline": "Every club gets a budget and a deadline.",
-      "photoUrl": "/candidates/house-captain-satpura-2.svg",
-      "active": true
-    },
-    {
-      "id": "house-captain-satpura-3",
-      "name": "Aryan Bose",
-      "positionId": "house-captain-satpura",
-      "tagline": "I will read the feedback forms. All of them.",
-      "photoUrl": "/candidates/house-captain-satpura-3.svg",
-      "active": true
-    },
-    {
-      "id": "house-captain-vindhya-1",
-      "name": "Samar Joshi",
-      "positionId": "house-captain-vindhya",
-      "tagline": "One calendar. One source of truth.",
-      "photoUrl": "/candidates/house-captain-vindhya-1.svg",
-      "active": true
-    },
-    {
-      "id": "house-captain-vindhya-2",
-      "name": "Aarohi Singh",
-      "positionId": "house-captain-vindhya",
-      "tagline": "Small fixes, shipped weekly.",
-      "photoUrl": "/candidates/house-captain-vindhya-2.svg",
-      "active": true
-    },
-    {
-      "id": "house-captain-vindhya-3",
-      "name": "Aditya Menon",
-      "positionId": "house-captain-vindhya",
-      "tagline": "The library stays open until eleven.",
-      "photoUrl": "/candidates/house-captain-vindhya-3.svg",
+      "id": "house-captain-gladiators--bhavya-tandon",
+      "name": "Bhavya Tandon",
+      "positionId": "house-captain-gladiators",
+      "photoUrl": "/candidates/house-captain-gladiators--bhavya-tandon.svg",
       "active": true
     }
   ]

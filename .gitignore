@@ -22,6 +22,13 @@ packages/*/src/**/*.d.ts.map
 .env.*
 !.env.example
 
+# Real voter data — personal information, never commit.
+# The candidate list and ballot structure DO get committed (they are public and
+# worth versioning); the roll of 145 names and school email addresses does not.
+apps/server/config/voters.json
+Elections Team.xlsx
+*.pdf
+
 # Authoritative election data — never commit
 data/
 *.sqlite

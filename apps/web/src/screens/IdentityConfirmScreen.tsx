@@ -1,29 +1,26 @@
 import type { House, Position } from '@mesa/election-core';
 import type { VoterProfile } from '@/lib/api';
-import { BoardPanel } from '@/components/board/BoardPanel';
-import { SplitFlap } from '@/components/board/SplitFlap';
+import { Sheet } from '@/components/paper/Sheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
-import { BOARD } from '@/lib/copy';
 
 export interface IdentityConfirmScreenProps {
   voter: VoterProfile;
   house?: House;
   gateCount: number;
-  /** This voter's own gate sequence — the source of everything shown here. */
+  /** This voter's own sequence — the source of everything shown here. */
   steps: Position[];
   onConfirm: () => void;
   onStartOver: () => void;
 }
 
 /**
- * The boarding pass.
+ * The name at the top of the ballot.
  *
  * A full screen rather than a toast, because this is the last moment at which
- * an identity mistake is cheap to fix. It also tells the voter exactly how many
- * gates *they* have — an employee is told six, and is never left wondering
- * where the house captains went.
+ * an identity mistake is cheap to fix — and because check-in is supervised, the
+ * name is set large enough for an invigilator to read across a booth.
  */
 export function IdentityConfirmScreen({
   voter,
@@ -33,93 +30,75 @@ export function IdentityConfirmScreen({
   onConfirm,
   onStartOver,
 }: IdentityConfirmScreenProps) {
-  const accent = house?.color ?? 'var(--color-signal)';
+  const accent = house?.color ?? 'var(--color-mark)';
   const endsWithHouseGate = steps.at(-1)?.kind === 'house-captain';
 
   return (
     <div className="mx-auto w-full max-w-xl">
-      <BoardPanel>
-        <div className="px-5 pt-7 sm:px-8">
-          <SplitFlap text={BOARD.confirmed} size="lg" tone="go" announce />
-        </div>
+      <Sheet raised className="ballot-head overflow-hidden">
+        <div className="px-6 pt-7 sm:px-9">
+          <p className="label">Voting as</p>
 
-        <div className="boarding-pass px-5 py-7 sm:px-8">
-          <div className="flex items-center gap-5">
+          <div className="mt-4 flex items-center gap-5">
             <Avatar name={voter.name} color={accent} size="lg" />
             <div className="min-w-0">
-              <h1 className="truncate" style={{ fontSize: 'var(--text-xl)', fontWeight: 650 }}>
+              {/* Large on purpose: the invigilator checks this, not the software. */}
+              <h1
+                className="truncate"
+                style={{ fontSize: 'clamp(1.6rem, 5vw, 2.4rem)', lineHeight: 1.1 }}
+              >
                 {voter.name}
               </h1>
-              <p className="truncate" style={{ color: 'var(--color-text-muted)' }}>
+              <p className="mt-1 truncate" style={{ color: 'var(--color-ink-soft)' }}>
                 {voter.email}
               </p>
             </div>
           </div>
 
-          <dl className="mt-7 grid gap-4" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
-            <Field label="Class">
-              {/* eligibility-branch-ok: tag colour only, not an election rule */}
-              <Tag tone={voter.type === 'student' ? 'signal' : 'brand'}>{voter.type}</Tag>
-            </Field>
-            {house && (
-              <Field label="House">
-                <Tag color={house.color}>{house.name}</Tag>
-              </Field>
-            )}
-            <Field label="Gates">
-              <span style={{ fontFamily: 'var(--font-board)', fontSize: 'var(--text-md)' }}>
-                {gateCount}
-              </span>
-            </Field>
-          </dl>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Tag>{voter.type}</Tag>
+            {house && <Tag color={house.color}>{house.name}</Tag>}
+            <Tag>
+              {gateCount} {gateCount === 1 ? 'position' : 'positions'}
+            </Tag>
+          </div>
+        </div>
 
-          <p className="mt-7" style={{ color: 'var(--color-text-muted)' }}>
+        <hr className="rule mt-7" />
+
+        <div className="px-6 py-7 sm:px-9">
+          <p style={{ color: 'var(--color-ink-soft)' }}>
             {/*
-              Derived from this voter's actual gate sequence rather than their
-              type. If a future configuration gives employees a house contest —
-              or gives students a second one — this sentence stays true without
-              anyone remembering to edit it.
+              Derived from this voter's actual sequence rather than their type.
+              If a future configuration gives employees a house contest — or
+              students a second one — this stays true with no edit.
             */}
             {endsWithHouseGate
               ? `You will vote in ${gateCount} positions, ending with your house captain.`
               : `You will vote in ${gateCount} leadership positions. House captains are voted on by students.`}
           </p>
-        </div>
 
-        <div className="flex flex-wrap gap-3 px-5 pb-8 sm:px-8">
-          <Button variant="primary" size="lg" onClick={onConfirm} autoFocus>
-            That&apos;s me — start voting
-          </Button>
-          <Button variant="ghost" size="lg" onClick={onStartOver}>
-            Not you? Start over
-          </Button>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Button variant="primary" size="lg" onClick={onConfirm} autoFocus>
+              That&apos;s me — start voting
+            </Button>
+            <Button variant="quiet" size="lg" onClick={onStartOver}>
+              Not you? Start over
+            </Button>
+          </div>
         </div>
-      </BoardPanel>
+      </Sheet>
 
       <style>{`
-        .boarding-pass { animation: pass-in var(--dur-enter) var(--ease-glide) both }
-        @keyframes pass-in {
-          from { opacity: 0; transform: translateY(16px) }
-          to { opacity: 1; transform: translateY(0) }
+        .ballot-head { animation: head-in var(--dur-enter) var(--ease-paper) both }
+        @keyframes head-in {
+          from { opacity: 0; transform: translateY(12px) }
+          to   { opacity: 1; transform: translateY(0) }
         }
         @media (prefers-reduced-motion: reduce) {
-          @keyframes pass-in { from { opacity: 0 } to { opacity: 1 } }
+          @keyframes head-in { from { opacity: 0 } to { opacity: 1 } }
         }
       `}</style>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <dt
-        className="font-board uppercase"
-        style={{ fontSize: 'var(--text-2xs)', letterSpacing: '0.16em', color: 'var(--color-text-dim)' }}
-      >
-        {label}
-      </dt>
-      <dd className="m-0">{children}</dd>
     </div>
   );
 }

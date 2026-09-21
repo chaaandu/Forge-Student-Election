@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
-import { BoardPanel } from '@/components/board/BoardPanel';
-import { SplitFlap } from '@/components/board/SplitFlap';
+import { Sheet } from '@/components/paper/Sheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Tag } from '@/components/ui/Tag';
-import { COPY, BOARD } from '@/lib/copy';
+import { COPY } from '@/lib/copy';
 
 export interface CheckInScreenProps {
   election: PublicElection;
@@ -92,18 +91,20 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <BoardPanel>
-        <div className="px-5 pt-7 sm:px-8">
-          <SplitFlap text={BOARD.checkIn} size="lg" tone="signal" announce />
-          <h1 className="mt-4" style={{ fontSize: 'var(--text-xl)', fontWeight: 650 }}>
+      <Sheet raised>
+        <div className="px-6 pt-7 sm:px-9">
+          <p className="label">Check in</p>
+          <h1 className="mt-2" style={{ fontSize: 'var(--text-xl)' }}>
             {mode === 'entra' ? 'Sign in with your Mesa account' : 'Find your name'}
           </h1>
         </div>
 
-        <div className="flex flex-col gap-6 px-5 pb-8 pt-6 sm:px-8">
+        <hr className="rule mt-6" />
+
+        <div className="flex flex-col gap-6 px-6 pb-8 pt-7 sm:px-9">
           {mode === 'entra' ? (
             <>
-              <p style={{ color: 'var(--color-text-muted)' }}>
+              <p style={{ color: 'var(--color-ink-soft)' }}>
                 You will be sent to Microsoft to sign in, then brought straight back. We use your
                 sign-in only to check you are on the voter roll and that you have not already
                 voted.
@@ -113,10 +114,10 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                 className="inline-flex items-center justify-center font-semibold"
                 style={{
                   minHeight: 'var(--hit)',
-                  padding: '16px 28px',
+                  padding: '14px 28px',
                   borderRadius: 'var(--radius-control)',
-                  background: 'var(--color-signal)',
-                  color: 'var(--color-signal-ink)',
+                  background: 'var(--color-ink)',
+                  color: 'var(--color-sheet)',
                   textDecoration: 'none',
                   fontSize: 'var(--text-md)',
                 }}
@@ -155,13 +156,13 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
 
               <div aria-live="polite" className="min-h-2">
                 {searching && (
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
                     Searching…
                   </p>
                 )}
 
                 {!searching && results?.length === 0 && (
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
                     {COPY.error.noMatch}
                   </p>
                 )}
@@ -177,8 +178,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                           style={{
                             minHeight: 'var(--hit)',
                             padding: '12px 16px',
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-line)',
+                            background: 'var(--color-sheet)',
+                            border: '1px solid var(--color-rule)',
                             borderRadius: 'var(--radius-control)',
                           }}
                         >
@@ -189,15 +190,12 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                             </span>
                             <span
                               className="block truncate"
-                              style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}
+                              style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}
                             >
                               {match.maskedEmail}
                             </span>
                           </span>
-                          {/* eligibility-branch-ok: tag colour only, not an election rule */}
-                          <Tag tone={match.type === 'student' ? 'signal' : 'brand'}>
-                            {match.type}
-                          </Tag>
+                          <Tag>{match.type}</Tag>
                         </button>
                       </li>
                     ))}
@@ -208,15 +206,15 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           )}
 
           <div>
-            <Button variant="ghost" onClick={onBack}>
-              ← Back to the board
+            <Button variant="quiet" onClick={onBack}>
+              Back
             </Button>
           </div>
         </div>
-      </BoardPanel>
+      </Sheet>
 
       <style>{`
-        .roll-match:hover { background: var(--color-surface-hi); border-color: var(--color-text-dim); }
+        .roll-match:hover { background: var(--color-sheet-sunk); border-color: var(--color-rule-strong); }
       `}</style>
     </div>
   );
@@ -252,20 +250,19 @@ function CodeStep({
       <div
         className="flex items-center gap-4 p-4"
         style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-line)',
+          background: 'var(--color-sheet-sunk)',
+          border: '1px solid var(--color-rule)',
           borderRadius: 'var(--radius-control)',
         }}
       >
         <Avatar name={match.name} />
         <div className="min-w-0 flex-1">
           <p style={{ fontWeight: 550 }}>{match.name}</p>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
             {match.maskedEmail}
           </p>
         </div>
-        {/* eligibility-branch-ok: tag colour only, not an election rule */}
-        <Tag tone={match.type === 'student' ? 'signal' : 'brand'}>{match.type}</Tag>
+        <Tag>{match.type}</Tag>
       </div>
 
       {requiresCode ? (
@@ -281,11 +278,11 @@ function CodeStep({
           onChange={(event) => setCode(event.target.value.toUpperCase())}
           hint="The six characters on the slip you were given. Letter case does not matter."
           {...(error ? { error } : {})}
-          style={{ fontFamily: 'var(--font-board)', letterSpacing: '0.24em' }}
+          style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.24em' }}
         />
       ) : (
         error && (
-          <p role="alert" style={{ color: 'var(--color-stop)', fontSize: 'var(--text-sm)' }}>
+          <p role="alert" style={{ color: 'var(--color-alert)', fontSize: 'var(--text-sm)' }}>
             {error}
           </p>
         )
@@ -302,7 +299,7 @@ function CodeStep({
         >
           Continue
         </Button>
-        <Button variant="ghost" onClick={onChangeName} type="button">
+        <Button variant="quiet" onClick={onChangeName} type="button">
           Not you? Choose a different name
         </Button>
       </div>

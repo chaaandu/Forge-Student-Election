@@ -1,5 +1,6 @@
 import type { Position } from '@mesa/election-core';
 import type { PublicElection, VoterProfile } from '@/lib/api';
+import { COPY, HEADLINE } from '@/lib/copy';
 
 /**
  * The voting journey as an explicit state machine.
@@ -29,9 +30,9 @@ export type Phase =
 
 export interface MachineError {
   code: string;
-  /** Board word. Decorative. */
+  /** Plain language. A voter should not have to decode a theme word. */
   headline: string;
-  /** Plain language. Always the meaning. */
+  /** What happened and what to do about it. */
   message: string;
   /** Whether the voter may retry the same action. */
   retryable: boolean;
@@ -135,7 +136,8 @@ export function reducer(state: MachineState, action: MachineAction): MachineStat
           phase: 'BLOCKED',
           error: {
             code: electionWindow.reason === 'NOT_STARTED' ? 'ELECTION_NOT_STARTED' : 'ELECTION_CLOSED',
-            headline: electionWindow.reason === 'NOT_STARTED' ? 'BOARDING NOT OPEN' : 'GATE CLOSED',
+            headline:
+              electionWindow.reason === 'NOT_STARTED' ? HEADLINE.notOpen : HEADLINE.closed,
             message:
               electionWindow.reason === 'NOT_STARTED'
                 ? `Voting has not opened yet${electionWindow.at ? `. It opens at ${formatTime(electionWindow.at)}` : ''}.`
@@ -167,10 +169,8 @@ export function reducer(state: MachineState, action: MachineAction): MachineStat
           phase: 'BLOCKED',
           error: {
             code: 'ALREADY_VOTED',
-            headline: 'ALREADY DEPARTED',
-            message:
-              'Our records show you have already voted. If you believe this is a mistake, ' +
-              'please speak to the returning officer before you leave.',
+            headline: HEADLINE.alreadyVoted,
+            message: COPY.error.alreadyVoted,
             retryable: false,
           },
         };

@@ -58,8 +58,8 @@ async function checkInAs(voter: typeof student | typeof employee) {
   mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099-01-01', voter });
 
   render(<App />);
-  await screen.findByRole('button', { name: /check in to vote/i });
-  await user.click(screen.getByRole('button', { name: /check in to vote/i }));
+  await screen.findByRole('button', { name: /begin voting/i });
+  await user.click(screen.getByRole('button', { name: /begin voting/i }));
 
   await user.type(await screen.findByLabelText(/your name/i), 'One');
   await user.click(await screen.findByRole('button', { name: new RegExp(voter.name, 'i') }));
@@ -83,14 +83,16 @@ async function completeAllGates(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('the employee journey', () => {
-  it('has six gates and never shows a house captain step', async () => {
+  it('has six positions and never shows a house captain step', async () => {
     const user = await checkInAs(employee);
 
     const seen: string[] = [];
+    let firstProgress = '';
     for (let guard = 0; guard < 10; guard += 1) {
       const heading = screen.queryByRole('heading', { level: 1 });
       if (!heading) break;
       seen.push(heading.textContent ?? '');
+      if (guard === 0) firstProgress = screen.getByText(/^\d+ of \d+$/).textContent ?? '';
       const group = screen.queryByRole('radiogroup');
       if (!group) break;
       await user.click(within(group).getAllByRole('radio')[0]!);
@@ -101,15 +103,15 @@ describe('the employee journey', () => {
     expect(seen).toHaveLength(6);
     expect(seen.join(' ')).not.toMatch(/house captain/i);
     // The progress total is the employee's own, never "of 10".
-    expect(seen[0]).toMatch(/Gate 1 of 6/);
+    expect(firstProgress).toBe('1 of 6');
   });
 
-  it('shows a boarding pass with no House Captains section at all', async () => {
+  it('shows a ballot with no House Captains section at all', async () => {
     const user = await checkInAs(employee);
     await completeAllGates(user);
 
     await screen.findByRole('button', { name: /confirm & submit vote/i });
-    expect(screen.getByText('Your selections')).toBeInTheDocument();
+    expect(screen.getByText('Check your choices')).toBeInTheDocument();
     // Not an empty section — no section.
     expect(screen.queryByText(/house captain/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^edit your choice/i })).toHaveLength(6);
@@ -132,7 +134,7 @@ describe('the student journey', () => {
     mockRollFor(student);
     mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: student });
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: /check in to vote/i }));
+    await user.click(await screen.findByRole('button', { name: /begin voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
     await user.click(await screen.findByRole('button', { name: /continue/i }));
@@ -150,7 +152,7 @@ describe('navigation and editing', () => {
     await user.click(first!);
     await user.click(screen.getByRole('button', { name: /continue/i }));
 
-    await user.click(screen.getByRole('button', { name: /^← back$/i }));
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
     // The earlier choice is still selected.
     expect(within(screen.getByRole('radiogroup')).getAllByRole('radio')[0]).toHaveAttribute(
       'aria-checked',
@@ -163,11 +165,11 @@ describe('navigation and editing', () => {
     const button = screen.getByRole('button', { name: /continue/i });
 
     expect(button).toBeDisabled();
-    expect(screen.getByText(/select a candidate to continue/i)).toBeInTheDocument();
+    expect(screen.getByText(/choose a candidate to continue/i)).toBeInTheDocument();
 
     await user.click(button);
     // Still on gate 1.
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Gate 1 of 7/);
+    expect(screen.getByText('1 of 7')).toBeInTheDocument();
   });
 
   it('returns to review after editing a single choice', async () => {
@@ -232,12 +234,12 @@ describe('submission', () => {
     await user.click(await screen.findByRole('button', { name: /cast my vote/i }));
 
     // In flight: the board says DEPARTING, and nothing claims the vote is cast.
-    expect(await screen.findByText(/STATUS: DEPARTING/)).toBeInTheDocument();
-    expect(screen.queryByText('VOTE CAST')).not.toBeInTheDocument();
-    expect(screen.queryByText(/STATUS: DEPARTED/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Recording your vote/i)).toBeInTheDocument();
+    expect(screen.queryByText('Vote recorded')).not.toBeInTheDocument();
+    expect(screen.queryByText(/is in the box/i)).not.toBeInTheDocument();
 
     resolveSubmit({ status: 'recorded', receiptId: 'r1', replayed: false, submittedAt: 'now' });
-    expect(await screen.findByText('VOTE CAST')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Vote recorded' })).toBeInTheDocument();
   });
 
   it('shows no selections on the thank-you screen', async () => {
@@ -252,13 +254,13 @@ describe('submission', () => {
 
     await user.click(await screen.findByRole('button', { name: /confirm & submit vote/i }));
     await user.click(await screen.findByRole('button', { name: /cast my vote/i }));
-    await screen.findByText('VOTE CAST');
+    await screen.findByRole('heading', { name: 'Vote recorded' });
 
     // A shared kiosk: the next voter must not see who this one chose.
     for (const candidate of election.candidates) {
       expect(screen.queryByText(candidate.name)).not.toBeInTheDocument();
     }
-    expect(screen.queryByText(/your selections/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/check your choices/i)).not.toBeInTheDocument();
   });
 
   it('reuses one idempotency key across a retry', async () => {
@@ -309,8 +311,8 @@ describe('submission', () => {
     await user.click(await screen.findByRole('button', { name: /confirm & submit vote/i }));
     await user.click(await screen.findByRole('button', { name: /cast my vote/i }));
 
-    expect(await screen.findByText('ALREADY DEPARTED')).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent(/returning officer/i);
+    expect(await screen.findByText('You have already voted')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/person running the election/i);
   });
 });
 
@@ -325,12 +327,12 @@ describe('blocked states', () => {
     });
 
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: /check in to vote/i }));
+    await user.click(await screen.findByRole('button', { name: /begin voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
     await user.click(await screen.findByRole('button', { name: /continue/i }));
 
-    expect(await screen.findByText('ALREADY DEPARTED')).toBeInTheDocument();
+    expect(await screen.findByText('You have already voted')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(COPY.error.alreadyVoted);
   });
 
@@ -341,15 +343,15 @@ describe('blocked states', () => {
     });
 
     render(<App />);
-    expect(await screen.findByText('BOARDING NOT OPEN')).toBeInTheDocument();
+    expect(await screen.findByText('Voting has not opened')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/has not opened yet/i);
-    expect(screen.queryByRole('button', { name: /check in to vote/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /begin voting/i })).not.toBeInTheDocument();
   });
 
   it('explains a closed election rather than offering a broken CTA', async () => {
     mocks.election.mockResolvedValue({ ...election, window: { open: false, reason: 'CLOSED' } });
     render(<App />);
-    expect(await screen.findByText('GATE CLOSED')).toBeInTheDocument();
+    expect(await screen.findByText('Voting has closed')).toBeInTheDocument();
   });
 
   it('never shows a bare "something went wrong" when the election will not load', async () => {
@@ -357,7 +359,7 @@ describe('blocked states', () => {
     render(<App />);
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/returning officer/i);
+    expect(alert).toHaveTextContent(/person running the election/i);
     expect(alert.textContent).not.toMatch(/^something went wrong\.?$/i);
   });
 });

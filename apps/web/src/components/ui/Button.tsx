@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -9,33 +9,36 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /**
    * Why the button is disabled, in plain words.
    *
-   * A disabled control that does not say why is a dead end. This is rendered
-   * next to the button and announced, so "Continue" is never just inert.
+   * A disabled control that does not say why is a dead end. This is announced,
+   * and the caller usually shows it beside the button as well.
    */
   disabledReason?: string;
   children: ReactNode;
 }
 
 const base =
-  'relative inline-flex items-center justify-center gap-2 font-semibold tracking-[0.01em] ' +
-  'transition-[transform,background-color,border-color,color] duration-150 ' +
-  'disabled:cursor-not-allowed select-none';
+  'relative inline-flex items-center justify-center gap-2 font-medium select-none ' +
+  'transition-[background-color,border-color,color,box-shadow,transform] duration-150 ' +
+  'disabled:cursor-not-allowed';
 
 const variants: Record<Variant, string> = {
+  // A stamp of ink. The one obviously-primary action on any screen.
   primary:
-    'bg-[var(--color-signal)] text-[var(--color-signal-ink)] border border-transparent ' +
-    'hover:bg-[var(--color-signal-hi)] active:translate-y-px ' +
-    'disabled:bg-[var(--color-surface-hi)] disabled:text-[var(--color-text-dim)]',
+    'bg-[var(--color-ink)] text-[var(--color-sheet)] border border-[var(--color-ink)] ' +
+    'hover:bg-[#2c2a24] active:translate-y-px ' +
+    'disabled:bg-[var(--color-sheet-sunk)] disabled:text-[var(--color-ink-faint)] ' +
+    'disabled:border-[var(--color-rule)]',
+  // A printed box you can press.
   secondary:
-    'bg-transparent text-[var(--color-text)] border border-[var(--color-line)] ' +
-    'hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface)] active:translate-y-px ' +
-    'disabled:text-[var(--color-text-dim)] disabled:border-[var(--color-line)]',
-  ghost:
-    'bg-transparent text-[var(--color-text-muted)] border border-transparent ' +
-    'hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]',
+    'bg-[var(--color-sheet)] text-[var(--color-ink)] border border-[var(--color-rule-strong)] ' +
+    'hover:bg-[var(--color-sheet-sunk)] active:translate-y-px ' +
+    'disabled:text-[var(--color-ink-faint)] disabled:border-[var(--color-rule)]',
+  quiet:
+    'bg-transparent text-[var(--color-ink-soft)] border border-transparent ' +
+    'hover:text-[var(--color-ink)] hover:bg-[var(--color-sheet-sunk)] underline-offset-4',
   danger:
-    'bg-[var(--color-stop)] text-[#2A0B08] border border-transparent hover:brightness-110 ' +
-    'active:translate-y-px',
+    'bg-[var(--color-alert)] text-[var(--color-sheet)] border border-transparent ' +
+    'hover:brightness-110 active:translate-y-px',
 };
 
 export function Button({
@@ -51,8 +54,8 @@ export function Button({
   const isDisabled = disabled || loading;
   const sizing =
     size === 'lg'
-      ? 'text-[var(--text-md)] px-7 py-4 rounded-[var(--radius-control)]'
-      : 'text-[var(--text-sm)] px-5 py-3 rounded-[var(--radius-control)]';
+      ? 'text-[var(--text-md)] px-7 py-3.5 rounded-[var(--radius-control)]'
+      : 'text-[var(--text-sm)] px-5 py-2.5 rounded-[var(--radius-control)]';
 
   return (
     <button

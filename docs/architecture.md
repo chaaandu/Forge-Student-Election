@@ -26,7 +26,7 @@ Strict one-directional dependency. Nothing below knows about anything above it.
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Presentation            apps/web  (React 19 + Vite + TW4)    │
-│  screens, split-flap board, motion, a11y                     │
+│  screens, paper surfaces, ink marks, motion, a11y            │
 ├──────────────────────────────────────────────────────────────┤
 │ Election flow           apps/web/src/machine                 │
 │  deterministic state machine over *eligible* positions       │
@@ -282,13 +282,6 @@ confirmation screen, and a live `/monitor` view for reconciliation. *Reversible:
 environment variable switches to `access-code` or `entra`, both fully tested. *Accepted, with
 the trade documented in security-model.md §3.3.*
 
-**ADR-8 — An invigilator monitor, served outside the voting SPA.** *Decision:* `/monitor` is
-a self-contained page served by the API, gated by the admin token, polling
-`/api/admin/monitor`. *Why:* the people running the room need to see who has voted and chase
-who has not; putting that inside the voter SPA would make it reachable from a booth by
-navigating the flow. It reports participation only — no query anywhere in the system can
-reveal how a person voted. *Accepted.*
-
 **ADR-3 — SQLite (WAL) as the authoritative store.** *Decision:* single-node SQLite with
 `BEGIN IMMEDIATE` transactions. *Why:* the strongest available isolation (serialised writers)
 with zero operational surface, and it makes the one-vote guarantee provable rather than
@@ -313,13 +306,23 @@ not URL routes. *Why:* URLs are user-editable state; a voter must not be able to
 button is intercepted via a history guard so it maps onto the machine's `BACK` transition.
 *Accepted.*
 
-**ADR-7 — Port the React Bits split-flap rather than depend on it.** *Decision:* React Bits'
-`SplitFlapText` is the right mechanic but is copy-in JSX with no accessibility layer and a
-self-driving word cycle. We re-implemented it in TypeScript as a controlled component with a
-visually-hidden real-text layer, `aria-hidden` flaps, reduced-motion short-circuit, and
-injectable timing for tests. Attribution in `THIRD_PARTY_NOTICES.md`. *Why:* the theme's
-signature element must be accessible and driven by real application state, never a timer.
-*Accepted.*
+**ADR-7 — A paper-and-ink interface, with the 3D layer strictly optional.**
+*Decision:* the interface is a ballot paper (docs/design-direction.md). The welcome screen's
+WebGL sheet is dynamically imported, `aria-hidden`, skipped entirely under reduced motion or
+when a WebGL probe fails, and layered over a complete printed sheet rendered in HTML.
+*Why:* the first direction (a split-flap departure board) was rejected as cold and
+industrial, and its themed error copy had to be decoded before it could be understood. Paper
+is the one metaphor for an election that is not a metaphor, and its plain voice *is* the
+theme. *Why the 3D is optional:* a kiosk with a weak GPU must still vote, and Three.js is
+~747 KB — larger than the entire application. Rollup emits it as a chunk no voting path
+downloads. *Accepted.*
+
+**ADR-8 — An invigilator monitor, served outside the voting SPA.** *Decision:* `/monitor` is
+a self-contained page served by the API, gated by the admin token, polling
+`/api/admin/monitor`. *Why:* the people running the room need to see who has voted and chase
+who has not; putting that inside the voter SPA would make it reachable from a booth by
+navigating the flow. It reports participation only — no query anywhere in the system can
+reveal how a person voted. *Accepted.*
 
 ## 13. Non-goals
 

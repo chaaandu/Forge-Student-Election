@@ -10,12 +10,11 @@ export interface DialogProps {
 }
 
 /**
- * A focus-trapped modal.
+ * A slip of paper laid over the ballot.
  *
- * Deliberately hand-rolled rather than `<dialog>`: we need the initial focus to
- * land on the *safe* action (Go back), Escape to mean "go back", and a trap
- * that cannot be tabbed out of — a voter must not be able to wander behind the
- * final confirmation.
+ * Hand-rolled rather than `<dialog>` because initial focus must land on the
+ * *safe* action, Escape must mean "go back", and the trap must be absolute — a
+ * voter should not be able to wander behind the final confirmation.
  */
 export function Dialog({ open, title, onClose, children, actions }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -26,10 +25,9 @@ export function Dialog({ open, title, onClose, children, actions }: DialogProps)
     previouslyFocused.current = document.activeElement as HTMLElement | null;
 
     const panel = panelRef.current;
-    const focusables = panel?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    focusables?.[0]?.focus();
+    const selector =
+      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    panel?.querySelectorAll<HTMLElement>(selector)[0]?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -39,9 +37,7 @@ export function Dialog({ open, title, onClose, children, actions }: DialogProps)
       }
       if (event.key !== 'Tab' || !panel) return;
 
-      const items = panel.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
+      const items = panel.querySelectorAll<HTMLElement>(selector);
       if (items.length === 0) return;
       const first = items[0]!;
       const last = items[items.length - 1]!;
@@ -71,37 +67,28 @@ export function Dialog({ open, title, onClose, children, actions }: DialogProps)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgb(0 0 0 / 0.7)' }}
+      style={{ background: 'rgb(38 32 20 / 0.34)', backdropFilter: 'saturate(0.85)' }}
     >
       <div
         ref={panelRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
-        className="board-grain w-full max-w-lg p-7"
-        style={{
-          background: 'var(--color-board)',
-          border: '1px solid var(--color-line)',
-          borderRadius: 'var(--radius-card)',
-          boxShadow: 'var(--shadow-modal)',
-          animation: 'dialog-in var(--dur-enter) var(--ease-glide) both',
-        }}
+        className="sheet w-full max-w-lg p-7 sm:p-9"
+        style={{ boxShadow: 'var(--shadow-modal)', animation: 'slip-in var(--dur-enter) var(--ease-paper) both' }}
       >
-        <h2
-          id="dialog-title"
-          className="font-board uppercase"
-          style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.18em', color: 'var(--color-signal)' }}
-        >
+        <h2 id="dialog-title" style={{ fontSize: 'var(--text-lg)' }}>
           {title}
         </h2>
         <div className="mt-4">{children}</div>
-        <div className="mt-7 flex flex-wrap gap-3">{actions}</div>
+        <div className="perforation my-7" aria-hidden="true" />
+        <div className="flex flex-wrap gap-3">{actions}</div>
       </div>
 
       <style>{`
-        @keyframes dialog-in {
-          from { opacity: 0; transform: scale(.96) }
-          to { opacity: 1; transform: scale(1) }
+        @keyframes slip-in {
+          from { opacity: 0; transform: translateY(10px) rotate(-0.25deg) }
+          to   { opacity: 1; transform: translateY(0) rotate(0deg) }
         }
       `}</style>
     </div>

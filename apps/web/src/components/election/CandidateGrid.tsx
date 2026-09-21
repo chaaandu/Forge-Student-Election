@@ -14,9 +14,9 @@ export interface CandidateGridProps {
 /**
  * A radiogroup of candidates with a roving tabindex.
  *
- * Tab reaches the group once; arrow keys move within it and Space/Enter
- * selects — the pattern a screen-reader user expects from a radio group, and
- * the fastest one for a sighted keyboard user too.
+ * Tab reaches the group once; arrow keys move within it and Space or Enter
+ * marks — the pattern a screen-reader user expects from a radio group, and the
+ * fastest one for a sighted keyboard user too.
  */
 export function CandidateGrid({
   candidates,
@@ -29,9 +29,7 @@ export function CandidateGrid({
 
   const focusCard = (index: number) => {
     const clamped = (index + candidates.length) % candidates.length;
-    containerRef.current
-      ?.querySelector<HTMLElement>(`[data-candidate-card="${clamped}"]`)
-      ?.focus();
+    containerRef.current?.querySelector<HTMLElement>(`[data-candidate-card="${clamped}"]`)?.focus();
   };
 
   const handleKeyDown = (index: number) => (event: KeyboardEvent<HTMLDivElement>) => {
@@ -64,7 +62,6 @@ export function CandidateGrid({
     }
   };
 
-  // Roving tabindex: the selected card, or the first one if nothing is chosen.
   const tabbableIndex = Math.max(
     0,
     candidates.findIndex((c) => c.id === selectedId),
@@ -76,15 +73,15 @@ export function CandidateGrid({
       role="radiogroup"
       aria-labelledby={labelledBy}
       className="grid gap-4 sm:gap-5"
-      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))' }}
+      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 214px), 1fr))' }}
     >
       {candidates.map((candidate, index) => (
         <div
           key={candidate.id}
           style={{
-            animation: `card-in var(--dur-enter) var(--ease-glide) both`,
+            animation: 'card-in var(--dur-enter) var(--ease-paper) both',
             // Capped so a large field never makes the last card crawl in.
-            animationDelay: `${Math.min(index, 6) * 40}ms`,
+            animationDelay: `${Math.min(index, 6) * 45}ms`,
           }}
         >
           <CandidateCard
@@ -101,8 +98,8 @@ export function CandidateGrid({
 
       <style>{`
         @keyframes card-in {
-          from { opacity: 0; transform: translateY(10px) }
-          to { opacity: 1; transform: translateY(0) }
+          from { opacity: 0; transform: translateY(8px) }
+          to   { opacity: 1; transform: translateY(0) }
         }
         @media (prefers-reduced-motion: reduce) {
           @keyframes card-in { from { opacity: 0 } to { opacity: 1 } }

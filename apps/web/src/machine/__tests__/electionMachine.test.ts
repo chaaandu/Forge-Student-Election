@@ -288,8 +288,8 @@ describe('already-voted and closed elections', () => {
       { type: 'IDENTIFIED', voter: { ...student, hasVoted: true }, token: 'tok' },
     );
     expect(state.phase).toBe('BLOCKED');
-    expect(state.error?.headline).toBe('ALREADY DEPARTED');
-    expect(state.error?.message).toMatch(/returning officer/);
+    expect(state.error?.headline).toBe('You have already voted');
+    expect(state.error?.message).toMatch(/person running the election/);
   });
 
   it('blocks when the election has not opened', () => {
@@ -298,7 +298,7 @@ describe('already-voted and closed elections', () => {
       election: { ...election, window: { open: false, reason: 'NOT_STARTED', at: '2099-01-01T09:00:00Z' } },
     });
     expect(state.phase).toBe('BLOCKED');
-    expect(state.error?.headline).toBe('BOARDING NOT OPEN');
+    expect(state.error?.headline).toBe('Voting has not opened');
   });
 
   it('blocks when the election is closed', () => {
@@ -306,7 +306,7 @@ describe('already-voted and closed elections', () => {
       type: 'ELECTION_LOADED',
       election: { ...election, window: { open: false, reason: 'CLOSED' } },
     });
-    expect(state.error?.headline).toBe('GATE CLOSED');
+    expect(state.error?.headline).toBe('Voting has closed');
   });
 });
 

@@ -54,17 +54,17 @@ with a voter session.
 
 ### Phase 7 — Design system
 **Deliver.** Tokens from design-direction.md §2; Tailwind v4 `@theme`; self-hosted fonts;
-`Button`, `TextField`, `CodeInput`, `Avatar`, `Tag`, `Dialog`, `Toast`, `Spinner`,
-`Skeleton`, `ErrorState`, `EmptyState`, `VisuallyHidden`.
-**Exit.** Contrast test passes for every token pair; every control has a visible focus ring
-and a 44 px hit area.
+`Button`, `TextField`, `Avatar`, `Tag`, `Dialog`, `ErrorState`, `Wordmark`.
+**Exit.** The contrast test passes for every token pair *and* every configured house colour;
+every control has a visible focus ring and a 44 px hit area.
 
-### Phase 8 — SplitFlap primitive & board
-**Deliver.** `SplitFlap` (controlled, injectable timing), `BoardRow`, `BoardPanel`,
-`StatusLight`, `DepartureBoard`.
-**Exit.** Tests: real text present on first render; animated layer is `aria-hidden`;
-reduced-motion renders final text with no cycling; unchanged characters do not re-flip;
-timers cleaned on unmount.
+### Phase 8 — The ink mark & paper surfaces
+**Deliver.** `InkMark` (the drawn check), `Sheet`, and the WebGL `BallotSheet3D` for the
+welcome screen, layered over a complete printed sheet rendered in HTML.
+**Exit.** Tests: the mark is `aria-hidden` by default and takes a name when it stands alone;
+reduced motion renders it fully drawn with no animation; filter ids are unique per instance.
+Three.js is dynamically imported and absent from the application bundle; the welcome screen
+is fully usable without it.
 
 ### Phase 9 — Flow state machine
 **Deliver.** Reducer over `WELCOME → CHECK_IN → IDENTITY_CONFIRM → GATE[i] → REVIEW →
@@ -80,9 +80,9 @@ dev picker); boarding-pass identity confirmation; election-not-open and closed s
 search result has a useful message.
 
 ### Phase 11 — Gates, candidates, house captains, review
-**Deliver.** `CandidateCard` / `CandidateGrid` with roving-tabindex radiogroup; `RouteLine`;
-`GateStep`; `HouseGate` using house colours; `BoardingPass` review with per-row Edit, tear
-line, and the verbatim warning copy.
+**Deliver.** `CandidateCard` / `CandidateGrid` with roving-tabindex radiogroup;
+`BallotProgress`; `PositionScreen`, using house colours for house contests; the review
+ballot with per-row Edit, a perforation, and the verbatim warning copy.
 **Exit.** Employee review has no house section at all; arrow keys move within a gate;
 Continue explains why it is disabled; editing returns to review.
 

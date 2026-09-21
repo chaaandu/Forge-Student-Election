@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { api, ApiError, type CheckInResult } from '@/lib/api';
-import { BOARD, COPY } from '@/lib/copy';
+import { COPY, HEADLINE } from '@/lib/copy';
 import {
   currentStep,
   initialState,
@@ -8,18 +8,17 @@ import {
   reducer,
   type MachineError,
 } from '@/machine/electionMachine';
-import { BoardPanel } from '@/components/board/BoardPanel';
-import { SplitFlap } from '@/components/board/SplitFlap';
+import { Sheet } from '@/components/paper/Sheet';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { WelcomeScreen, SeedDataBanner } from '@/screens/WelcomeScreen';
 import { CheckInScreen } from '@/screens/CheckInScreen';
 import { IdentityConfirmScreen } from '@/screens/IdentityConfirmScreen';
-import { GateScreen } from '@/screens/GateScreen';
+import { PositionScreen } from '@/screens/PositionScreen';
 import { ReviewScreen } from '@/screens/ReviewScreen';
 import { SubmittingScreen } from '@/screens/SubmittingScreen';
-import { DepartedScreen } from '@/screens/DepartedScreen';
+import { DoneScreen } from '@/screens/DoneScreen';
 
 const CELEBRATION_SECONDS = Number(import.meta.env.VITE_CELEBRATION_SECONDS ?? 4);
 /** A voter who walks away mid-ballot must not leave the kiosk on their screen. */
@@ -33,18 +32,18 @@ function toMachineError(error: unknown): MachineError {
       case 'ALREADY_VOTED':
         return {
           code: error.code,
-          headline: BOARD.alreadyDeparted,
+          headline: HEADLINE.alreadyVoted,
           message: COPY.error.alreadyVoted,
           retryable: false,
         };
       case 'ELECTION_CLOSED':
-        return { code: error.code, headline: BOARD.closed, message: error.message, retryable: false };
+        return { code: error.code, headline: HEADLINE.closed, message: error.message, retryable: false };
       case 'ELECTION_NOT_STARTED':
-        return { code: error.code, headline: BOARD.notOpen, message: error.message, retryable: false };
+        return { code: error.code, headline: HEADLINE.notOpen, message: error.message, retryable: false };
       case 'UNAUTHORIZED':
         return {
           code: error.code,
-          headline: 'CHECK-IN EXPIRED',
+          headline: HEADLINE.checkInExpired,
           message: COPY.error.sessionExpired,
           retryable: false,
         };
@@ -52,14 +51,14 @@ function toMachineError(error: unknown): MachineError {
       case 'TIMEOUT':
         return {
           code: error.code,
-          headline: BOARD.delayed,
+          headline: HEADLINE.delayed,
           message: COPY.error.network,
           retryable: true,
         };
       case 'BALLOT_INVALID':
         return {
           code: error.code,
-          headline: 'CHECK YOUR BALLOT',
+          headline: HEADLINE.checkBallot,
           // The server's message already explains what is wrong, in plain words.
           message: `${error.message} Nothing has been recorded.`,
           retryable: true,
@@ -67,7 +66,7 @@ function toMachineError(error: unknown): MachineError {
       default:
         return {
           code: error.code,
-          headline: BOARD.delayed,
+          headline: HEADLINE.notRecorded,
           message: `${COPY.error.submitFailed} (${error.code})`,
           retryable: error.isRetryable,
         };
@@ -75,7 +74,7 @@ function toMachineError(error: unknown): MachineError {
   }
   return {
     code: 'UNKNOWN',
-    headline: BOARD.delayed,
+    headline: HEADLINE.notRecorded,
     message: COPY.error.submitFailed,
     retryable: true,
   };
@@ -112,7 +111,7 @@ export function App() {
             type: 'FATAL',
             error: {
               code: checkinError,
-              headline: 'CHECK-IN FAILED',
+              headline: HEADLINE.checkInFailed,
               message:
                 checkinError === 'NOT_ON_ROLL'
                   ? COPY.error.notOnRoll
@@ -136,10 +135,10 @@ export function App() {
             type: 'FATAL',
             error: {
               code: 'ELECTION_UNAVAILABLE',
-              headline: BOARD.delayed,
+              headline: HEADLINE.unavailable,
               message:
-                'We could not load the election. This is a problem on our side, not yours — ' +
-                'please tell the returning officer.',
+                'This is a problem on our side, not yours. Please tell the person running the ' +
+                'election.',
               retryable: true,
             },
           });
@@ -281,15 +280,15 @@ export function App() {
 
       <main id="main" tabIndex={-1} className="outline-none">
         {state.phase === 'LOADING' && (
-          <div className="mx-auto w-full max-w-2xl">
-            <BoardPanel>
-              <div className="px-6 py-16 text-center">
-                <SplitFlap text="MESA ELECTIONS" size="lg" tone="signal" />
-                <p className="mt-6" style={{ color: 'var(--color-text-muted)' }}>
-                  Preparing the board…
+          <div className="mx-auto w-full max-w-lg">
+            <Sheet>
+              <div className="px-7 py-16 text-center">
+                <p className="label">Mesa School of Business</p>
+                <p className="mt-4" style={{ color: 'var(--color-ink-soft)' }}>
+                  Preparing the ballot…
                 </p>
               </div>
-            </BoardPanel>
+            </Sheet>
           </div>
         )}
 
@@ -298,9 +297,7 @@ export function App() {
             <ErrorState
               headline={state.error.headline}
               message={state.error.message}
-              {...(state.error.retryable
-                ? { action: { label: 'Start again', onClick: handleReset } }
-                : { action: { label: 'Back to the board', onClick: handleReset } })}
+              action={{ label: 'Start again', onClick: handleReset }}
             />
             {isSeedData && <SeedDataBanner />}
           </div>
@@ -334,7 +331,7 @@ export function App() {
         )}
 
         {state.phase === 'GATE' && step && (
-          <GateScreen
+          <PositionScreen
             step={step}
             steps={state.steps}
             gateIndex={state.gateIndex}
@@ -343,7 +340,7 @@ export function App() {
             {...(stepHouse ? { house: stepHouse } : {})}
             direction={state.direction}
             isEditing={state.returnToReview}
-            onSelect={(candidateId) =>
+            onSelect={(candidateId: string) =>
               dispatch({ type: 'SELECT', positionId: step.id, candidateId })
             }
             onNext={() => dispatch({ type: 'NEXT' })}
@@ -383,7 +380,7 @@ export function App() {
         {state.phase === 'SUBMITTING' && <SubmittingScreen attempt={attempt} />}
 
         {state.phase === 'DEPARTED' && (
-          <DepartedScreen holdSeconds={CELEBRATION_SECONDS} onFinished={handleReset} />
+          <DoneScreen holdSeconds={CELEBRATION_SECONDS} onFinished={handleReset} />
         )}
       </main>
 

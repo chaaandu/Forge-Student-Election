@@ -1,7 +1,7 @@
 # Mesa Elections
 
 A student and employee election system for Mesa School of Business, presented as
-a departure board. Students vote for six leadership positions plus their own
+a ballot paper: warm stock, printed rules, and a mark you make in ink. Students vote for six leadership positions plus their own
 house captain; employees vote for the six leadership positions. Results combine
 the two electorates with configured weights (75% student / 25% employee) that are
 resolved **per position**, so house captain contests are scored student-only at
@@ -348,7 +348,7 @@ npx vitest run --project web          # machine, components, full journeys
 | --- | --- |
 | `core` (77) | weighting including both zero-turnout policies, ties, unknown candidates, config validation, eligibility, step sequences, ballot validation |
 | `server` (133) | one-vote enforcement, **eight-process concurrency**, idempotency, forged payloads, roll masking, admin authz, audit chain tampering, immutability triggers, Google Sheets auth/errors/header-ordering, spreadsheet failure/throttle/recovery, the invigilator monitor, end-to-end weighted results, shared-kiosk rate limits |
-| `web` (67) | the state machine, the split-flap accessibility contract, token contrast ratios, and full student and employee journeys through the real UI |
+| `web` (70) | the state machine, the ink-mark accessibility contract, measured token and house-colour contrast, and full student and employee journeys through the real UI |
 
 Tests that matter most: `concurrency.test.ts` (eight OS processes, one ballot),
 `flow.test.tsx` → *"NEVER shows success before the server responds"*, and
@@ -397,6 +397,6 @@ that should never be a reflex.
 | [`docs/voting-logic.md`](docs/voting-logic.md) | eligibility, step sequences, validation, the weighting model, the zero-turnout decision |
 | [`docs/security-model.md`](docs/security-model.md) | threats → controls → tests, identity, ballot secrecy and its limits, what is *not* protected, pre-election checklist |
 | [`docs/data-model.md`](docs/data-model.md) | configuration schema, SQL schema, retention, the Excel workbook shape |
-| [`docs/design-direction.md`](docs/design-direction.md) | "Mesa Departures" — tokens, the split-flap spec, screen-by-screen motion plan |
+| [`docs/design-direction.md`](docs/design-direction.md) | "The Ballot" — tokens, the ink-mark spec, the WebGL sheet's rules, screen-by-screen motion |
 | [`docs/implementation-plan.md`](docs/implementation-plan.md) | the fifteen phases, sequencing rationale, risk register |
-| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | React Bits attribution and dependency licences |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | dependency licences |

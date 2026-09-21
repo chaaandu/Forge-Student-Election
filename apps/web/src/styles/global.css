@@ -2,24 +2,20 @@
 @import './tokens.css';
 @import 'tailwindcss';
 
-/* Expose the tokens to Tailwind utilities so components can use either. */
 @theme inline {
+  --color-paper: var(--color-paper);
+  --color-sheet: var(--color-sheet);
+  --color-edge: var(--color-edge);
+  --color-rule: var(--color-rule);
   --color-ink: var(--color-ink);
-  --color-board: var(--color-board);
-  --color-flap: var(--color-flap);
-  --color-surface: var(--color-surface);
-  --color-surface-hi: var(--color-surface-hi);
-  --color-line: var(--color-line);
-  --color-text: var(--color-text);
-  --color-text-muted: var(--color-text-muted);
-  --color-text-dim: var(--color-text-dim);
-  --color-signal: var(--color-signal);
-  --color-go: var(--color-go);
-  --color-stop: var(--color-stop);
-  --color-brand: var(--color-brand);
-  --font-board: var(--font-board);
-  --font-ui: var(--font-ui);
-  --radius-card: var(--radius-card);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-mark: var(--color-mark);
+  --color-confirm: var(--color-confirm);
+  --color-alert: var(--color-alert);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --radius-sheet: var(--radius-sheet);
   --radius-control: var(--radius-control);
 }
 
@@ -37,22 +33,39 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-ink);
-  color: var(--color-text);
-  font-family: var(--font-ui);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* A kiosk: nothing here should be selectable by a stray double-click, but
-     candidate names and errors must stay readable and copyable by a screen
-     reader, so this is not `user-select: none`. */
   overscroll-behavior: none;
+}
+
+/* The desk: paper fibre plus a barely-there warm vignette, so the page reads as
+   a surface rather than a flat colour. No gradient is visible as a gradient. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--texture-fibre);
+  opacity: 0.35;
+  mix-blend-mode: multiply;
 }
 
 h1,
 h2,
-h3,
+h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
 p,
 figure {
   margin: 0;
@@ -64,7 +77,6 @@ input {
   color: inherit;
 }
 
-/* One focus treatment, everywhere, and it is always visible. */
 :focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -72,8 +84,8 @@ input {
 }
 
 ::selection {
-  background: var(--color-signal);
-  color: var(--color-signal-ink);
+  background: var(--color-mark-wash);
+  color: var(--color-mark-deep);
 }
 
 .sr-only {
@@ -88,38 +100,75 @@ input {
   border: 0;
 }
 
-/* Skip link: the first tab stop on every screen. */
 .skip-link {
   position: absolute;
   left: var(--space-4);
   top: var(--space-4);
   z-index: 100;
   transform: translateY(-200%);
-  background: var(--color-signal);
-  color: var(--color-signal-ink);
+  background: var(--color-ink);
+  color: var(--color-sheet);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-control);
   font-weight: 600;
   text-decoration: none;
-  transition: transform 140ms var(--ease-glide);
+  transition: transform 140ms var(--ease-paper);
 }
 .skip-link:focus {
   transform: translateY(0);
 }
 
-/* The mechanical grain of the board: a faint scanline over the panel only. */
-.board-grain {
+/* ------------------------------------------------------------- paper --- */
+
+/**
+ * A sheet of paper.
+ *
+ * Flat stock, a hairline edge, and a close warm shadow — the shadow a real
+ * sheet casts on a desk, not a drop-shadow effect. Fibre texture is applied
+ * with multiply so it darkens rather than hazes.
+ */
+.sheet {
   position: relative;
+  background-color: var(--color-sheet);
+  border: 1px solid var(--color-edge);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
 }
-.board-grain::after {
+
+.sheet::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    rgb(255 255 255 / 0.014) 0 1px,
-    transparent 1px 3px
-  );
   border-radius: inherit;
+  background-image: var(--texture-fibre);
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+}
+
+/* A printed rule, as on a form. */
+.rule {
+  height: 1px;
+  background: var(--color-rule);
+  border: 0;
+}
+
+/* The perforation above a final action: tear here. */
+.perforation {
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-rule-strong) 0 6px,
+    transparent 6px 13px
+  );
+}
+
+/* Small caps label, as printed on an official form. */
+.label {
+  font-family: var(--font-body);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
 }

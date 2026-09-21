@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import type { Candidate } from '@mesa/election-core';
+import { InkMark } from '@/components/ink/InkMark';
 import { Avatar } from '@/components/ui/Avatar';
 
 export interface CandidateCardProps {
@@ -14,17 +15,21 @@ export interface CandidateCardProps {
 }
 
 /**
- * A candidate.
+ * One line of the ballot.
  *
- * Selection is carried by three simultaneous signals — the amber border, the
- * stamp glyph, and the literal word "Selected" — so it is never communicated
- * by colour alone. The whole card is the target, and `role="radio"` inside the
- * grid's `radiogroup` means a screen reader announces "2 of 3, selected".
+ * Composed like a printed ballot paper rather than a web card: a portrait, then
+ * a ruled row with a box on the left and the candidate's name beside it. You
+ * mark the box. Choosing is an act, not a state change.
+ *
+ * Selection carries three simultaneous signals — the drawn ink mark, the
+ * darkened edge and warm wash, and the literal word "Selected" — so it is
+ * never communicated by colour alone. `role="radio"` inside the grid's
+ * `radiogroup` makes a screen reader announce "2 of 3, selected".
  */
 export function CandidateCard({
   candidate,
   selected,
-  accent = 'var(--color-signal)',
+  accent = 'var(--color-mark)',
   onSelect,
   tabbable,
   onKeyDown,
@@ -41,19 +46,20 @@ export function CandidateCard({
       data-candidate-card={index}
       onClick={() => onSelect(candidate.id)}
       onKeyDown={onKeyDown}
-      className="candidate-card group relative flex cursor-pointer flex-col text-left"
+      className="candidate group flex cursor-pointer flex-col overflow-hidden text-left"
       style={{
-        background: 'var(--color-surface)',
-        border: `2px solid ${selected ? accent : 'var(--color-line)'}`,
-        borderRadius: 'var(--radius-card)',
-        boxShadow: selected ? 'var(--shadow-card)' : 'none',
-        overflow: 'hidden',
-        transition: 'border-color 160ms var(--ease-glide), transform 160ms var(--ease-glide), background-color 160ms',
+        background: selected ? 'var(--color-mark-wash)' : 'var(--color-sheet)',
+        border: `1px solid ${selected ? accent : 'var(--color-edge)'}`,
+        boxShadow: selected ? 'var(--shadow-lift)' : 'var(--shadow-sheet)',
+        borderRadius: 'var(--radius-sheet)',
+        transition:
+          'border-color 180ms var(--ease-paper), background-color 180ms var(--ease-paper), ' +
+          'transform 180ms var(--ease-paper), box-shadow 180ms var(--ease-paper)',
       }}
     >
       <div
         className="relative w-full overflow-hidden"
-        style={{ aspectRatio: '4 / 5', background: 'var(--color-flap)' }}
+        style={{ aspectRatio: '4 / 5', background: 'var(--color-sheet-sunk)' }}
       >
         {showPhoto ? (
           <img
@@ -72,70 +78,67 @@ export function CandidateCard({
             <Avatar name={candidate.name} color={accent} size="lg" />
           </div>
         )}
-
-        {selected && (
-          <span
-            aria-hidden="true"
-            className="stamp absolute right-3 top-3 flex items-center justify-center font-board"
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 'var(--radius-flap)',
-              background: accent,
-              color: 'var(--color-signal-ink)',
-              fontWeight: 700,
-            }}
-          >
-            ✓
-          </span>
-        )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-1 p-4">
-        <p style={{ fontSize: 'var(--text-md)', fontWeight: 550, lineHeight: 1.25 }}>
-          {candidate.name}
-        </p>
-
-        {candidate.tagline && (
-          <p
-            style={{
-              fontSize: 'var(--text-xs)',
-              color: 'var(--color-text-muted)',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {candidate.tagline}
-          </p>
-        )}
-
-        {/* The third signal: the state in words, not just colour and a glyph. */}
-        <p
-          className="mt-auto pt-2 font-board uppercase"
+      {/* The ballot line: box, then name. */}
+      <div
+        className="flex items-start gap-3 p-4"
+        style={{ borderTop: `1px solid ${selected ? `${accent}55` : 'var(--color-rule)'}` }}
+      >
+        <span
+          aria-hidden="true"
+          className="relative mt-0.5 flex shrink-0 items-center justify-center"
           style={{
-            fontSize: 'var(--text-2xs)',
-            letterSpacing: '0.14em',
-            color: selected ? accent : 'var(--color-text-dim)',
+            width: 26,
+            height: 26,
+            borderRadius: 'var(--radius-sm)',
+            border: `1.5px solid ${selected ? accent : 'var(--color-rule-strong)'}`,
+            background: selected ? 'transparent' : 'var(--color-sheet)',
           }}
         >
-          {selected ? '✓ Selected' : 'Select'}
-        </p>
+          <span className="absolute" style={{ transform: 'translate(1px, -1px)' }}>
+            <InkMark marked={selected} size="sm" color={accent} />
+          </span>
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span
+            className="block"
+            style={{ fontSize: 'var(--text-md)', fontWeight: 550, lineHeight: 1.3 }}
+          >
+            {candidate.name}
+          </span>
+
+          {candidate.tagline && (
+            <span
+              className="mt-1 block"
+              style={{
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-ink-soft)',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {candidate.tagline}
+            </span>
+          )}
+
+          {/* The third signal: the state in words. */}
+          <span
+            className="label mt-2 block"
+            style={{ color: selected ? accent : 'var(--color-ink-faint)' }}
+          >
+            {selected ? 'Selected' : 'Choose'}
+          </span>
+        </span>
       </div>
 
       <style>{`
-        .candidate-card:hover { background: var(--color-surface-hi); transform: translateY(-2px); }
-        .candidate-card:active { transform: translateY(0); }
-        .stamp { animation: stamp-land var(--dur-select) var(--ease-mech) both; }
-        @keyframes stamp-land {
-          from { transform: scale(1.4) rotate(6deg); opacity: 0 }
-          to { transform: scale(1) rotate(0deg); opacity: 1 }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .candidate-card:hover { transform: none }
-          .stamp { animation: none }
-        }
+        .candidate:hover { transform: translateY(-2px); border-color: var(--color-rule-strong); }
+        .candidate:active { transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) { .candidate:hover { transform: none } }
       `}</style>
     </div>
   );

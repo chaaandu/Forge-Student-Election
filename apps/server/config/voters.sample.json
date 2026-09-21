@@ -1,0 +1,36 @@
+[
+  {
+    "id": "stu-sample-one",
+    "name": "Sample Student One",
+    "email": "sample.one@example.invalid",
+    "type": "student",
+    "houseId": "samurai"
+  },
+  {
+    "id": "stu-sample-two",
+    "name": "Sample Student Two",
+    "email": "sample.two@example.invalid",
+    "type": "student",
+    "houseId": "knights"
+  },
+  {
+    "id": "stu-sample-three",
+    "name": "Sample Student Three",
+    "email": "sample.three@example.invalid",
+    "type": "student",
+    "houseId": "vikings"
+  },
+  {
+    "id": "stu-sample-four",
+    "name": "Sample Student Four",
+    "email": "sample.four@example.invalid",
+    "type": "student",
+    "houseId": "gladiators"
+  },
+  {
+    "id": "emp-sample-one",
+    "name": "Sample Employee",
+    "email": "sample.emp@example.invalid",
+    "type": "employee"
+  }
+]

@@ -1,59 +1,57 @@
 /**
- * Mesa Departures — design tokens.
+ * Mesa Elections — design tokens.
+ *
+ * Concept: "The Ballot". Paper, ink, and the weight of a mark.
+ *
+ * A vote is a considered, physical act, so the interface is made of paper
+ * rather than screens: warm laid stock, printed rules, and a mark you make in
+ * ink. Everything is light, quiet and tactile. Nothing glows.
  *
  * The single source of truth for colour, type, space, radius, elevation and
- * motion. No component may invent a value; if something is missing, it belongs
- * here. Contrast ratios in the comments are measured, not estimated, and are
- * asserted in src/styles/__tests__/contrast.test.ts.
- *
- * Swapping in real Mesa brand assets means editing --color-brand* and the
- * Wordmark component. Nothing else should need to change.
+ * motion. No component may invent a value. Contrast ratios in the comments are
+ * measured and asserted in src/styles/__tests__/contrast.test.ts.
  */
 
 :root {
-  /* ---------------------------------------------------- board surfaces --- */
-  --color-ink: #0a0e14;
-  --color-board: #121821;
-  --color-flap: #1c2430;
-  --color-flap-edge: #2a3442;
-  --color-surface: #161d28;
-  --color-surface-hi: #1e2735;
-  --color-line: #263040;
+  /* ------------------------------------------------------------ paper --- */
+  --color-paper: #f4f0e6; /* the desk: warm laid stock */
+  --color-sheet: #fcfaf4; /* a sheet resting on it */
+  --color-sheet-sunk: #eee9db; /* recessed areas, input wells */
+  --color-edge: #e4ddcc; /* the shadowed edge of a sheet */
+  --color-rule: #d9d1be; /* hairline rules, as on a printed form */
+  --color-rule-strong: #bdb39c;
 
-  /* ------------------------------------------------------------- text --- */
-  --color-text: #e9e5dd; /* 15.1:1 on ink — body */
-  --color-text-muted: #9aa7b6; /*  7.4:1 on ink — secondary */
-  --color-text-dim: #7b8797; /*  4.6:1 on ink — tertiary */
+  /* -------------------------------------------------------------- ink --- */
+  --color-ink: #1b1a16; /* body text            15.4:1 on paper */
+  --color-ink-soft: #56524a; /* secondary             6.6:1 on paper */
+  --color-ink-faint: #837c6d; /* tertiary, large only  3.4:1 — never body */
 
-  /* ----------------------------------------------------------- signal --- */
-  --color-signal: #ffb020; /* 10.2:1 on ink — board text, primary CTA */
-  --color-signal-hi: #ffc04d;
-  --color-signal-ink: #1a1200; /* text ON amber */
-  --color-go: #3bd671; /*  9.7:1 — confirmed / boarding */
-  --color-stop: #ff6b5e; /*  5.6:1 — errors only */
-  --color-stop-soft: #3a1a18;
+  /* ------------------------------------------------------------- mark --- */
+  /* Terracotta. The colour of the mark you make — and of a mesa at dusk. */
+  --color-mark: #a9462c; /*                        5.1:1 on paper */
+  --color-mark-deep: #8a3620;
+  --color-mark-wash: #f3e0d8; /* the faint stain behind a chosen card */
 
-  /* ------------------------------------------------------------ brand --- */
-  /* Terracotta. Large text and accents only; never body copy. */
-  --color-brand: #c97b4e; /* 4.9:1 */
-  --color-brand-soft: #e8a97d; /* 8.1:1 */
+  --color-confirm: #47664e; /* recorded              6.3:1 on paper */
+  --color-alert: #9b3322; /* errors only           7.3:1 on paper */
+  --color-alert-wash: #f7e2dd;
 
-  /* ---------------------------------------------------------- type --- */
-  --font-board: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-ui: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* ------------------------------------------------------------- type --- */
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --text-2xs: 0.75rem;
   --text-xs: 0.8125rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-md: 1.125rem;
-  --text-lg: 1.3125rem;
-  --text-xl: 1.75rem;
-  --text-2xl: 2.375rem;
-  --text-3xl: 3.25rem;
-  --text-4xl: 4.5rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem; /* a shade larger than usual: read at arm's length in a hall */
+  --text-md: 1.1875rem;
+  --text-lg: 1.4375rem;
+  --text-xl: 1.9375rem;
+  --text-2xl: 2.625rem;
+  --text-3xl: 3.5rem;
 
-  /* ---------------------------------------------------------- space --- */
+  /* ------------------------------------------------------------ space --- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -64,41 +62,44 @@
   --space-8: 64px;
   --space-9: 96px;
 
-  /* ------------------------------------------------- radius & depth --- */
-  --radius-flap: 3px;
-  --radius-control: 8px;
-  --radius-card: 14px;
+  /* -------------------------------------------------- radius & depth --- */
+  /* Paper has corners, not pills. Radii stay small and honest. */
+  --radius-sm: 3px;
+  --radius-control: 6px;
+  --radius-sheet: 10px;
   --radius-pill: 999px;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.28);
-  --shadow-modal: 0 24px 64px rgb(0 0 0 / 0.55);
-  --focus-ring: 0 0 0 2px var(--color-ink), 0 0 0 4px var(--color-signal);
+  /* Shadows are the shadow a sheet casts on a desk: soft, warm, close. */
+  --shadow-sheet: 0 1px 1px rgb(58 48 30 / 0.05), 0 6px 18px -6px rgb(58 48 30 / 0.16);
+  --shadow-lift: 0 2px 4px rgb(58 48 30 / 0.07), 0 16px 34px -12px rgb(58 48 30 / 0.24);
+  --shadow-modal: 0 32px 70px -20px rgb(41 33 20 / 0.42);
+  --focus-ring: 0 0 0 2px var(--color-sheet), 0 0 0 4px var(--color-mark);
 
-  /* --------------------------------------------------------- motion --- */
-  --dur-flap: 110ms;
-  --dur-stagger: 35ms;
-  --dur-select: 160ms;
-  --dur-step: 260ms;
-  --dur-enter: 220ms;
-  --ease-mech: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  /* ----------------------------------------------------------- motion --- */
+  --dur-mark: 420ms; /* the ink stroke drawing itself */
+  --dur-select: 180ms;
+  --dur-step: 300ms;
+  --dur-enter: 260ms;
+  --ease-ink: cubic-bezier(0.32, 0.72, 0.28, 1); /* a pen: quick start, settled finish */
+  --ease-paper: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Minimum interactive target. Large enough for a hurried tap or an
-     unfamiliar trackpad; the brief's kiosks are shared machines. */
+  /* Minimum interactive target. Shared machines, hurried taps. */
   --hit: 44px;
+
+  /* Paper fibre. One inline SVG, no network request, applied at low opacity. */
+  --texture-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
 /**
  * Reduced motion.
  *
- * Every animation collapses to an opacity fade or nothing at all. The
- * experience stays complete — the board still says the same things in the same
- * places, it just stops moving.
+ * The ink mark appears instantly instead of drawing, the 3D sheet is never
+ * loaded at all, and transitions become short fades. Nothing is removed: every
+ * screen says the same things in the same places.
  */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --dur-flap: 0ms;
-    --dur-stagger: 0ms;
+    --dur-mark: 1ms;
     --dur-select: 1ms;
     --dur-step: 1ms;
     --dur-enter: 120ms;
