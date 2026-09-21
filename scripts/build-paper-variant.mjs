@@ -39,9 +39,21 @@
  *                           which is a design award for a fictional studio. All
  *                           helper functions it uses are left exactly as
  *                           authored.
- *   6. Hint copy removed — "Drag to turn it / Hover to light it" is a demo
+ *   6. Hint copy emptied — "Drag to turn it / Hover to light it" is a demo
  *                           affordance. On a voting kiosk the only instruction
  *                           on screen should be how to vote.
+ *
+ *                           The ELEMENT is kept, emptied and hidden, rather
+ *                           than deleted. The authored loop does
+ *                           `hintEl.style.opacity = '1'` every frame; with the
+ *                           node gone that threw, and since
+ *                           requestAnimationFrame is called first, the loop
+ *                           kept rescheduling while everything after the throw
+ *                           — drag, rotation, float, render — never ran. The
+ *                           sheet painted once and froze. Deleting nodes from a
+ *                           vendored document breaks its script; empty them
+ *                           instead. `paperIntegrity.test.ts` now checks every
+ *                           getElementById against the markup.
  *   7. House crests       — inlined as data URIs and drawn onto the sheet, so
  *                           the ballot carries the real house shields. Inlined
  *                           for the same reason as the fonts: the frame is
@@ -196,12 +208,16 @@ replace(
   'group.position.x = sheetOffsetX + Math.sin(t*0.21)*0.05*idle + mouse.x*0.10',
 );
 
-// 4 ── remove the demo hint. On a kiosk the only instruction should be how to
+// 4 ── empty the demo hint. On a kiosk the only instruction should be how to
 //      vote, and that lives on the panel beside the sheet.
+//
+//      Emptied, NOT deleted: the authored animation loop writes
+//      `hintEl.style.opacity` every frame, so removing the node throws inside
+//      the loop and stops the sheet dead.
 replace(
-  'hint removed',
-  '<div id="hint"><b>Drag</b> to turn it<span class="ptr"> &nbsp;·&nbsp; <b>Hover</b> to light it</span></div>\n',
-  '',
+  'hint emptied',
+  '<div id="hint"><b>Drag</b> to turn it<span class="ptr"> &nbsp;·&nbsp; <b>Hover</b> to light it</span></div>',
+  '<div id="hint" style="display:none" aria-hidden="true"></div>',
 );
 
 // 5 ── accent constants

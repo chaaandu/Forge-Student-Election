@@ -117,10 +117,16 @@ describe('the derived Mesa document', () => {
     }
   });
 
-  it('drops the demo hint — the only instruction on a kiosk is how to vote', () => {
-    expect(derived).not.toContain('id="hint"');
+  it('drops the demo hint text — the only instruction on a kiosk is how to vote', () => {
     expect(derived).not.toMatch(/Drag<\/b> to turn/);
     expect(derived).not.toMatch(/Hover<\/b> to light/);
+
+    // The NODE stays. An earlier version of this test asserted its absence,
+    // which is what let the bug through: the authored loop writes
+    // hintEl.style.opacity every frame, so deleting the node threw inside the
+    // loop and froze the sheet. Emptied and hidden, never removed.
+    // See paperIntegrity.test.ts.
+    expect(derived).toMatch(/id="hint"[^>]*style="display:none"/);
   });
 
   it('drops the giant background word, which competed with the panel title', () => {
