@@ -175,11 +175,23 @@ foot of the card, drops the ink mark into the box, and moves the whole card up
 into a deeper offset block. Four simultaneous signals: mark, field, offset, and
 the literal word "Selected". Never colour alone.
 
-**`BallotProgress`** — one elementary form per position *this voter* is eligible
-for. Answering fills it with colour, so the row assembles into a small
-composition as the ballot is completed. Forms and colours cycle on different
-periods so no two neighbours look alike. An employee sees six tokens, never six
-of ten.
+**`BallotProgress`** — one box per position *this voter* is eligible for, marked
+in ink as it is answered, so the row fills in the way a paper ballot does. An
+employee sees six boxes, never six of ten.
+
+An earlier version cycled the four elementary forms here. It was wrong twice
+over. Visually, **equal bounding boxes are not equal weight**: at the same box a
+circle covers 79% of a square, a triangle 50%, a semicircle 39%, so the arc all
+but vanished from the row. More importantly the variety carried no information —
+the form told a voter nothing about the step. The forms belong to the houses,
+where they mean something; here they were decoration dressed as signal. What
+*does* carry information is kept: the house-captain step takes that house's
+colour, so a voter sees their own house waiting at the end of the row.
+
+`Shape` now normalises optical weight wherever forms DO appear together: each is
+scaled by `√(1 / area)` so a triangle and a square carry the same ink. The
+bounding boxes differ instead, which is the correct trade — weight is what the
+eye reads.
 
 **`Burst`** — the celebration. Elementary forms in primaries thrown outward and
 settling, deliberately *not* confetti: confetti reads as a prize, and nothing
@@ -285,6 +297,22 @@ see. Nothing rewards picking one person over another, and nothing implies a
   forms, leader highlighted. This is the real win: it drives turnout in the room
   without touching the ballot. It shows *who voted*, never *what for*, and a
   test asserts that payload contains no candidate id.
+
+## 6b. Every position is the same size
+
+The candidate grid uses a **fixed card width**, centred — not a stretching one.
+
+It used `repeat(auto-fit, minmax(214px, 1fr))`, which shares the row out between
+however many candidates stand. Four gave sensible cards; two gave two very wide
+ones — and since the portrait is 4:5, a wider card is a **taller** card. So the
+positions with the fewest candidates produced the tallest pages, and the layout
+resized under the voter at every step.
+
+One width (`clamp(158px, 19vw, 200px)`) makes a card identical on every
+position, so every plate is the same height and the page stops jumping. Two
+candidates sit centred with air either side, which reads as deliberate rather
+than stretched. The upper bound keeps four across inside the plate; the lower
+keeps a card usable on a narrow screen.
 
 ## 7. Open source: what was evaluated and what was taken
 

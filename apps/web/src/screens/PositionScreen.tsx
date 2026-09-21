@@ -12,6 +12,8 @@ export interface PositionScreenProps {
   candidates: Candidate[];
   selections: Record<string, string>;
   house?: House;
+  /** All houses, so the progress row can tint the house step. */
+  houseById?: Map<string, House>;
   direction: 1 | -1;
   isEditing: boolean;
   onSelect: (candidateId: string) => void;
@@ -37,6 +39,7 @@ export function PositionScreen({
   candidates,
   selections,
   house,
+  houseById,
   direction,
   isEditing,
   onSelect,
@@ -87,7 +90,12 @@ export function PositionScreen({
               ? `Choose one candidate for ${house.name} house captain. You vote for your own house only.`
               : 'Choose one candidate.'}
           </p>
-          <BallotProgress steps={steps} currentIndex={gateIndex} selections={selections} />
+          <BallotProgress
+            steps={steps}
+            currentIndex={gateIndex}
+            selections={selections}
+            {...(houseById ? { houseById } : {})}
+          />
         </div>
 
         <div className="px-6 py-8 sm:px-8">

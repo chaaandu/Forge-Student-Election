@@ -346,6 +346,7 @@ export function App() {
             candidates={(state.election?.candidates ?? []).filter((c) => c.positionId === step.id)}
             selections={state.selections}
             {...(stepHouse ? { house: stepHouse } : {})}
+            houseById={houseById}
             direction={state.direction}
             isEditing={state.returnToReview}
             onSelect={(candidateId: string) =>
