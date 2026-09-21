@@ -273,12 +273,20 @@ export function App() {
 
   // ------------------------------------------------------------ render ---
   return (
-    <div className="min-h-full px-4 py-6 sm:px-6 sm:py-10">
+    /*
+      Equal padding on all four sides, and the page is a flex column filling the
+      viewport. An earlier version used `px-4 py-6 sm:px-6 sm:py-10` (24px sides
+      against 40px top and bottom) with the welcome screen sized by
+      `calc(100vh - 3rem)` — a 48px allowance against 80px of actual padding. So
+      the frame was uneven AND overflowed by 32px, which ate the bottom margin.
+      Letting the child grow with `flex-1` removes the magic number entirely.
+    */
+    <div className="flex min-h-screen flex-col p-4 sm:p-6">
       <a href="#main" className="skip-link">
         Skip to main content
       </a>
 
-      <main id="main" tabIndex={-1} className="outline-none">
+      <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         {state.phase === 'LOADING' && (
           <div className="mx-auto w-full max-w-lg">
             <Panel>

@@ -29,7 +29,9 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
   const hasHouseContests = election.positions.some((p) => p.kind === 'house-captain');
 
   return (
-    <div className="welcome relative flex min-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden">
+    // `flex-1`, not a viewport calc: the page is a flex column with equal
+    // padding, so the panel simply fills what is left. Nothing to keep in sync.
+    <div className="welcome relative flex w-full flex-1 flex-col overflow-hidden">
       {/* Static artwork first, so the screen is never empty or white. */}
       <div
         className="absolute inset-0"
