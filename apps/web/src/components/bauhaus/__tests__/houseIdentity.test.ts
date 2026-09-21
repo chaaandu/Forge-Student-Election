@@ -2,7 +2,7 @@
 //
 // Reads the live election configuration from disk, so these assertions check
 // what the app actually ships rather than a fixture that can drift.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { House } from '@mesa/election-core';
@@ -60,9 +60,11 @@ describe('house identity matches the crests', () => {
     }
   });
 
-  it('gives every house a crest', () => {
+  it('gives every house a crest file that exists on disk', () => {
     for (const house of config.houses) {
-      expect(house.crestUrl, house.name).toMatch(/^\/houses\/[a-z]+\.(svg|png|jpg|jpeg|webp)$/);
+      expect(house.crestUrl, house.name).toMatch(/^\/houses\/[a-z]+\.(png|jpg|jpeg|webp|svg)$/);
+      const file = fileURLToPath(new URL(`../../../../public${house.crestUrl}`, import.meta.url));
+      expect(existsSync(file), `${house.name}: ${house.crestUrl} is missing`).toBe(true);
     }
   });
 });

@@ -33,20 +33,34 @@
  *                           which is a design award for a fictional studio. All
  *                           helper functions it uses are left exactly as
  *                           authored.
- *   6. Font-ready retexture — the authored file builds the CanvasTexture
- *                           synchronously, so a late-arriving webfont bakes the
- *                           fallback into the texture permanently. We redraw
- *                           once document.fonts settles.
+ *   6. Hint copy removed — "Drag to turn it / Hover to light it" is a demo
+ *                           affordance. On a voting kiosk the only instruction
+ *                           on screen should be how to vote.
+ *   7. House crests       — inlined as data URIs and drawn onto the sheet, so
+ *                           the ballot carries the real house shields. Inlined
+ *                           for the same reason as the fonts: the frame is
+ *                           sandboxed with an opaque origin and cannot fetch
+ *                           /houses/*.png.
+ *   8. Async retexture    — the authored file builds the CanvasTexture
+ *                           synchronously, so a late webfont bakes the fallback
+ *                           in permanently. We redraw once fonts AND crests
+ *                           have settled.
  *
  * House names and colours are read from the live election configuration, so the
  * artwork cannot drift from the ballot.
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 /** Inline a font file as a data URI, so the frame makes no network request. */
 function dataUri(path) {
   return `data:font/woff2;base64,${readFileSync(path).toString('base64')}`;
+}
+
+/** Inline a crest. Same reason: an opaque-origin frame cannot fetch our files. */
+function imageUri(path) {
+  const ext = path.endsWith('.png') ? 'png' : path.endsWith('.webp') ? 'webp' : 'jpeg';
+  return `data:image/${ext};base64,${readFileSync(path).toString('base64')}`;
 }
 
 const AUTHORED = 'apps/web/vendor/threeui/3d-paper/sources/3d-paper-site-of-the-year.html';
@@ -73,11 +87,16 @@ function lift(hex, amount) {
   return `#${[mix(r), mix(g), mix(b)].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
-const houses = config.houses.map((h) => ({
-  name: h.name.toUpperCase(),
-  shape: h.shape ?? 'square',
-  colour: lift(h.color, 0.22),
-}));
+const houses = config.houses.map((h) => {
+  const file = h.crestUrl ? `apps/web/public${h.crestUrl}` : null;
+  return {
+    id: h.id,
+    name: h.name.toUpperCase(),
+    shape: h.shape ?? 'square',
+    colour: lift(h.color, 0.22),
+    crest: file && existsSync(file) ? imageUri(file) : null,
+  };
+});
 
 const positions = config.positions.length;
 const candidates = config.candidates.filter((c) => c.active).length;
@@ -123,11 +142,12 @@ replace(
 replace('background word', '<div id="bg"><h1>NOCTURNE</h1></div>', '<div id="bg"><h1>MESA</h1></div>');
 replace('background word tint', 'color:rgba(206,242,168,.115);', 'color:rgba(255,194,14,.10);');
 
-// 4 ── hint copy
+// 4 ── remove the demo hint. On a kiosk the only instruction should be how to
+//      vote, and that lives on the panel beside the sheet.
 replace(
-  'hint',
-  '<b>Drag</b> to turn it<span class="ptr"> &nbsp;·&nbsp; <b>Hover</b> to light it</span>',
-  '<b>Drag</b> to turn the ballot<span class="ptr"> &nbsp;·&nbsp; <b>Hover</b> to light it</span>',
+  'hint removed',
+  '<div id="hint"><b>Drag</b> to turn it<span class="ptr"> &nbsp;·&nbsp; <b>Hover</b> to light it</span></div>\n',
+  '',
 );
 
 // 5 ── accent constants
@@ -142,8 +162,30 @@ if (drawStart < 0 || drawEnd < 0 || drawEnd < drawStart) {
 }
 
 const houseRows = houses
-  .map((h) => `['${h.name}','${h.colour}','${h.shape}']`)
+  .map((h) => `['${h.id}','${h.name}','${h.colour}','${h.shape}']`)
   .join(',');
+
+/**
+ * Crests, inlined and preloaded.
+ *
+ * The authored file builds its texture synchronously, so the first draw uses
+ * the elementary forms; the redraw below swaps in the shields once they decode.
+ */
+const crestScript = `
+const CRESTS = {${houses
+  .filter((h) => h.crest)
+  .map((h) => `'${h.id}':'${h.crest}'`)
+  .join(',\n  ')}};
+const CREST_IMG = {};
+const crestsReady = Promise.all(Object.keys(CRESTS).map(function(k){
+  return new Promise(function(res){
+    var im = new Image();
+    im.onload = function(){ CREST_IMG[k] = im; res(); };
+    im.onerror = function(){ res(); };
+    im.src = CRESTS[k];
+  });
+}));
+`;
 
 const drawMesa = `function drawGame(ctx){
   const g=ctx.createLinearGradient(0,0,TW,TH);
@@ -201,57 +243,66 @@ const drawMesa = `function drawGame(ctx){
 
   // houses — colour and elementary form, matching the ballot
   const houses=[${houseRows}];
-  houses.forEach(([name,col,form],i)=>{
-    const y=968+i*72;
-    ctx.save(); ctx.translate(140,y-8); ctx.fillStyle=col;
-    if(form==='circle'){ ctx.beginPath(); ctx.arc(0,0,17,0,7); ctx.fill(); }
-    else if(form==='triangle'){ ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(17,15); ctx.lineTo(-17,15); ctx.closePath(); ctx.fill(); }
-    else if(form==='arc'){ ctx.beginPath(); ctx.arc(0,12,18,Math.PI,0); ctx.closePath(); ctx.fill(); }
-    else { ctx.fillRect(-16,-16,32,32); }
-    ctx.restore();
-    ctx.fillStyle='rgba(243,247,238,.78)'; ctx.font='400 22px '+MONO;
-    ctx.fillText(name,186,y);
-    ctx.fillStyle='rgba(243,247,238,.08)'; rr(ctx,430,y-13,TW-560,16,8); ctx.fill();
-    ctx.fillStyle=col; rr(ctx,430,y-13,TW-560,16,8); ctx.fill();
+  houses.forEach(([id,name,col,form],i)=>{
+    const y=980+i*84;
+    // The real shield once it has decoded; the elementary form until then.
+    const crest = CREST_IMG[id];
+    if (crest) {
+      const ch2=68, cw=ch2*(crest.width/crest.height);
+      ctx.drawImage(crest, 140-cw/2, y-ch2*0.62, cw, ch2);
+    } else {
+      ctx.save(); ctx.translate(140,y-8); ctx.fillStyle=col;
+      if(form==='circle'){ ctx.beginPath(); ctx.arc(0,0,20,0,7); ctx.fill(); }
+      else if(form==='triangle'){ ctx.beginPath(); ctx.moveTo(0,-21); ctx.lineTo(20,18); ctx.lineTo(-20,18); ctx.closePath(); ctx.fill(); }
+      else if(form==='arc'){ ctx.beginPath(); ctx.arc(0,14,21,Math.PI,0); ctx.closePath(); ctx.fill(); }
+      else { ctx.fillRect(-19,-19,38,38); }
+      ctx.restore();
+    }
+    ctx.fillStyle='rgba(243,247,238,.82)'; ctx.font='400 22px '+MONO;
+    ctx.fillText(name,196,y);
+    ctx.fillStyle='rgba(243,247,238,.08)'; rr(ctx,470,y-13,TW-600,16,8); ctx.fill();
+    ctx.fillStyle=col; rr(ctx,470,y-13,TW-600,16,8); ctx.fill();
   });
 
   ctx.strokeStyle='rgba(243,247,238,.12)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(120,1276); ctx.lineTo(TW-120,1276); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(120,1330); ctx.lineTo(TW-120,1330); ctx.stroke();
 
-  ctx.fillStyle=LIME; ctx.font='700 26px '+MONO; track(ctx,'MESA.ELECTIONS',120,1332,4,false);
+  ctx.fillStyle=LIME; ctx.font='700 26px '+MONO; track(ctx,'MESA.ELECTIONS',120,1386,4,false);
   ctx.fillStyle='rgba(243,247,238,.46)'; ctx.font='400 20px '+MONO;
-  ctx.fillText('STUDENTS 75%  //  EMPLOYEES 25%',120,1374);
+  ctx.fillText('STUDENTS 75%  //  EMPLOYEES 25%',120,1428);
 
   for(let i=0;i<${positions};i++){
     ctx.fillStyle='rgba(255,194,14,.85)';
-    ctx.fillRect(120+i*30,1420,18,18);
+    ctx.fillRect(120+i*30,1474,18,18);
   }
   ctx.fillStyle='rgba(243,247,238,.40)'; ctx.font='400 20px '+MONO;
-  const d='FORGE C27'; ctx.fillText(d, TW-120-ctx.measureText(d).width, 1436);
+  const d='FORGE C27'; ctx.fillText(d, TW-120-ctx.measureText(d).width, 1490);
 }
 
 `;
 
-out = out.slice(0, drawStart) + drawMesa + out.slice(drawEnd);
+out = out.slice(0, drawStart) + crestScript + '\n' + drawMesa + out.slice(drawEnd);
 replacements.push('drawGame');
 
 // 7 ── redraw once webfonts settle, so the texture never bakes the fallback
 replace(
-  'font-ready retexture',
+  'async retexture',
   `  transparent: true, alphaTest: 0.42, opacity: 1
 });`,
   `  transparent: true, alphaTest: 0.42, opacity: 1
 });
-// The texture above is built synchronously, so a webfont that arrives a moment
-// later would be baked out of it permanently. Redraw once fonts have settled.
-if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(function(){
-    var fresh = makeCertTexture();
-    var old = mat.map;
-    mat.map = fresh; mat.needsUpdate = true;
-    if (old && old.dispose) old.dispose();
-  }).catch(function(){});
-}`,
+// The texture above is built synchronously, so a webfont — or a crest — that
+// arrives a moment later would be baked out of it permanently. Redraw once both
+// have settled.
+Promise.all([
+  (document.fonts && document.fonts.ready) || Promise.resolve(),
+  crestsReady
+]).then(function(){
+  var fresh = makeCertTexture();
+  var old = mat.map;
+  mat.map = fresh; mat.needsUpdate = true;
+  if (old && old.dispose) old.dispose();
+}).catch(function(){});`,
 );
 
 writeFileSync(OUT, out);

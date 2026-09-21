@@ -34,10 +34,10 @@ const employees = JSON.parse(readFileSync('/tmp/employees.json', 'utf8'));
  * as text at full strength.
  */
 const HOUSES = [
-  { id: 'samurai', name: 'Samurai', color: '#2D62AE', shape: 'circle', crestUrl: '/houses/samurai.svg' },
-  { id: 'knights', name: 'Knights', color: '#BE3A2B', shape: 'square', crestUrl: '/houses/knights.svg' },
-  { id: 'gladiators', name: 'Gladiators', color: '#6E9F3F', shape: 'arc', crestUrl: '/houses/gladiators.svg' },
-  { id: 'vikings', name: 'Vikings', color: '#EDB825', shape: 'triangle', crestUrl: '/houses/vikings.svg' },
+  { id: 'samurai', name: 'Samurai', color: '#2D62AE', shape: 'circle', crestUrl: '/houses/samurai.png' },
+  { id: 'knights', name: 'Knights', color: '#BE3A2B', shape: 'square', crestUrl: '/houses/knights.png' },
+  { id: 'gladiators', name: 'Gladiators', color: '#6E9F3F', shape: 'arc', crestUrl: '/houses/gladiators.png' },
+  { id: 'vikings', name: 'Vikings', color: '#EDB825', shape: 'triangle', crestUrl: '/houses/vikings.png' },
 ];
 
 /**

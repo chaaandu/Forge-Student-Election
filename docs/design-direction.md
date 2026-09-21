@@ -142,10 +142,17 @@ the elementary form when the image is missing or fails. So a house is
 identifiable three ways over, and never by colour alone: a voter who cannot
 separate red from green still sees a square against an arc.
 
-Crests are dropped into `assets/house-logos/<id>.png` and imported with
-`npm run houses:import`; a partial set is fine, and anything missing keeps its
-placeholder. Colour is declared rather than sampled by code, because a
-dominant-colour pass over a black shield returns black.
+Crests are **PNG** with a transparent background, since they sit on both the
+light plates and the dark welcome screen. Drop them into
+`assets/house-logos/<id>.png` and run `npm run houses:import`; a partial set is
+fine, and anything missing gets a drawn PNG placeholder in the same shape and
+proportions, so the layout it occupies is the layout the real crest will occupy.
+Colour is declared rather than sampled by code, because a dominant-colour pass
+over a black shield returns black.
+
+The crests appear on the welcome screen, the position header of a house
+contest, the identity pass, the review rows, the monitor lanes — and on the
+ballot sheet itself.
 
 A house contest takes that house's field across the whole plate header with its
 crest beside the position, so a student arrives at a screen that is
@@ -208,7 +215,9 @@ that the engine was not touched.
 | Background word | NOCTURNE → MESA |
 | Accents | lime/cyan → the Mesa yellow and a blue lifted for the dark sheet |
 | Fonts inlined as data URIs | The authored file fetches Google Fonts at runtime. A hall kiosk must not depend on a third-party request mid-election. Inlining also sidesteps CORS: the frame is sandboxed *without* `allow-same-origin`, so it has an opaque origin and a same-origin font file would be refused too. |
-| Redraw on `document.fonts.ready` | The authored file builds the `CanvasTexture` synchronously, so a late webfont bakes the fallback into the texture permanently. |
+| House crests inlined and drawn onto the sheet | The ballot carries the four shields. Inlined for the same opaque-origin reason as the fonts — the frame cannot fetch `/houses/*.png` either. |
+| Hint copy removed | "Drag to turn it · Hover to light it" is a demo affordance. On a voting kiosk the only instruction on screen should be how to vote; the sheet still responds to drag and hover for anyone who tries. |
+| Redraw once fonts **and** crests settle | The authored file builds the `CanvasTexture` synchronously, so a late webfont — or a crest still decoding — would be baked out of it permanently. The first draw uses the elementary forms; the redraw swaps in the shields. |
 
 ### Two deliberate deviations from the authored integration
 

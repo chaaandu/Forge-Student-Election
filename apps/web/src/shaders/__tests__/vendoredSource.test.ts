@@ -93,8 +93,34 @@ describe('the derived Mesa document', () => {
     }
   });
 
-  it('redraws once webfonts settle, so the texture never bakes a fallback', () => {
+  it('redraws once fonts and crests settle, so the texture never bakes a fallback', () => {
     expect(derived).toContain('document.fonts.ready');
+    expect(derived).toContain('crestsReady');
+  });
+
+  it('carries the house crests, inlined and drawn onto the sheet', () => {
+    const config = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL('../../../../server/config/election.config.json', import.meta.url)),
+        'utf8',
+      ),
+    ) as { houses: { id: string }[] };
+
+    // Inlined for the same reason as the fonts: an opaque-origin frame cannot
+    // fetch /houses/*.png.
+    const inlined = derived.match(/data:image\/png;base64/g) ?? [];
+    expect(inlined.length).toBe(config.houses.length);
+    expect(derived).toContain('ctx.drawImage(crest');
+
+    for (const house of config.houses) {
+      expect(derived, house.id).toContain(`'${house.id}':'data:image/png;base64,`);
+    }
+  });
+
+  it('drops the demo hint — the only instruction on a kiosk is how to vote', () => {
+    expect(derived).not.toContain('id="hint"');
+    expect(derived).not.toMatch(/Drag<\/b> to turn/);
+    expect(derived).not.toMatch(/Hover<\/b> to light/);
   });
 
   it('carries the authored engine byte-for-byte', () => {

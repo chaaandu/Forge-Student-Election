@@ -1,61 +1,78 @@
 #!/usr/bin/env node
 /**
- * Import the real house crests.
+ * Import the real house crests, or draw placeholders for any that are missing.
  *
- * Drop one image per house into `assets/house-logos/`, named by house id:
+ * Drop one PNG per house into `assets/house-logos/`, named by house id:
  *
- *     assets/house-logos/samurai.png
- *     assets/house-logos/knights.png
- *     assets/house-logos/gladiators.png
- *     assets/house-logos/vikings.png
+ *     assets/house-logos/samurai.png      blue kabuto
+ *     assets/house-logos/knights.png      red great helm
+ *     assets/house-logos/gladiators.png   green spartan helm
+ *     assets/house-logos/vikings.png      gold horned helm
  *
- * PNG, JPG, WebP or SVG. Then run `npm run houses:import`. The files are copied
- * into `apps/web/public/houses/` and `election.config.json` is updated to point
- * at them; anything missing keeps its drawn placeholder, so a partial set is
- * fine and the interface never breaks.
+ * Then run `npm run houses:import`. PNG is the expected format — transparent
+ * background, so the crest sits on both the light plates and the dark welcome
+ * screen. JPG, WebP and SVG are accepted too.
  *
- * Colour is NOT read from the image. It is declared in
- * `scripts/build-election-data.mjs`, sampled from the crest by eye, because a
- * dominant-colour algorithm on a black shield returns black. If a crest changes
+ * Any house without a file gets a drawn PNG placeholder in the same shape and
+ * proportions, so a partial set is fine and the interface never shows a gap.
+ *
+ * Colour is NOT read from the image: a dominant-colour pass over a black shield
+ * returns black. Each house's colour is declared in
+ * `scripts/build-election-data.mjs`, sampled from its helm. If a crest changes
  * colour, change it there and re-run `npm run data:build`.
  */
-import { copyFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
 const DROP = 'assets/house-logos';
 const PUBLIC = 'apps/web/public/houses';
 const CONFIG = 'apps/server/config/election.config.json';
-const ALLOWED = ['.svg', '.png', '.jpg', '.jpeg', '.webp'];
+const ACCEPTED = ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
+const PLACEHOLDER_SIZE = 240;
+
+mkdirSync(PUBLIC, { recursive: true });
 
 const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
 const available = existsSync(DROP) ? readdirSync(DROP) : [];
 
-let imported = 0;
-const missing = [];
+const real = [];
+const drawn = [];
 
 for (const house of config.houses) {
   const match = available.find(
-    (file) => file.toLowerCase().startsWith(`${house.id}.`) && ALLOWED.includes(extname(file).toLowerCase()),
+    (file) =>
+      file.toLowerCase().startsWith(`${house.id}.`) && ACCEPTED.includes(extname(file).toLowerCase()),
   );
 
-  if (!match) {
-    missing.push(house.id);
+  if (match) {
+    const ext = extname(match).toLowerCase();
+    copyFileSync(join(DROP, match), join(PUBLIC, `${house.id}${ext}`));
+    house.crestUrl = `/houses/${house.id}${ext}`;
+    real.push(`${house.name} ← ${match}`);
     continue;
   }
 
-  const ext = extname(match).toLowerCase();
-  copyFileSync(join(DROP, match), join(PUBLIC, `${house.id}${ext}`));
-  house.crestUrl = `/houses/${house.id}${ext}`;
-  imported += 1;
-  console.log(`  ✓ ${house.name.padEnd(12)} ${match}  →  ${house.crestUrl}`);
+  // No artwork yet: draw a shield in the house's colour and elementary form.
+  execFileSync('python3', [
+    'scripts/generate-crest-placeholder.py',
+    join(PUBLIC, `${house.id}.png`),
+    house.color,
+    house.shape ?? 'square',
+    String(PLACEHOLDER_SIZE),
+  ]);
+  house.crestUrl = `/houses/${house.id}.png`;
+  drawn.push(house.name);
 }
 
 writeFileSync(CONFIG, `${JSON.stringify(config, null, 2)}\n`);
 
-console.log(`\n${imported} of ${config.houses.length} crests imported.`);
-if (missing.length > 0) {
-  console.log(
-    `  Still using drawn placeholders: ${missing.join(', ')}\n` +
-      `  Drop ${missing.map((id) => `${DROP}/${id}.png`).join(', ')} and re-run.`,
-  );
+if (real.length > 0) {
+  console.log('Real crests:');
+  for (const line of real) console.log(`  ✓ ${line}`);
 }
+if (drawn.length > 0) {
+  console.log(`Placeholders drawn: ${drawn.join(', ')}`);
+  console.log(`  Drop ${drawn.map((n) => `${DROP}/${n.toLowerCase()}.png`).join(', ')} and re-run.`);
+}
+console.log('\nRemember to rebuild the ballot artwork: npm run paper:build');
