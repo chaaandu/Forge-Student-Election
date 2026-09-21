@@ -16,18 +16,28 @@ const students = JSON.parse(readFileSync('/tmp/students.json', 'utf8'));
 const employees = JSON.parse(readFileSync('/tmp/employees.json', 'utf8'));
 
 /**
- * Houses, as Bauhaus fields.
+ * Houses.
  *
- * Colour AND form, following Kandinsky's correspondence (red square, blue
- * circle, yellow triangle) with the arc as the fourth. Identity never rests on
- * colour alone. Text-safe variants of each colour are derived at runtime by
- * apps/web/src/lib/color.ts and asserted in the contrast test.
+ * Colour and form are taken from the real crests, not chosen: each shield is a
+ * black field carrying a coloured helm, and the colour below is sampled from
+ * that helm. An earlier version of this file had all four rotated — Samurai
+ * red, Knights blue — which the crests corrected.
+ *
+ * The forms still follow Kandinsky's correspondence exactly (red square, blue
+ * circle, yellow triangle, with the arc as the fourth), because the crest
+ * colours happen to land on the three primaries plus a green. Identity
+ * therefore never rests on colour alone: a voter who cannot separate red from
+ * green still sees a square against an arc.
+ *
+ * Text-safe variants are derived at runtime by apps/web/src/lib/color.ts and
+ * asserted in the contrast test — the gold and the green are both unreadable
+ * as text at full strength.
  */
 const HOUSES = [
-  { id: 'samurai', name: 'Samurai', color: '#DE2B1F', shape: 'square' },
-  { id: 'knights', name: 'Knights', color: '#1B4D9B', shape: 'circle' },
-  { id: 'gladiators', name: 'Gladiators', color: '#FFC20E', shape: 'triangle' },
-  { id: 'vikings', name: 'Vikings', color: '#1E7A4C', shape: 'arc' },
+  { id: 'samurai', name: 'Samurai', color: '#2D62AE', shape: 'circle', crestUrl: '/houses/samurai.svg' },
+  { id: 'knights', name: 'Knights', color: '#BE3A2B', shape: 'square', crestUrl: '/houses/knights.svg' },
+  { id: 'gladiators', name: 'Gladiators', color: '#6E9F3F', shape: 'arc', crestUrl: '/houses/gladiators.svg' },
+  { id: 'vikings', name: 'Vikings', color: '#EDB825', shape: 'triangle', crestUrl: '/houses/vikings.svg' },
 ];
 
 /**

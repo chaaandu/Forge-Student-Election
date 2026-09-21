@@ -203,7 +203,7 @@ function drawGame(ctx){
   ctx.fillStyle=bar; rr(ctx,120,860,TW-240,10,5); ctx.fill();
 
   // houses — colour and elementary form, matching the ballot
-  const houses=[['SAMURAI','#e55a50','square'],['KNIGHTS','#4d74b1','circle'],['GLADIATORS','#ffcf43','triangle'],['VIKINGS','#509773','arc']];
+  const houses=[['SAMURAI','#5b85c0','circle'],['KNIGHTS','#cc655a','square'],['GLADIATORS','#8eb469','arc'],['VIKINGS','#f1c855','triangle']];
   houses.forEach(([name,col,form],i)=>{
     const y=968+i*72;
     ctx.save(); ctx.translate(140,y-8); ctx.fillStyle=col;

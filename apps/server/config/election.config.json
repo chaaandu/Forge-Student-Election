@@ -13,26 +13,30 @@
     {
       "id": "samurai",
       "name": "Samurai",
-      "color": "#DE2B1F",
-      "shape": "square"
+      "color": "#2D62AE",
+      "shape": "circle",
+      "crestUrl": "/houses/samurai.svg"
     },
     {
       "id": "knights",
       "name": "Knights",
-      "color": "#1B4D9B",
-      "shape": "circle"
+      "color": "#BE3A2B",
+      "shape": "square",
+      "crestUrl": "/houses/knights.svg"
     },
     {
       "id": "gladiators",
       "name": "Gladiators",
-      "color": "#FFC20E",
-      "shape": "triangle"
+      "color": "#6E9F3F",
+      "shape": "arc",
+      "crestUrl": "/houses/gladiators.svg"
     },
     {
       "id": "vikings",
       "name": "Vikings",
-      "color": "#1E7A4C",
-      "shape": "arc"
+      "color": "#EDB825",
+      "shape": "triangle",
+      "crestUrl": "/houses/vikings.svg"
     }
   ],
   "positions": [

@@ -66,13 +66,21 @@ export function adminRoutes(ctx: AppContext): Router {
 
     const byHouse: Record<
       string,
-      { name: string; color: string; shape: string; eligible: number; voted: number }
+      {
+        name: string;
+        color: string;
+        shape: string;
+        crestUrl: string | null;
+        eligible: number;
+        voted: number;
+      }
     > = {};
     for (const house of ctx.config.houses) {
       byHouse[house.id] = {
         name: house.name,
         color: house.color,
         shape: house.shape ?? 'square',
+        crestUrl: house.crestUrl ?? null,
         eligible: 0,
         voted: 0,
       };

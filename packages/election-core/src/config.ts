@@ -71,6 +71,7 @@ const houseSchema = z.object({
   name: z.string().min(1).max(100),
   color: hexColor,
   shape: z.enum(HOUSE_SHAPES).optional(),
+  crestUrl: photoUrl.optional(),
   motto: z.string().max(200).optional(),
 });
 

@@ -1,6 +1,6 @@
 import type { House, Position } from '@mesa/election-core';
 import type { VoterProfile } from '@/lib/api';
-import { Shape } from '@/components/bauhaus/Shape';
+import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
@@ -58,7 +58,7 @@ export function IdentityConfirmScreen({
               {voter.email}
             </p>
           </div>
-          {house && <Shape form={house.shape ?? 'square'} size={48} color={onField} />}
+          {house && <HouseCrest house={house} size={64} />}
         </div>
 
         <div className="px-6 py-7 sm:px-8">

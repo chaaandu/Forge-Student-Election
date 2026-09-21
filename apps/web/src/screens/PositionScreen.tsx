@@ -1,7 +1,7 @@
 import type { Candidate, House, Position } from '@mesa/election-core';
 import { BallotProgress } from '@/components/election/BallotProgress';
 import { CandidateGrid } from '@/components/election/CandidateGrid';
-import { Shape } from '@/components/bauhaus/Shape';
+import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Button } from '@/components/ui/Button';
 import { inkOn } from '@/lib/color';
 
@@ -67,7 +67,7 @@ export function PositionScreen({
             {String(gateIndex + 1).padStart(2, '0')}
           </span>
 
-          {house && <Shape form={house.shape ?? 'square'} size={34} color={onField} />}
+          {house && <HouseCrest house={house} size={52} />}
 
           <h1 className="poster min-w-0 flex-1" style={{ fontSize: 'clamp(1.6rem, 4.6vw, 2.75rem)' }}>
             {step.title}

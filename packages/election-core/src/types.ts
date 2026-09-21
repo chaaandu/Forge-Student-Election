@@ -69,6 +69,12 @@ export interface House {
   readonly color: string;
   /** The house's elementary form. Defaults to `square` when unset. */
   readonly shape?: HouseShape;
+  /**
+   * The house crest. Root-relative path or https URL, validated like a
+   * candidate photo. Optional: without it the interface falls back to a drawn
+   * shield carrying the house's elementary form.
+   */
+  readonly crestUrl?: string;
   readonly motto?: string;
 }
 

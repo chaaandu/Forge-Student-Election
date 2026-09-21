@@ -32,7 +32,9 @@
     "verify:no-seed": "node scripts/verify-no-seed.mjs",
     "preflight": "npm run verify && npm run verify:no-seed",
     "clean:emit": "find apps/*/src packages/*/src \\( -name '*.js' -o -name '*.js.map' -o -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name 'vite-env.d.ts' -delete",
-    "paper:build": "node scripts/build-paper-variant.mjs"
+    "paper:build": "node scripts/build-paper-variant.mjs",
+    "houses:import": "node scripts/import-house-logos.mjs",
+    "data:build": "node scripts/build-election-data.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

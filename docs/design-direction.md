@@ -115,22 +115,41 @@ number at 4 rem gives the sequence a sense of progress that a breadcrumb cannot.
 The overshoot curve is the whole feel: shapes and cards **snap** into place
 rather than easing, like a printer's block landing. No transition gates a click.
 
-## 3. House identity: colour **and** form
+## 3. House identity: crest, colour **and** form
 
-| House | Field | Form | Kandinsky |
-| --- | --- | --- | --- |
-| Samurai | red `#DE2B1F` | square | red ↔ square |
-| Knights | blue `#1B4D9B` | circle | blue ↔ circle |
-| Gladiators | yellow `#FFC20E` | triangle | yellow ↔ triangle |
-| Vikings | green `#1E7A4C` | arc | the fourth form |
+Each house has a real crest — a black shield carrying a coloured helm. The
+colour in the configuration is sampled from that helm, not chosen:
 
-`shape` is part of the election configuration, not hard-coded, and the contrast
-test asserts all four are distinct. A voter who cannot distinguish red from
-green still sees a square against an arc — and the house name is written beside
-it wherever it matters.
+| House | Crest | Field | Form | Kandinsky |
+| --- | --- | --- | --- | --- |
+| Samurai | blue kabuto | `#2D62AE` | circle | blue ↔ circle |
+| Knights | red great helm | `#BE3A2B` | square | red ↔ square |
+| Vikings | gold horned helm | `#EDB825` | triangle | yellow ↔ triangle |
+| Gladiators | green spartan helm | `#6E9F3F` | arc | the fourth form |
 
-A house contest takes that house's field across the whole plate header, so a
-student arrives at a screen that is unmistakably theirs.
+> **This was wrong until the crests arrived.** An earlier configuration had all
+> four rotated — Samurai red, Knights blue, Gladiators yellow, Vikings green —
+> invented before anyone had seen the artwork. Nothing in the system could have
+> caught it: the colours were valid, distinct and passed contrast. Only the
+> source material revealed it. `houseIdentity.test.ts` now pins each house to
+> the hue family of its crest so it cannot drift back.
+
+Pleasingly, correcting the colours left Kandinsky's correspondence intact — the
+forms simply moved with them.
+
+`HouseCrest` renders the real shield and falls back to the drawn shield carrying
+the elementary form when the image is missing or fails. So a house is
+identifiable three ways over, and never by colour alone: a voter who cannot
+separate red from green still sees a square against an arc.
+
+Crests are dropped into `assets/house-logos/<id>.png` and imported with
+`npm run houses:import`; a partial set is fine, and anything missing keeps its
+placeholder. Colour is declared rather than sampled by code, because a
+dominant-colour pass over a black shield returns black.
+
+A house contest takes that house's field across the whole plate header with its
+crest beside the position, so a student arrives at a screen that is
+unmistakably theirs.
 
 ## 4. The signature interactions
 

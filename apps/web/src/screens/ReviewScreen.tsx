@@ -1,7 +1,7 @@
 import type { Candidate, House, Position } from '@mesa/election-core';
 import type { VoterProfile } from '@/lib/api';
 import { InkMark } from '@/components/ink/InkMark';
-import { Shape } from '@/components/bauhaus/Shape';
+import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
@@ -96,7 +96,7 @@ export function ReviewScreen({
 
                 <div className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    {house && <Shape form={house.shape ?? 'square'} size={12} color={house.color} />}
+                    {house && <HouseCrest house={house} size={20} />}
                     <span className="label" style={role ? { color: role.text } : undefined}>
                       {step.title}
                     </span>

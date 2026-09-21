@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { PublicElection } from '@/lib/api';
 import { PaperBackdrop } from '@/components/paper/PaperBackdrop';
 import { CompositionSVG } from '@/components/bauhaus/CompositionSVG';
+import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Shape } from '@/components/bauhaus/Shape';
 import { Button } from '@/components/ui/Button';
 
@@ -102,16 +103,10 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
 
         {/* House strip: colour AND form, so identity never rests on colour. */}
         {houses.length > 0 && (
-          <ul className="flex flex-wrap items-center gap-x-7 gap-y-3 p-0">
+          <ul className="flex flex-wrap items-center gap-x-8 gap-y-4 p-0">
             {houses.map((house) => (
-              <li key={house.id} className="inline-flex items-center gap-2.5">
-                <Shape form={house.shape ?? 'square'} size={18} color={house.color} />
-                <span
-                  className="label"
-                  style={{ color: 'rgba(242,237,225,.72)', fontSize: 'var(--text-2xs)' }}
-                >
-                  {house.name}
-                </span>
+              <li key={house.id}>
+                <HouseCrest house={house} size={38} withName nameColor="rgba(242,237,225,.78)" />
               </li>
             ))}
           </ul>
