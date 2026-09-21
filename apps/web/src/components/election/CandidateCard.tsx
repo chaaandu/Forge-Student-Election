@@ -1,35 +1,34 @@
 import { useState, type KeyboardEvent } from 'react';
 import type { Candidate } from '@mesa/election-core';
 import { InkMark } from '@/components/ink/InkMark';
-import { Avatar } from '@/components/ui/Avatar';
+import { inkOn, roleFor } from '@/lib/color';
 
 export interface CandidateCardProps {
   candidate: Candidate;
   selected: boolean;
+  /** The field colour for this contest: a house colour, or the default red. */
   accent?: string;
   onSelect: (candidateId: string) => void;
-  /** Roving tabindex: only one card in a group is tabbable. */
   tabbable: boolean;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   index: number;
 }
 
 /**
- * One line of the ballot.
+ * A candidate, as a printed plate.
  *
- * Composed like a printed ballot paper rather than a web card: a portrait, then
- * a ruled row with a box on the left and the candidate's name beside it. You
- * mark the box. Choosing is an act, not a state change.
+ * Unselected it is a white panel with a heavy keyline. Choosing snaps a solid
+ * colour field across the foot of the card and drops an ink mark into the box —
+ * the card physically moves into its own shadow, the way the buttons do.
  *
- * Selection carries three simultaneous signals — the drawn ink mark, the
- * darkened edge and warm wash, and the literal word "Selected" — so it is
- * never communicated by colour alone. `role="radio"` inside the grid's
- * `radiogroup` makes a screen reader announce "2 of 3, selected".
+ * Selection carries FOUR simultaneous signals: the drawn mark, the colour field,
+ * the offset block, and the literal word "Selected". Never colour alone.
+ * `role="radio"` in the grid's `radiogroup` announces "2 of 3, selected".
  */
 export function CandidateCard({
   candidate,
   selected,
-  accent = 'var(--color-mark)',
+  accent = 'var(--bh-red)',
   onSelect,
   tabbable,
   onKeyDown,
@@ -38,28 +37,27 @@ export function CandidateCard({
   const [imageFailed, setImageFailed] = useState(false);
   const showPhoto = Boolean(candidate.photoUrl) && !imageFailed;
 
+  // Resolve a literal colour so the ink on the field can be chosen correctly.
+  const literal = accent.startsWith('#') ? accent : undefined;
+  const role = literal ? roleFor(literal) : undefined;
+  const field = role?.field ?? accent;
+  const onFieldInk = literal ? inkOn(literal) : 'var(--color-ink)';
+
   return (
     <div
       role="radio"
       aria-checked={selected}
       tabIndex={tabbable ? 0 : -1}
       data-candidate-card={index}
+      data-selected={selected}
       onClick={() => onSelect(candidate.id)}
       onKeyDown={onKeyDown}
-      className="candidate group flex cursor-pointer flex-col overflow-hidden text-left"
-      style={{
-        background: selected ? 'var(--color-mark-wash)' : 'var(--color-sheet)',
-        border: `1px solid ${selected ? accent : 'var(--color-edge)'}`,
-        boxShadow: selected ? 'var(--shadow-lift)' : 'var(--shadow-sheet)',
-        borderRadius: 'var(--radius-sheet)',
-        transition:
-          'border-color 180ms var(--ease-paper), background-color 180ms var(--ease-paper), ' +
-          'transform 180ms var(--ease-paper), box-shadow 180ms var(--ease-paper)',
-      }}
+      className="bh-candidate group flex cursor-pointer flex-col overflow-hidden"
+      style={{ ['--field' as string]: field, ['--on-field' as string]: onFieldInk }}
     >
       <div
         className="relative w-full overflow-hidden"
-        style={{ aspectRatio: '4 / 5', background: 'var(--color-sheet-sunk)' }}
+        style={{ aspectRatio: '4 / 5', background: 'var(--color-sunk)' }}
       >
         {showPhoto ? (
           <img
@@ -74,37 +72,47 @@ export function CandidateCard({
             style={{ objectPosition: 'center 25%' }}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Avatar name={candidate.name} color={accent} size="lg" />
+          <div
+            className="flex h-full w-full items-center justify-center"
+            style={{ background: 'var(--color-sunk)' }}
+          >
+            <span
+              className="numeral"
+              style={{ fontSize: '3.2rem', color: 'var(--color-ink-faint)' }}
+            >
+              {candidate.name
+                .replace(/['’]/g, '')
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join('')
+                .toUpperCase()}
+            </span>
           </div>
         )}
       </div>
 
       {/* The ballot line: box, then name. */}
-      <div
-        className="flex items-start gap-3 p-4"
-        style={{ borderTop: `1px solid ${selected ? `${accent}55` : 'var(--color-rule)'}` }}
-      >
+      <div className="bh-candidate__body flex flex-1 items-start gap-3 p-4">
         <span
           aria-hidden="true"
           className="relative mt-0.5 flex shrink-0 items-center justify-center"
           style={{
             width: 26,
             height: 26,
-            borderRadius: 'var(--radius-sm)',
-            border: `1.5px solid ${selected ? accent : 'var(--color-rule-strong)'}`,
-            background: selected ? 'transparent' : 'var(--color-sheet)',
+            border: `3px solid ${selected ? 'var(--on-field)' : 'var(--color-ink)'}`,
+            background: selected ? 'transparent' : 'var(--color-card)',
           }}
         >
           <span className="absolute" style={{ transform: 'translate(1px, -1px)' }}>
-            <InkMark marked={selected} size="sm" color={accent} />
+            <InkMark marked={selected} size="sm" color="var(--on-field)" />
           </span>
         </span>
 
         <span className="min-w-0 flex-1">
           <span
             className="block"
-            style={{ fontSize: 'var(--text-md)', fontWeight: 550, lineHeight: 1.3 }}
+            style={{ fontSize: 'var(--text-md)', fontWeight: 600, lineHeight: 1.25 }}
           >
             {candidate.name}
           </span>
@@ -114,7 +122,7 @@ export function CandidateCard({
               className="mt-1 block"
               style={{
                 fontSize: 'var(--text-xs)',
-                color: 'var(--color-ink-soft)',
+                opacity: 0.85,
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
@@ -125,20 +133,36 @@ export function CandidateCard({
             </span>
           )}
 
-          {/* The third signal: the state in words. */}
-          <span
-            className="label mt-2 block"
-            style={{ color: selected ? accent : 'var(--color-ink-faint)' }}
-          >
+          {/* The fourth signal: the state in words. */}
+          <span className="label mt-2 block" style={{ color: 'inherit', opacity: selected ? 1 : 0.6 }}>
             {selected ? 'Selected' : 'Choose'}
           </span>
         </span>
       </div>
 
       <style>{`
-        .candidate:hover { transform: translateY(-2px); border-color: var(--color-rule-strong); }
-        .candidate:active { transform: translateY(0); }
-        @media (prefers-reduced-motion: reduce) { .candidate:hover { transform: none } }
+        .bh-candidate {
+          background: var(--color-card);
+          border: 3px solid var(--color-ink);
+          box-shadow: var(--shadow-block-sm);
+          transition: transform var(--dur-snap) var(--ease-snap),
+                      box-shadow var(--dur-snap) var(--ease-snap);
+        }
+        .bh-candidate:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--color-ink); }
+        .bh-candidate:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--color-ink); }
+        /* Chosen: the field snaps across the foot of the card and it settles in. */
+        .bh-candidate[data-selected="true"] .bh-candidate__body {
+          background: var(--field);
+          color: var(--on-field);
+        }
+        .bh-candidate[data-selected="true"] {
+          transform: translate(-3px, -3px);
+          box-shadow: 7px 7px 0 var(--color-ink);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .bh-candidate, .bh-candidate:hover, .bh-candidate:active,
+          .bh-candidate[data-selected="true"] { transform: none }
+        }
       `}</style>
     </div>
   );

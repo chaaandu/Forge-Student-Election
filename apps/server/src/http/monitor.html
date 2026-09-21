@@ -18,7 +18,7 @@
   :root{
     --ink:#0A0E14; --board:#121821; --surface:#161D28; --line:#263040;
     --text:#E9E5DD; --muted:#9AA7B6; --dim:#7B8797;
-    --signal:#FFB020; --go:#3BD671; --stop:#FF6B5E;
+    --signal:#FFC20E; --go:#1E7A4C; --stop:#DE2B1F;
     --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
     --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
   }
@@ -40,6 +40,16 @@
   .tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:20px}
   .tile{background:var(--board);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .tile .n{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--signal);line-height:1.1}
+  /* House turnout race. Participation only — it says WHO voted, never what for. */
+  .race{margin:0 0 24px;padding:16px 18px;background:var(--board);border:1px solid var(--line);border-radius:12px}
+  .race h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 14px;font-weight:600}
+  .lane{display:grid;grid-template-columns:130px 1fr 62px;align-items:center;gap:12px;margin-bottom:10px}
+  .lane:last-child{margin-bottom:0}
+  .lane__name{display:flex;align-items:center;gap:9px;font-weight:600}
+  .lane__track{position:relative;height:22px;background:#0B0F16;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  .lane__fill{height:100%;transition:width .6s cubic-bezier(.22,1,.36,1)}
+  .lane__pct{text-align:right;font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .lane--lead .lane__pct{color:var(--signal);font-weight:700}
   .tile .l{color:var(--dim);margin-top:2px}
   .bar{height:4px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--go);transition:width .4s ease}
@@ -102,6 +112,11 @@
         <button id="signout" style="margin-top:8px;padding:6px 12px;min-height:0">Sign out</button>
       </div>
     </header>
+
+    <div class="race" id="race" hidden>
+      <h2>House turnout</h2>
+      <div id="lanes"></div>
+    </div>
 
     <div class="tiles" id="tiles"></div>
 
@@ -182,6 +197,29 @@
     });
     $('tiles').innerHTML = html;
 
+    // House turnout race. Deliberately about PARTICIPATION: it shows who has
+    // voted, never what anyone voted for. Shape as well as colour, so the lanes
+    // are distinguishable without colour vision.
+    var houses = Object.keys(data.byHouse)
+      .map(function (k) { return data.byHouse[k]; })
+      .filter(function (h) { return h.eligible > 0; });
+
+    if (houses.length === 0) {
+      $('race').hidden = true;
+    } else {
+      $('race').hidden = false;
+      var best = Math.max.apply(null, houses.map(function (h) { return pct(h.voted, h.eligible); }));
+      $('lanes').innerHTML = houses.map(function (h) {
+        var p = pct(h.voted, h.eligible);
+        return '<div class="lane ' + (p === best && p > 0 ? 'lane--lead' : '') + '">' +
+          '<span class="lane__name">' + shapeSvg(h.shape, h.color) + esc(h.name) + '</span>' +
+          '<span class="lane__track"><span class="lane__fill" style="width:' + p + '%;background:' +
+            esc(h.color) + '"></span></span>' +
+          '<span class="lane__pct">' + h.voted + '/' + h.eligible + '</span>' +
+        '</div>';
+      }).join('');
+    }
+
     var q = query.trim().toLowerCase();
     var list = data.voters.filter(function (v) {
       if (filter === 'yes' && !v.hasVoted) return false;
@@ -202,6 +240,17 @@
         '<td class="sub mono">' + (v.votedAt ? new Date(v.votedAt).toLocaleTimeString() : '—') + '</td>' +
       '</tr>';
     }).join('');
+  }
+
+  // The four elementary forms, matching the voting screens.
+  function shapeSvg(form, color) {
+    var body = {
+      square:   '<rect x="1" y="1" width="14" height="14" fill="' + color + '"/>',
+      circle:   '<circle cx="8" cy="8" r="7" fill="' + color + '"/>',
+      triangle: '<path d="M8 1 L15 15 L1 15 Z" fill="' + color + '"/>',
+      arc:      '<path d="M1 15 A 7 7 0 0 1 15 15 Z" fill="' + color + '"/>'
+    }[form] || '<rect x="1" y="1" width="14" height="14" fill="' + color + '"/>';
+    return '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">' + body + '</svg>';
   }
 
   function esc(s) {

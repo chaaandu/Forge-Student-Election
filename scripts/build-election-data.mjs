@@ -15,13 +15,19 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const students = JSON.parse(readFileSync('/tmp/students.json', 'utf8'));
 const employees = JSON.parse(readFileSync('/tmp/employees.json', 'utf8'));
 
+/**
+ * Houses, as Bauhaus fields.
+ *
+ * Colour AND form, following Kandinsky's correspondence (red square, blue
+ * circle, yellow triangle) with the arc as the fourth. Identity never rests on
+ * colour alone. Text-safe variants of each colour are derived at runtime by
+ * apps/web/src/lib/color.ts and asserted in the contrast test.
+ */
 const HOUSES = [
-  { id: 'samurai', name: 'Samurai', color: '#A6362B' },
-  { id: 'knights', name: 'Knights', color: '#3C5A73' },
-  { id: 'vikings', name: 'Vikings', color: '#3F6B5C' },
-  // Darkened from a brighter bronze: the original failed AA as text on paper
-  // (3.7:1). House colours are asserted in the contrast test.
-  { id: 'gladiators', name: 'Gladiators', color: '#8A6220' },
+  { id: 'samurai', name: 'Samurai', color: '#DE2B1F', shape: 'square' },
+  { id: 'knights', name: 'Knights', color: '#1B4D9B', shape: 'circle' },
+  { id: 'gladiators', name: 'Gladiators', color: '#FFC20E', shape: 'triangle' },
+  { id: 'vikings', name: 'Vikings', color: '#1E7A4C', shape: 'arc' },
 ];
 
 /**

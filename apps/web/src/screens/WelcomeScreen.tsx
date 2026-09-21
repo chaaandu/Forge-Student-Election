@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { PublicElection } from '@/lib/api';
-import { BallotSheet3D } from '@/components/paper/BallotSheet3D';
-import { InkMark } from '@/components/ink/InkMark';
+import { Composition3D } from '@/components/bauhaus/Composition3D';
+import { CompositionSVG } from '@/components/bauhaus/CompositionSVG';
+import { HouseMark } from '@/components/bauhaus/HouseMark';
+import { Shape } from '@/components/bauhaus/Shape';
 import { Button } from '@/components/ui/Button';
-import { Wordmark } from '@/components/ui/Wordmark';
 
 export interface WelcomeScreenProps {
   election: PublicElection;
@@ -12,114 +13,108 @@ export interface WelcomeScreenProps {
 }
 
 /**
- * The ballot, waiting on the desk.
+ * The poster.
  *
- * The printed sheet below is real HTML: it is what a screen reader reads, what
- * renders without WebGL, and what a voter who prefers reduced motion sees. The
- * 3D sheet fades in on top of it purely as decoration, and is never required
- * for anything. The CTA works from the first paint either way.
+ * A Bauhaus exhibition plate: a colour field carrying the title, a composition
+ * of elementary forms, and one unmissable action. Asymmetric, gridded, cropped
+ * by the frame.
+ *
+ * The composition below is a real SVG. It renders instantly, needs no WebGL,
+ * and is what a reduced-motion voter sees; the 3D version fades in on top as
+ * decoration. "Begin voting" is interactive from first paint either way.
  */
 export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
-  const [sheetReady, setSheetReady] = useState(false);
-  const leadership = election.positions
-    .filter((p) => p.kind === 'leadership')
-    .sort((a, b) => a.order - b.order);
-  const houseCount = election.positions.filter((p) => p.kind === 'house-captain').length;
+  const [sceneReady, setSceneReady] = useState(false);
+  const leadership = election.positions.filter((p) => p.kind === 'leadership');
+  const houses = election.houses;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-9">
-      <div
-        className="relative w-full"
-        style={{ aspectRatio: '1024 / 724', maxHeight: '58vh' }}
-      >
-        {/* The real, readable sheet. */}
+    <div className="mx-auto w-full max-w-5xl">
+      <div className="panel panel--raised overflow-hidden">
+        {/* Masthead: a black field, type reversed out of it. */}
         <div
-          className="sheet absolute inset-0 flex flex-col items-center justify-center px-6 py-8 text-center"
-          style={{
-            opacity: sheetReady ? 0 : 1,
-            transition: 'opacity 700ms var(--ease-paper)',
-          }}
+          className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 sm:px-8"
+          style={{ background: 'var(--color-ink)', color: 'var(--color-paper)' }}
         >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute"
-            style={{ inset: 18, border: '1px solid var(--color-rule)', borderRadius: 4 }}
-          />
-          <p className="label">Mesa School of Business</p>
-
-          <h1
-            className="mt-5"
-            style={{ fontSize: 'clamp(2rem, 6.5vw, 3.5rem)', letterSpacing: '-0.02em' }}
-          >
-            {election.election.name}
-          </h1>
-
-          <p className="mt-3" style={{ color: 'var(--color-ink-soft)' }}>
-            One ballot. {leadership.length} positions
-            {houseCount > 0 ? ', plus your house captain' : ''}.
-          </p>
-
-          <hr className="rule mt-6 w-40" />
-
-          {/* A few ballot lines, one already marked: the sheet shows you what to do. */}
-          <ul aria-hidden="true" className="mt-6 flex list-none flex-col gap-2.5 p-0">
-            {leadership.slice(0, 4).map((position, index) => (
-              <li key={position.id} className="flex items-center gap-3">
-                <span
-                  className="relative flex items-center justify-center"
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 2,
-                    border: '1.5px solid var(--color-rule-strong)',
-                  }}
-                >
-                  {index === 1 && (
-                    <span className="absolute" style={{ transform: 'translateY(-1px)' }}>
-                      <InkMark marked size="sm" />
-                    </span>
-                  )}
-                </span>
-                <span
-                  style={{
-                    width: `${120 - index * 14}px`,
-                    height: 2,
-                    background: 'var(--color-rule)',
-                    borderRadius: 1,
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
+          <span className="label" style={{ color: 'var(--color-paper)' }}>
+            Mesa School of Business
+          </span>
+          <span className="flex items-center gap-2">
+            <Shape form="circle" size={12} color="var(--bh-yellow)" />
+            <span className="label" style={{ color: 'var(--color-paper)' }}>
+              Voting open
+            </span>
+          </span>
         </div>
 
-        {/* Decoration only. Never required, never blocking. */}
-        <BallotSheet3D
-          title={election.election.name}
-          subtitle={`${leadership.length} positions${houseCount > 0 ? ' + house captain' : ''}`}
-          footer="OFFICIAL BALLOT"
-          onReady={() => setSheetReady(true)}
-        />
+        <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr)' }}>
+          <div className="grid items-stretch md:grid-cols-[1.05fr_1fr]">
+            {/* Title block */}
+            <div className="flex flex-col justify-center px-6 py-10 sm:px-8 sm:py-12">
+              <h1
+                className="poster"
+                style={{ fontSize: 'var(--text-poster)', color: 'var(--color-ink)' }}
+              >
+                {election.election.name}
+              </h1>
+
+              <div className="bar mt-6" style={{ maxWidth: 220 }} />
+
+              <p className="mt-6" style={{ fontSize: 'var(--text-md)', maxWidth: '34ch' }}>
+                {leadership.length} leadership positions
+                {houses.length > 0 ? ', plus your house captain' : ''}. About two minutes. You
+                can change your choices right up until you submit.
+              </p>
+
+              <div className="mt-8">
+                <Button variant="primary" size="lg" onClick={onCheckIn} autoFocus>
+                  Begin voting <span aria-hidden="true">→</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Composition block */}
+            <div
+              className="relative min-h-[260px] border-t-[3px] border-[var(--color-ink)] md:min-h-0 md:border-l-[3px] md:border-t-0"
+              style={{ background: 'var(--color-paper)' }}
+            >
+              <CompositionSVG
+                className="absolute inset-0 h-full w-full"
+                {...({} as Record<string, never>)}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  opacity: sceneReady ? 1 : 0,
+                  transition: 'opacity 600ms var(--ease-out)',
+                  background: 'var(--color-paper)',
+                }}
+              >
+                <Composition3D onReady={() => setSceneReady(true)} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* House strip: colour AND form, so identity never rests on colour. */}
+        {houses.length > 0 && (
+          <div
+            className="flex flex-wrap items-center gap-x-7 gap-y-3 px-6 py-5 sm:px-8"
+            style={{ borderTop: 'var(--rule-weight) solid var(--color-ink)' }}
+          >
+            <span className="label">Houses</span>
+            {houses.map((house) => (
+              <HouseMark key={house.id} house={house} withName />
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col items-center gap-5">
-        <Button variant="primary" size="lg" onClick={onCheckIn} autoFocus>
-          Begin voting
-        </Button>
-
-        <p
-          className="max-w-md text-center text-balance"
-          style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}
-        >
-          It takes about two minutes. You can change your choices right up until you submit.
-          {houseCount > 0 &&
-            ' Students also vote for their own house captain; employees vote for the leadership positions.'}
-        </p>
-
-        <Wordmark />
-      </div>
-
-      {isSeedData && <SeedDataBanner />}
+      {isSeedData && (
+        <div className="mt-6">
+          <SeedDataBanner />
+        </div>
+      )}
     </div>
   );
 }
@@ -135,12 +130,12 @@ export function SeedDataBanner() {
   return (
     <p
       role="status"
-      className="label mx-auto max-w-xl px-4 py-3 text-center"
+      className="label mx-auto max-w-2xl px-5 py-3 text-center"
       style={{
-        color: 'var(--color-alert)',
-        background: 'var(--color-alert-wash)',
-        border: '1px solid var(--color-alert)',
-        borderRadius: 'var(--radius-control)',
+        color: 'var(--color-ink)',
+        background: 'var(--bh-yellow)',
+        border: 'var(--rule-weight) solid var(--color-ink)',
+        fontSize: 'var(--text-xs)',
       }}
     >
       Demo data — these are not the real candidates and no vote here counts

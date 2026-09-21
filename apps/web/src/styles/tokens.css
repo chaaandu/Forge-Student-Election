@@ -1,55 +1,89 @@
 /**
  * Mesa Elections — design tokens.
  *
- * Concept: "The Ballot". Paper, ink, and the weight of a mark.
+ * Concept: "Vote / Form" — the ballot as a Bauhaus poster series.
  *
- * A vote is a considered, physical act, so the interface is made of paper
- * rather than screens: warm laid stock, printed rules, and a mark you make in
- * ink. Everything is light, quiet and tactile. Nothing glows.
+ * Primaries, elementary forms, heavy black rules, and a rigorous asymmetric
+ * grid. The Bauhaus was after a universal visual language for things everyone
+ * uses; an election is exactly that kind of thing. Each position is a poster.
  *
- * The single source of truth for colour, type, space, radius, elevation and
- * motion. No component may invent a value. Contrast ratios in the comments are
- * measured and asserted in src/styles/__tests__/contrast.test.ts.
+ * THE RULE THAT MAKES A BOLD PALETTE WORK: a colour is a FIELD, not ink.
+ * Saturated colour fills a block and the type on it is black or white, chosen
+ * by luminance. Where a colour must appear AS text on paper it is darkened
+ * until it passes AA — see src/lib/color.ts, which is unit tested, and
+ * src/styles/__tests__/contrast.test.ts, which asserts every pair.
+ *
+ * Bauhaus yellow is 1.39:1 on paper. Used as ink it would be invisible; used as
+ * a field with black type it is 11.4:1. Same colour, opposite outcome.
  */
 
 :root {
-  /* ------------------------------------------------------------ paper --- */
-  --color-paper: #f4f0e6; /* the desk: warm laid stock */
-  --color-sheet: #fcfaf4; /* a sheet resting on it */
-  --color-sheet-sunk: #eee9db; /* recessed areas, input wells */
-  --color-edge: #e4ddcc; /* the shadowed edge of a sheet */
-  --color-rule: #d9d1be; /* hairline rules, as on a printed form */
-  --color-rule-strong: #bdb39c;
+  /* ------------------------------------------------- primaries (fields) --- */
+  /* Saturated. For blocks, bars and shapes. NEVER for body text on paper. */
+  --bh-red: #de2b1f;
+  --bh-blue: #1b4d9b;
+  --bh-yellow: #ffc20e;
+  --bh-green: #1e7a4c;
+
+  /* Their text-safe counterparts, darkened until AA on paper. Hue preserved. */
+  --bh-red-text: #ce281d; /*  4.56:1 on paper */
+  --bh-blue-text: #1b4d9b; /*  6.96:1 — already passes */
+  --bh-yellow-text: #876707; /*  4.52:1 — yellow can only be text when this dark */
+  --bh-green-text: #1e7a4c; /*  4.56:1 */
+
+  /* ---------------------------------------------------------- substrate --- */
+  --color-paper: #f2ede1; /* the page: warm poster stock */
+  --color-card: #ffffff; /* a panel on it */
+  --color-sunk: #e8e2d4; /* wells, inputs */
 
   /* -------------------------------------------------------------- ink --- */
-  --color-ink: #1b1a16; /* body text            15.4:1 on paper */
-  --color-ink-soft: #56524a; /* secondary             6.6:1 on paper */
-  --color-ink-faint: #837c6d; /* tertiary, large only  3.4:1 — never body */
+  --color-ink: #141414; /* 15.8:1 on paper */
+  --color-ink-soft: #514d48; /*  7.2:1 */
+  --color-ink-faint: #7d766c; /*  3.8:1 — large text only, never body */
 
-  /* ------------------------------------------------------------- mark --- */
-  /* Terracotta. The colour of the mark you make — and of a mesa at dusk. */
-  --color-mark: #a9462c; /*                        5.1:1 on paper */
-  --color-mark-deep: #8a3620;
-  --color-mark-wash: #f3e0d8; /* the faint stain behind a chosen card */
+  /* Rules are BLACK and heavy. That is the Bauhaus grammar: a bar is structure,
+     not decoration. The light rule is for secondary divisions only. */
+  --color-rule: #141414;
+  --color-rule-light: #d8d1c2;
+  --rule-weight: 3px;
+  --rule-weight-heavy: 6px;
 
-  --color-confirm: #47664e; /* recorded              6.3:1 on paper */
-  --color-alert: #9b3322; /* errors only           7.3:1 on paper */
-  --color-alert-wash: #f7e2dd;
+  /* --------------------------------------------------------- semantic --- */
+  --color-mark: var(--bh-red); /* the mark you make */
+  --color-mark-text: var(--bh-red-text);
+  --color-confirm: var(--bh-green);
+  --color-confirm-text: var(--bh-green-text);
+  --color-alert: var(--bh-red);
+  --color-alert-text: var(--bh-red-text);
+  --color-on-field: #ffffff; /* overridden per field by inkOn() */
 
   /* ------------------------------------------------------------- type --- */
-  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  /*
+   * Staatliches is Google's digitisation of Herbert Bayer's title lettering for
+   * the 1923 Bauhaus exhibition catalogue — the actual historical voice, not a
+   * pastiche. Condensed, uppercase; poster headlines only.
+   *
+   * Jost* is an open Futura, the Bauhaus-descended geometric sans. It carries
+   * labels, numerals and controls.
+   *
+   * Inter carries candidate names and body copy. Geometric faces have a low
+   * x-height and 145 unfamiliar names read at a booth is the wrong place to pay
+   * for that.
+   */
+  --font-poster: 'Staatliches', 'Jost Variable', Impact, sans-serif;
+  --font-geometric: 'Jost Variable', 'Century Gothic', system-ui, sans-serif;
   --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --text-2xs: 0.75rem;
   --text-xs: 0.8125rem;
   --text-sm: 0.9375rem;
-  --text-base: 1.0625rem; /* a shade larger than usual: read at arm's length in a hall */
+  --text-base: 1.0625rem;
   --text-md: 1.1875rem;
-  --text-lg: 1.4375rem;
-  --text-xl: 1.9375rem;
-  --text-2xl: 2.625rem;
-  --text-3xl: 3.5rem;
+  --text-lg: 1.5rem;
+  --text-xl: 2rem;
+  --text-2xl: 2.75rem;
+  --text-3xl: 4rem;
+  --text-poster: clamp(2.75rem, 9vw, 6rem);
 
   /* ------------------------------------------------------------ space --- */
   --space-1: 4px;
@@ -62,45 +96,42 @@
   --space-8: 64px;
   --space-9: 96px;
 
-  /* -------------------------------------------------- radius & depth --- */
-  /* Paper has corners, not pills. Radii stay small and honest. */
-  --radius-sm: 3px;
-  --radius-control: 6px;
-  --radius-sheet: 10px;
-  --radius-pill: 999px;
+  /* --------------------------------------------------- radius & depth --- */
+  /* The Bauhaus does not round corners. A circle is a circle; a square is a
+     square. Radii exist only where a control would otherwise look broken. */
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius-circle: 999px;
 
-  /* Shadows are the shadow a sheet casts on a desk: soft, warm, close. */
-  --shadow-sheet: 0 1px 1px rgb(58 48 30 / 0.05), 0 6px 18px -6px rgb(58 48 30 / 0.16);
-  --shadow-lift: 0 2px 4px rgb(58 48 30 / 0.07), 0 16px 34px -12px rgb(58 48 30 / 0.24);
-  --shadow-modal: 0 32px 70px -20px rgb(41 33 20 / 0.42);
-  --focus-ring: 0 0 0 2px var(--color-sheet), 0 0 0 4px var(--color-mark);
+  /* No soft ambient shadows. Depth is a hard offset block, like overprinting. */
+  --shadow-block: 6px 6px 0 var(--color-ink);
+  --shadow-block-sm: 4px 4px 0 var(--color-ink);
+  --shadow-modal: 10px 10px 0 var(--color-ink);
+  --focus-ring: 0 0 0 3px var(--color-paper), 0 0 0 6px var(--bh-blue);
 
   /* ----------------------------------------------------------- motion --- */
-  --dur-mark: 420ms; /* the ink stroke drawing itself */
-  --dur-select: 180ms;
-  --dur-step: 300ms;
-  --dur-enter: 260ms;
-  --ease-ink: cubic-bezier(0.32, 0.72, 0.28, 1); /* a pen: quick start, settled finish */
-  --ease-paper: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-mark: 380ms;
+  --dur-snap: 260ms;
+  --dur-step: 320ms;
+  --dur-enter: 240ms;
+  /* Overshoot: shapes snap into place like a printer's block dropping. */
+  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Minimum interactive target. Shared machines, hurried taps. */
   --hit: 44px;
-
-  /* Paper fibre. One inline SVG, no network request, applied at low opacity. */
-  --texture-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
 /**
  * Reduced motion.
  *
- * The ink mark appears instantly instead of drawing, the 3D sheet is never
- * loaded at all, and transitions become short fades. Nothing is removed: every
- * screen says the same things in the same places.
+ * Shapes appear in place instead of snapping, the ink mark is drawn already,
+ * the celebration burst is a static composition, and the WebGL panel never
+ * loads. Every screen still says the same things in the same places.
  */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-mark: 1ms;
-    --dur-select: 1ms;
+    --dur-snap: 1ms;
     --dur-step: 1ms;
     --dur-enter: 120ms;
   }

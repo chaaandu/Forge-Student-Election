@@ -76,7 +76,7 @@ async function completeAllGates(user: ReturnType<typeof userEvent.setup>) {
     if (!group) break;
     const [first] = within(group).getAllByRole('radio');
     await user.click(first!);
-    const next = screen.getByRole('button', { name: /continue|save and return/i });
+    const next = screen.getByRole('button', { name: /continue|save and review/i });
     await user.click(next);
     if (screen.queryByRole('button', { name: /confirm & submit vote/i })) break;
   }
@@ -178,11 +178,11 @@ describe('navigation and editing', () => {
     await screen.findByRole('button', { name: /confirm & submit vote/i });
 
     await user.click(screen.getAllByRole('button', { name: /^edit your choice/i })[0]!);
-    expect(screen.getByRole('button', { name: /save and return to review/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save and review/i })).toBeInTheDocument();
 
     const radios = within(screen.getByRole('radiogroup')).getAllByRole('radio');
     await user.click(radios[1] ?? radios[0]!);
-    await user.click(screen.getByRole('button', { name: /save and return to review/i }));
+    await user.click(screen.getByRole('button', { name: /save and review/i }));
 
     expect(await screen.findByRole('button', { name: /confirm & submit vote/i })).toBeInTheDocument();
   });

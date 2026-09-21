@@ -78,6 +78,19 @@ describe('the invigilator monitor', () => {
     expect(text).not.toContain(ballot.id);
   });
 
+  it('carries each house colour AND form, so the turnout race is readable without colour', async () => {
+    const body = await (await monitor()).json();
+    const houses = Object.values(body.byHouse) as { name: string; color: string; shape: string }[];
+
+    expect(houses.length).toBeGreaterThan(0);
+    for (const house of houses) {
+      expect(house.color).toMatch(/^#[0-9a-fA-F]{6}$/);
+      expect(['square', 'circle', 'triangle', 'arc']).toContain(house.shape);
+    }
+    // Distinct forms: a colour-blind invigilator can still tell the lanes apart.
+    expect(new Set(houses.map((h) => h.shape)).size).toBe(houses.length);
+  });
+
   it('flags demo data so an invigilator cannot mistake a rehearsal for the real thing', async () => {
     const body = await (await monitor()).json();
     expect(body.election).toHaveProperty('isSeedData');

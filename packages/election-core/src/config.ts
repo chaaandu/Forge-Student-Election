@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   ELECTION_STATUSES,
+  HOUSE_SHAPES,
   POSITION_KINDS,
   VOTER_TYPES,
   ZERO_TURNOUT_POLICIES,
@@ -69,6 +70,7 @@ const houseSchema = z.object({
   id,
   name: z.string().min(1).max(100),
   color: hexColor,
+  shape: z.enum(HOUSE_SHAPES).optional(),
   motto: z.string().max(200).optional(),
 });
 

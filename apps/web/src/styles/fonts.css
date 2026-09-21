@@ -1,33 +1,46 @@
 /**
  * Self-hosted fonts, latin subsets only.
  *
- * The packages' index.css pulls in Greek, Cyrillic and Vietnamese — around
- * 200 KB of woff2 this election will never render. These rules point at the
- * same self-hosted files, just the ones we need.
- *
  * No CDN at runtime, deliberately: a school hall with flaky wifi must not get a
- * fallback-font flash in the middle of voting.
+ * fallback-font flash mid-election. Importing the packages' index.css would
+ * pull in Greek, Cyrillic and Vietnamese — ~200 KB this election never renders.
  */
 
-/* Fraunces — the printed voice. Headings, the ballot masthead, nothing small. */
+/*
+ * Staatliches — Google's digitisation of Herbert Bayer's title lettering for
+ * the 1923 Bauhaus exhibition catalogue cover. OFL-1.1. Poster headlines only:
+ * it is uppercase-only and condensed by design.
+ */
 @font-face {
-  font-family: 'Fraunces Variable';
+  font-family: 'Staatliches';
   font-style: normal;
+  font-weight: 400;
   font-display: swap;
+  src: url('@fontsource/staatliches/files/staatliches-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+/* Jost* — an open Futura. The geometric, Bauhaus-descended voice. OFL-1.1. */
+@font-face {
+  font-family: 'Jost Variable';
+  font-style: normal;
   font-weight: 100 900;
-  src: url('@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2')
+  font-display: swap;
+  src: url('@fontsource-variable/jost/files/jost-latin-wght-normal.woff2')
     format('woff2-variations');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
     U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
     U+2215, U+FEFF, U+FFFD;
 }
 
-/* Inter — everything a voter has to read quickly, including candidate names. */
+/* Inter — candidate names and body copy, where x-height matters more than voice. */
 @font-face {
   font-family: 'Inter Variable';
   font-style: normal;
-  font-display: swap;
   font-weight: 100 900;
+  font-display: swap;
   src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
     format('woff2-variations');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
@@ -39,8 +52,8 @@
 @font-face {
   font-family: 'Inter Variable';
   font-style: normal;
-  font-display: swap;
   font-weight: 100 900;
+  font-display: swap;
   src: url('@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2')
     format('woff2-variations');
   unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020,

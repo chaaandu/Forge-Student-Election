@@ -8,7 +8,7 @@ import {
   reducer,
   type MachineError,
 } from '@/machine/electionMachine';
-import { Sheet } from '@/components/paper/Sheet';
+import { Panel } from '@/components/bauhaus/Panel';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -281,14 +281,14 @@ export function App() {
       <main id="main" tabIndex={-1} className="outline-none">
         {state.phase === 'LOADING' && (
           <div className="mx-auto w-full max-w-lg">
-            <Sheet>
+            <Panel>
               <div className="px-7 py-16 text-center">
                 <p className="label">Mesa School of Business</p>
                 <p className="mt-4" style={{ color: 'var(--color-ink-soft)' }}>
                   Preparing the ballot…
                 </p>
               </div>
-            </Sheet>
+            </Panel>
           </div>
         )}
 

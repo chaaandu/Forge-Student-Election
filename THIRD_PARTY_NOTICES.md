@@ -20,11 +20,19 @@ https://github.com/DavidHDev/react-bits
 | express | MIT | HTTP layer |
 | better-sqlite3 | MIT | authoritative store |
 | dotenv | BSD-2-Clause | environment loading |
-| three | MIT | the decorative WebGL ballot sheet on the welcome screen, lazily loaded |
+| three | MIT | the decorative WebGL composition on the welcome screen, lazily loaded and never in the app bundle |
 | tailwindcss | MIT | styling utilities |
 | vite | MIT | build tooling |
-| @fontsource-variable/inter | OFL-1.1 (Inter by Rasmus Andersson) | body typeface |
-| @fontsource-variable/fraunces | OFL-1.1 (Fraunces by Undercase Type) | display typeface |
+| @fontsource/staatliches | OFL-1.1 | poster headlines — Google's digitisation of Herbert Bayer's title lettering for the 1923 Bauhaus exhibition catalogue |
+| @fontsource-variable/jost | OFL-1.1 (Jost* by indestructible type*) | labels, numerals, controls — an open Futura |
+| @fontsource-variable/inter | OFL-1.1 (Inter by Rasmus Andersson) | candidate names and body copy |
 
 Candidate portraits in `apps/web/public/candidates/` are generated placeholder
-SVGs containing initials only. They depict no real person.
+SVGs containing initials only. They depict no real person, and are replaced when
+real photographs are supplied.
+
+## Evaluated and not used
+
+`bauhaus-avatar-generator` (MIT) and `bauhaus-ui-library` (MIT) were both
+reviewed while designing the current direction. Neither is used; the reasoning
+is recorded in `docs/design-direction.md` §7.

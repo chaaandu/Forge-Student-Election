@@ -13,22 +13,26 @@
     {
       "id": "samurai",
       "name": "Samurai",
-      "color": "#A6362B"
+      "color": "#DE2B1F",
+      "shape": "square"
     },
     {
       "id": "knights",
       "name": "Knights",
-      "color": "#3C5A73"
-    },
-    {
-      "id": "vikings",
-      "name": "Vikings",
-      "color": "#3F6B5C"
+      "color": "#1B4D9B",
+      "shape": "circle"
     },
     {
       "id": "gladiators",
       "name": "Gladiators",
-      "color": "#8A6220"
+      "color": "#FFC20E",
+      "shape": "triangle"
+    },
+    {
+      "id": "vikings",
+      "name": "Vikings",
+      "color": "#1E7A4C",
+      "shape": "arc"
     }
   ],
   "positions": [
@@ -139,24 +143,10 @@
       }
     },
     {
-      "id": "house-captain-vikings",
-      "title": "House Captain — Vikings",
-      "shortTitle": "Vikings Captain",
-      "order": 9,
-      "kind": "house-captain",
-      "houseId": "vikings",
-      "eligibility": {
-        "voterTypes": [
-          "student"
-        ],
-        "houseId": "vikings"
-      }
-    },
-    {
       "id": "house-captain-gladiators",
       "title": "House Captain — Gladiators",
       "shortTitle": "Gladiators Captain",
-      "order": 10,
+      "order": 9,
       "kind": "house-captain",
       "houseId": "gladiators",
       "eligibility": {
@@ -164,6 +154,20 @@
           "student"
         ],
         "houseId": "gladiators"
+      }
+    },
+    {
+      "id": "house-captain-vikings",
+      "title": "House Captain — Vikings",
+      "shortTitle": "Vikings Captain",
+      "order": 10,
+      "kind": "house-captain",
+      "houseId": "vikings",
+      "eligibility": {
+        "voterTypes": [
+          "student"
+        ],
+        "houseId": "vikings"
       }
     }
   ],

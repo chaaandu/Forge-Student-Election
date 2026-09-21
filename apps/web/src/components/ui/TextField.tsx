@@ -7,7 +7,7 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   hideLabel?: boolean;
 }
 
-/** A ruled field on a form: sunk paper, a hairline, ink you write into. */
+/** A field on a plate: sunk block, heavy keyline, no radius. */
 export function TextField({
   label,
   hint,
@@ -33,13 +33,13 @@ export function TextField({
         aria-describedby={
           [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ') || undefined
         }
-        className={`w-full px-4 outline-none transition-colors ${className}`}
+        className={`w-full px-4 outline-none ${className}`}
         style={{
           minHeight: 'var(--hit)',
-          paddingBlock: '12px',
-          borderRadius: 'var(--radius-control)',
-          border: `1px solid ${error ? 'var(--color-alert)' : 'var(--color-rule-strong)'}`,
-          background: 'var(--color-sheet-sunk)',
+          paddingBlock: '13px',
+          border: `3px solid ${error ? 'var(--bh-red)' : 'var(--color-ink)'}`,
+          borderRadius: 0,
+          background: 'var(--color-card)',
           color: 'var(--color-ink)',
           fontSize: 'var(--text-md)',
         }}
@@ -51,15 +51,15 @@ export function TextField({
         </p>
       )}
 
-      {/* Errors are never colour-only: a glyph and plain words carry the meaning. */}
+      {/* Errors are never colour-only: a form and plain words carry the meaning. */}
       {error && (
         <p
           id={errorId}
           role="alert"
           className="flex items-start gap-2"
-          style={{ fontSize: 'var(--text-xs)', color: 'var(--color-alert)' }}
+          style={{ fontSize: 'var(--text-xs)', color: 'var(--bh-red-text)', fontWeight: 600 }}
         >
-          <span aria-hidden="true">✕</span>
+          <span aria-hidden="true">■</span>
           <span>{error}</span>
         </p>
       )}

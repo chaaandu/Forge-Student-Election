@@ -20,42 +20,71 @@ afterEach(() => {
   harness.dispose();
 });
 
-function runWorker(voterId: string, startAt: number): Promise<{ outcome: string; code?: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      TSX,
-      [
-        WORKER,
-        join(harness.dir, 'election.config.json'),
-        join(harness.dir, 'voters.json'),
-        harness.dbPath,
-        voterId,
-        String(startAt),
-        JSON.stringify(STUDENT_BALLOT),
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'] },
-    );
+interface WorkerHandle {
+  ready: Promise<void>;
+  result: Promise<{ outcome: string; code?: string }>;
+  release(): void;
+}
 
-    let out = '';
-    let err = '';
-    child.stdout.on('data', (chunk) => (out += String(chunk)));
+function startWorker(voterId: string): WorkerHandle {
+  const child = spawn(
+    TSX,
+    [
+      WORKER,
+      join(harness.dir, 'election.config.json'),
+      join(harness.dir, 'voters.json'),
+      harness.dbPath,
+      voterId,
+      JSON.stringify(STUDENT_BALLOT),
+    ],
+    { stdio: ['pipe', 'pipe', 'pipe'] },
+  );
+
+  let out = '';
+  let err = '';
+  let signalReady: () => void = () => {};
+  const ready = new Promise<void>((resolve) => {
+    signalReady = resolve;
+  });
+
+  const result = new Promise<{ outcome: string; code?: string }>((resolve, reject) => {
+    child.stdout.on('data', (chunk) => {
+      out += String(chunk);
+      if (out.includes('READY')) signalReady();
+    });
     child.stderr.on('data', (chunk) => (err += String(chunk)));
     child.on('close', () => {
+      const lines = out.trim().split('\n').filter((l) => l !== 'READY');
       try {
-        resolve(JSON.parse(out.trim().split('\n').pop() ?? '{}'));
+        resolve(JSON.parse(lines.pop() ?? '{}'));
       } catch {
         reject(new Error(`worker produced no result.\nstdout: ${out}\nstderr: ${err}`));
       }
     });
+    child.on('error', reject);
   });
+
+  return {
+    ready,
+    result,
+    release: () => child.stdin.write('GO\n'),
+  };
+}
+
+/**
+ * Boot N workers, wait until every one is at the barrier, then release them all
+ * in the same tick. No timing guesses: every transaction starts together.
+ */
+async function raceWorkers(voterIds: string[]): Promise<{ outcome: string; code?: string }[]> {
+  const workers = voterIds.map(startWorker);
+  await Promise.all(workers.map((w) => w.ready));
+  for (const worker of workers) worker.release();
+  return Promise.all(workers.map((w) => w.result));
 }
 
 describe('concurrent submissions for the same voter', () => {
   it('records exactly one ballot when 8 processes submit simultaneously', async () => {
-    const startAt = Date.now() + 1200; // enough for every process to boot and line up
-    const results = await Promise.all(
-      Array.from({ length: 8 }, () => runWorker('stu-1', startAt)),
-    );
+    const results = await raceWorkers(Array.from({ length: 8 }, () => 'stu-1'));
 
     const recorded = results.filter((r) => r.outcome === 'recorded');
     const rejected = results.filter((r) => r.outcome === 'rejected');
@@ -85,11 +114,7 @@ describe('concurrent submissions for the same voter', () => {
   }, 45_000);
 
   it('lets different voters submit concurrently without interfering', async () => {
-    const startAt = Date.now() + 1200;
-    const results = await Promise.all([
-      runWorker('stu-1', startAt),
-      runWorker('stu-3', startAt),
-    ]);
+    const results = await raceWorkers(['stu-1', 'stu-3']);
 
     expect(results.filter((r) => r.outcome === 'recorded')).toHaveLength(2);
 

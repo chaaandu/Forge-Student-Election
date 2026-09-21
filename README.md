@@ -1,7 +1,8 @@
 # Mesa Elections
 
-A student and employee election system for Mesa School of Business, presented as
-a ballot paper: warm stock, printed rules, and a mark you make in ink. Students vote for six leadership positions plus their own
+A student and employee election system for Mesa School of Business, designed as a
+Bauhaus poster series: primaries, elementary forms, heavy black rules. Each
+position is a plate; the ballot is a portfolio of them. Students vote for six leadership positions plus their own
 house captain; employees vote for the six leadership positions. Results combine
 the two electorates with configured weights (75% student / 25% employee) that are
 resolved **per position**, so house captain contests are scored student-only at
@@ -17,7 +18,7 @@ invigilator gets a live `/monitor` view of who has voted. Results mirror to **Go
 Sheets**.
 
 ```
-277 tests · lint clean · typecheck clean · production build clean
+304 tests · lint clean · typecheck clean · production build clean
 ```
 
 ---
@@ -348,7 +349,7 @@ npx vitest run --project web          # machine, components, full journeys
 | --- | --- |
 | `core` (77) | weighting including both zero-turnout policies, ties, unknown candidates, config validation, eligibility, step sequences, ballot validation |
 | `server` (133) | one-vote enforcement, **eight-process concurrency**, idempotency, forged payloads, roll masking, admin authz, audit chain tampering, immutability triggers, Google Sheets auth/errors/header-ordering, spreadsheet failure/throttle/recovery, the invigilator monitor, end-to-end weighted results, shared-kiosk rate limits |
-| `web` (70) | the state machine, the ink-mark accessibility contract, measured token and house-colour contrast, and full student and employee journeys through the real UI |
+| `web` (97) | the state machine, the colour system (field-vs-ink, hue-preserving darkening), the ink-mark and button accessibility contracts, measured token and house-colour contrast, and full student and employee journeys through the real UI |
 
 Tests that matter most: `concurrency.test.ts` (eight OS processes, one ballot),
 `flow.test.tsx` → *"NEVER shows success before the server responds"*, and
@@ -397,6 +398,6 @@ that should never be a reflex.
 | [`docs/voting-logic.md`](docs/voting-logic.md) | eligibility, step sequences, validation, the weighting model, the zero-turnout decision |
 | [`docs/security-model.md`](docs/security-model.md) | threats → controls → tests, identity, ballot secrecy and its limits, what is *not* protected, pre-election checklist |
 | [`docs/data-model.md`](docs/data-model.md) | configuration schema, SQL schema, retention, the Excel workbook shape |
-| [`docs/design-direction.md`](docs/design-direction.md) | "The Ballot" — tokens, the ink-mark spec, the WebGL sheet's rules, screen-by-screen motion |
+| [`docs/design-direction.md`](docs/design-direction.md) | "Vote / Form" — the Bauhaus grammar, the field-not-ink colour rule, house colour + form, gamification's one hard limit, and what was taken from open source |
 | [`docs/implementation-plan.md`](docs/implementation-plan.md) | the fifteen phases, sequencing rationale, risk register |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | dependency licences |

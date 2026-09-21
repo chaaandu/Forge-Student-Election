@@ -1,4 +1,4 @@
-import { Sheet } from '@/components/paper/Sheet';
+import { Panel } from '@/components/bauhaus/Panel';
 
 /**
  * In flight.
@@ -10,14 +10,16 @@ import { Sheet } from '@/components/paper/Sheet';
 export function SubmittingScreen({ attempt }: { attempt: number }) {
   return (
     <div className="mx-auto w-full max-w-lg">
-      <Sheet raised>
-        <div className="flex flex-col items-center gap-6 px-7 py-14 text-center sm:px-9">
-          <h1 style={{ fontSize: 'var(--text-lg)' }}>Recording your vote…</h1>
+      <Panel raised>
+        <div className="flex flex-col items-center gap-7 px-7 py-16 text-center sm:px-9">
+          <h1 className="poster" style={{ fontSize: 'var(--text-xl)' }}>
+            Recording your vote
+          </h1>
 
           <div
             aria-hidden="true"
             className="sweep w-full max-w-xs overflow-hidden"
-            style={{ height: 3, background: 'var(--color-rule)', borderRadius: 2 }}
+            style={{ height: 10, border: '3px solid var(--color-ink)', background: 'var(--color-card)' }}
           >
             <span className="sweep__bar" />
           </div>
@@ -28,13 +30,13 @@ export function SubmittingScreen({ attempt }: { attempt: number }) {
               : 'Please do not close this screen.'}
           </p>
         </div>
-      </Sheet>
+      </Panel>
 
       <style>{`
         .sweep__bar {
           display: block; height: 100%; width: 36%;
-          background: var(--color-mark);
-          animation: sweep 1.15s var(--ease-paper) infinite;
+          background: var(--bh-red);
+          animation: sweep 1.15s var(--ease-out) infinite;
         }
         @keyframes sweep { from { transform: translateX(-100%) } to { transform: translateX(320%) } }
         @media (prefers-reduced-motion: reduce) {

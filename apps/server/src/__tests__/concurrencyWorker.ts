@@ -6,10 +6,11 @@
  * prove nothing: better-sqlite3 is synchronous, so a single-threaded test can
  * never actually interleave two transactions.
  */
+import { readSync } from 'node:fs';
 import { loadEnv } from '../config/env.js';
 import { createContext } from '../context.js';
 
-const [, , configPath, rollPath, dbPath, voterId, startAtRaw, selectionsRaw] = process.argv;
+const [, , configPath, rollPath, dbPath, voterId, selectionsRaw] = process.argv;
 
 const env = loadEnv({
   NODE_ENV: 'test',
@@ -32,11 +33,24 @@ if (!voter) {
   process.exit(0);
 }
 
-// Line up on a shared wall-clock instant so the transactions genuinely collide
-// instead of being spread out by process start-up time.
-const startAt = Number(startAtRaw);
-while (Date.now() < startAt) {
-  /* spin */
+/**
+ * Barrier: announce readiness, then block until the parent releases everyone.
+ *
+ * An earlier version waited for a wall-clock instant agreed up front. That is a
+ * guess about how long N processes take to boot, and under load (a full
+ * `npm run verify`, with tsc and vite running alongside) the guess can expire
+ * before the slowest process is ready — which both weakens the race and makes
+ * the test flaky. A real barrier is deterministic and collides harder.
+ */
+process.stdout.write('READY\n');
+{
+  const buffer = Buffer.alloc(16);
+  // Blocking read: returns only when the parent writes the release byte.
+  try {
+    readSync(0, buffer, 0, buffer.length, null);
+  } catch {
+    // stdin closed — proceed anyway rather than hanging the suite.
+  }
 }
 
 try {

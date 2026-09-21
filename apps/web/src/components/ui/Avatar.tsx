@@ -1,6 +1,7 @@
+import { inkOn } from '@/lib/color';
+
 export interface AvatarProps {
   name: string;
-  /** House colour. Falls back to ink. */
   color?: string;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -8,21 +9,16 @@ export interface AvatarProps {
 function initials(name: string): string {
   const parts = name.replace(/['’]/g, '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
-  const first = parts[0]?.[0] ?? '';
-  const last = parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '';
-  return (first + last).toUpperCase();
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')).toUpperCase();
 }
 
-const sizes = {
-  sm: { box: 38, text: 'var(--text-xs)' },
-  md: { box: 56, text: 'var(--text-md)' },
-  lg: { box: 78, text: 'var(--text-lg)' },
-} as const;
+const sizes = { sm: 40, md: 58, lg: 82 } as const;
 
-/** Initials, set in the printed face. Decorative: the name is always alongside. */
+/** Initials in a hard-edged block. Decorative: the name is always alongside. */
 export function Avatar({ name, color, size = 'md' }: AvatarProps) {
-  const { box, text } = sizes[size];
-  const accent = color ?? 'var(--color-ink-soft)';
+  const box = sizes[size];
+  const field = color ?? 'var(--bh-blue)';
+  const ink = color?.startsWith('#') ? inkOn(color) : '#FFFFFF';
 
   return (
     <span
@@ -31,14 +27,13 @@ export function Avatar({ name, color, size = 'md' }: AvatarProps) {
       style={{
         width: box,
         height: box,
-        fontSize: text,
-        fontFamily: 'var(--font-display)',
+        fontFamily: 'var(--font-geometric)',
         fontWeight: 600,
+        fontSize: box * 0.38,
         letterSpacing: '0.02em',
-        borderRadius: 'var(--radius-sm)',
-        color: accent,
-        background: 'var(--color-sheet-sunk)',
-        border: `1px solid ${accent}33`,
+        background: field,
+        color: ink,
+        border: '3px solid var(--color-ink)',
       }}
     >
       {initials(name)}

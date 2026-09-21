@@ -67,28 +67,38 @@ export function Dialog({ open, title, onClose, children, actions }: DialogProps)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgb(38 32 20 / 0.34)', backdropFilter: 'saturate(0.85)' }}
+      style={{ background: 'rgb(20 20 20 / 0.52)' }}
     >
       <div
         ref={panelRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
-        className="sheet w-full max-w-lg p-7 sm:p-9"
-        style={{ boxShadow: 'var(--shadow-modal)', animation: 'slip-in var(--dur-enter) var(--ease-paper) both' }}
+        className="panel w-full max-w-lg overflow-hidden"
+        style={{ boxShadow: 'var(--shadow-modal)', animation: 'slip-in var(--dur-enter) var(--ease-snap) both' }}
       >
-        <h2 id="dialog-title" style={{ fontSize: 'var(--text-lg)' }}>
+        <h2
+          id="dialog-title"
+          className="poster px-7 py-5 sm:px-9"
+          style={{
+            fontSize: 'var(--text-xl)',
+            background: 'var(--bh-yellow)',
+            color: 'var(--color-ink)',
+            borderBottom: 'var(--rule-weight) solid var(--color-ink)',
+          }}
+        >
           {title}
         </h2>
-        <div className="mt-4">{children}</div>
-        <div className="perforation my-7" aria-hidden="true" />
-        <div className="flex flex-wrap gap-3">{actions}</div>
+        <div className="px-7 py-7 sm:px-9">
+          {children}
+          <div className="mt-7 flex flex-wrap gap-3">{actions}</div>
+        </div>
       </div>
 
       <style>{`
         @keyframes slip-in {
-          from { opacity: 0; transform: translateY(10px) rotate(-0.25deg) }
-          to   { opacity: 1; transform: translateY(0) rotate(0deg) }
+          from { opacity: 0; transform: translateY(14px) scale(.97) }
+          to   { opacity: 1; transform: translateY(0) scale(1) }
         }
       `}</style>
     </div>

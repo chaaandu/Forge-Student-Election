@@ -1,9 +1,10 @@
 import type { House, Position } from '@mesa/election-core';
 import type { VoterProfile } from '@/lib/api';
-import { Sheet } from '@/components/paper/Sheet';
+import { Shape } from '@/components/bauhaus/Shape';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Tag } from '@/components/ui/Tag';
+import { inkOn } from '@/lib/color';
 
 export interface IdentityConfirmScreenProps {
   voter: VoterProfile;
@@ -16,11 +17,11 @@ export interface IdentityConfirmScreenProps {
 }
 
 /**
- * The name at the top of the ballot.
+ * The name on the ballot.
  *
  * A full screen rather than a toast, because this is the last moment at which
  * an identity mistake is cheap to fix — and because check-in is supervised, the
- * name is set large enough for an invigilator to read across a booth.
+ * name is set poster-large so an invigilator can read it across a booth.
  */
 export function IdentityConfirmScreen({
   voter,
@@ -30,44 +31,48 @@ export function IdentityConfirmScreen({
   onConfirm,
   onStartOver,
 }: IdentityConfirmScreenProps) {
-  const accent = house?.color ?? 'var(--color-mark)';
+  const field = house?.color ?? 'var(--bh-blue)';
+  const onField = house?.color ? inkOn(house.color) : '#FFFFFF';
   const endsWithHouseGate = steps.at(-1)?.kind === 'house-captain';
 
   return (
-    <div className="mx-auto w-full max-w-xl">
-      <Sheet raised className="ballot-head overflow-hidden">
-        <div className="px-6 pt-7 sm:px-9">
-          <p className="label">Voting as</p>
-
-          <div className="mt-4 flex items-center gap-5">
-            <Avatar name={voter.name} color={accent} size="lg" />
-            <div className="min-w-0">
-              {/* Large on purpose: the invigilator checks this, not the software. */}
-              <h1
-                className="truncate"
-                style={{ fontSize: 'clamp(1.6rem, 5vw, 2.4rem)', lineHeight: 1.1 }}
-              >
-                {voter.name}
-              </h1>
-              <p className="mt-1 truncate" style={{ color: 'var(--color-ink-soft)' }}>
-                {voter.email}
-              </p>
-            </div>
+    <div className="mx-auto w-full max-w-2xl">
+      <div className="bh-pass panel panel--raised overflow-hidden">
+        <div
+          className="flex flex-wrap items-center gap-5 px-6 py-7 sm:px-8"
+          style={{ background: field, color: onField }}
+        >
+          <Avatar name={voter.name} size="lg" {...(house?.color ? { color: house.color } : {})} />
+          <div className="min-w-0 flex-1">
+            <p className="label" style={{ color: onField, opacity: 0.75 }}>
+              Voting as
+            </p>
+            {/* Poster-large on purpose: the invigilator checks this, not the software. */}
+            <h1
+              className="poster mt-1 truncate"
+              style={{ fontSize: 'clamp(1.75rem, 6vw, 3rem)' }}
+            >
+              {voter.name}
+            </h1>
+            <p className="mt-1 truncate" style={{ fontSize: 'var(--text-sm)', opacity: 0.85 }}>
+              {voter.email}
+            </p>
           </div>
+          {house && <Shape form={house.shape ?? 'square'} size={48} color={onField} />}
+        </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+        <div className="px-6 py-7 sm:px-8">
+          <div className="flex flex-wrap gap-2">
             <Tag>{voter.type}</Tag>
             {house && <Tag color={house.color}>{house.name}</Tag>}
-            <Tag>
+            <Tag color="#FFC20E">
               {gateCount} {gateCount === 1 ? 'position' : 'positions'}
             </Tag>
           </div>
-        </div>
 
-        <hr className="rule mt-7" />
+          <div className="bar mt-6" style={{ maxWidth: 160 }} />
 
-        <div className="px-6 py-7 sm:px-9">
-          <p style={{ color: 'var(--color-ink-soft)' }}>
+          <p className="mt-6" style={{ fontSize: 'var(--text-md)' }}>
             {/*
               Derived from this voter's actual sequence rather than their type.
               If a future configuration gives employees a house contest — or
@@ -78,25 +83,25 @@ export function IdentityConfirmScreen({
               : `You will vote in ${gateCount} leadership positions. House captains are voted on by students.`}
           </p>
 
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap gap-3">
             <Button variant="primary" size="lg" onClick={onConfirm} autoFocus>
-              That&apos;s me — start voting
+              That&apos;s me — start voting <span aria-hidden="true">→</span>
             </Button>
             <Button variant="quiet" size="lg" onClick={onStartOver}>
               Not you? Start over
             </Button>
           </div>
         </div>
-      </Sheet>
+      </div>
 
       <style>{`
-        .ballot-head { animation: head-in var(--dur-enter) var(--ease-paper) both }
-        @keyframes head-in {
-          from { opacity: 0; transform: translateY(12px) }
+        .bh-pass { animation: pass-in var(--dur-enter) var(--ease-snap) both }
+        @keyframes pass-in {
+          from { opacity: 0; transform: translateY(14px) }
           to   { opacity: 1; transform: translateY(0) }
         }
         @media (prefers-reduced-motion: reduce) {
-          @keyframes head-in { from { opacity: 0 } to { opacity: 1 } }
+          @keyframes pass-in { from { opacity: 0 } to { opacity: 1 } }
         }
       `}</style>
     </div>

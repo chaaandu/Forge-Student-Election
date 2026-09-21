@@ -1,11 +1,12 @@
 // @vitest-environment node
 //
-// Runs in node rather than jsdom so the real stylesheet can be read from disk:
-// the assertions must check the file the app actually ships, not a copy that
-// can drift out of sync with it.
+// Runs in node rather than jsdom so the real stylesheet and the real election
+// configuration can be read from disk. These assertions must check the files
+// the app actually ships, not copies that can drift.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { AA_BODY, AA_LARGE, contrastRatio, inkOn, readableOn, roleFor } from '../../lib/color';
 
 const css = readFileSync(fileURLToPath(new URL('../tokens.css', import.meta.url)), 'utf8');
 
@@ -15,101 +16,127 @@ function token(name: string): string {
   return match[1];
 }
 
-function channel(value: number): number {
-  const c = value / 255;
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-}
-
-function luminance(hex: string): number {
-  return (
-    0.2126 * channel(parseInt(hex.slice(1, 3), 16)) +
-    0.7152 * channel(parseInt(hex.slice(3, 5), 16)) +
-    0.0722 * channel(parseInt(hex.slice(5, 7), 16))
-  );
-}
-
-function ratio(a: string, b: string): number {
-  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-const AA_BODY = 4.5;
-const AA_LARGE = 3;
+const PAPER = token('color-paper');
+const CARD = token('color-card');
+const SUNK = token('color-sunk');
 
 /**
- * Paper is a light surface, which makes it easy to get contrast wrong in the
- * opposite direction from a dark theme: warm greys that look elegant on a
- * designer's calibrated display and vanish under a hall's overhead lights.
- * Every pair is measured.
+ * A bold palette fails in the opposite direction from a quiet one: saturated
+ * colour looks confident on a designer's display and disappears as text under a
+ * hall's overhead lights. Bauhaus yellow is the extreme case at 1.39:1 on paper.
+ *
+ * The rule under test: a colour is a FIELD, not ink.
  */
-describe('ink on paper', () => {
-  const surfaces = ['color-paper', 'color-sheet', 'color-sheet-sunk'];
+describe('ink on every surface', () => {
+  const surfaces = [PAPER, CARD, SUNK];
 
-  it.each(['color-ink', 'color-ink-soft', 'color-mark', 'color-confirm', 'color-alert'])(
-    '%s meets AA for body text on every paper surface',
-    (foreground) => {
-      for (const surface of surfaces) {
-        const value = ratio(token(foreground), token(surface));
-        expect(value, `${foreground} on ${surface} is ${value.toFixed(2)}:1`).toBeGreaterThanOrEqual(
-          AA_BODY,
-        );
-      }
-    },
-  );
+  it.each(['color-ink', 'color-ink-soft'])('%s meets AA for body text everywhere', (name) => {
+    for (const surface of surfaces) {
+      const value = contrastRatio(token(name), surface);
+      expect(value, `${name} on ${surface} is ${value.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+        AA_BODY,
+      );
+    }
+  });
 
   it('body ink is far beyond the minimum, because most reading happens here', () => {
-    expect(ratio(token('color-ink'), token('color-paper'))).toBeGreaterThanOrEqual(12);
-  });
-
-  it('the mark colour is readable as text, not only as a graphic', () => {
-    expect(ratio(token('color-mark'), token('color-sheet'))).toBeGreaterThanOrEqual(AA_BODY);
-  });
-
-  it('paper on the primary (ink) button meets AA', () => {
-    expect(ratio(token('color-sheet'), token('color-ink'))).toBeGreaterThanOrEqual(AA_BODY);
+    expect(contrastRatio(token('color-ink'), PAPER)).toBeGreaterThanOrEqual(12);
   });
 
   it('tertiary ink meets AA for large text only, and is documented as such', () => {
-    const value = ratio(token('color-ink-faint'), token('color-paper'));
-    expect(value).toBeGreaterThanOrEqual(AA_LARGE);
-    expect(css).toMatch(/--color-ink-faint[\s\S]{0,120}never body/);
-  });
-
-  it('rules are visible against both the desk and a sheet', () => {
-    expect(ratio(token('color-rule'), token('color-sheet'))).toBeGreaterThan(1.18);
-    expect(ratio(token('color-rule-strong'), token('color-sheet'))).toBeGreaterThan(1.6);
-  });
-
-  it('a sheet is distinguishable from the desk without relying on shadow', () => {
-    expect(ratio(token('color-sheet'), token('color-paper'))).toBeGreaterThan(1.05);
-    expect(token('color-sheet')).not.toBe(token('color-paper'));
+    expect(contrastRatio(token('color-ink-faint'), PAPER)).toBeGreaterThanOrEqual(AA_LARGE);
+    expect(css).toMatch(/--color-ink-faint[\s\S]{0,140}never body/);
   });
 });
 
-describe('house colours are legible on paper', () => {
-  // Read from the election configuration rather than the token file: these are
-  // set by whoever runs the election, and a bad choice must fail a test rather
-  // than quietly ship.
+describe('primaries used as text are the darkened variants', () => {
+  const pairs: [string, string][] = [
+    ['bh-red', 'bh-red-text'],
+    ['bh-blue', 'bh-blue-text'],
+    ['bh-yellow', 'bh-yellow-text'],
+    ['bh-green', 'bh-green-text'],
+  ];
+
+  it.each(pairs)('--%s has a text variant that passes AA on paper', (_field, textToken) => {
+    const value = contrastRatio(token(textToken), PAPER);
+    expect(value, `--${textToken} is ${value.toFixed(2)}:1 on paper`).toBeGreaterThanOrEqual(
+      AA_BODY,
+    );
+  });
+
+  it('proves the premise: raw Bauhaus yellow is unusable as text', () => {
+    expect(contrastRatio(token('bh-yellow'), PAPER)).toBeLessThan(2);
+  });
+
+  it('each text variant matches what readableOn() derives, so code and CSS agree', () => {
+    for (const [field, textToken] of pairs) {
+      expect(token(textToken).toLowerCase()).toBe(readableOn(token(field), PAPER).toLowerCase());
+    }
+  });
+});
+
+describe('primaries used as fields carry legible type', () => {
+  it.each(['bh-red', 'bh-blue', 'bh-yellow', 'bh-green'])(
+    'black or white on --%s clears AA',
+    (name) => {
+      const field = token(name);
+      expect(contrastRatio(inkOn(field), field)).toBeGreaterThanOrEqual(AA_BODY);
+    },
+  );
+
+  it('puts black on yellow and white on blue, as a poster would', () => {
+    expect(inkOn(token('bh-yellow'))).toBe('#141414');
+    expect(inkOn(token('bh-blue'))).toBe('#FFFFFF');
+  });
+
+  it('keeps the page and a panel distinguishable without relying on shadow', () => {
+    expect(token('color-card')).not.toBe(token('color-paper'));
+    expect(contrastRatio(CARD, PAPER)).toBeGreaterThan(1.03);
+  });
+});
+
+/**
+ * House colours are chosen by whoever runs the election, so they are validated
+ * here rather than trusted. Every house must work as a field AND as text.
+ */
+describe('house identity', () => {
   const config = JSON.parse(
     readFileSync(
       fileURLToPath(new URL('../../../../server/config/election.config.json', import.meta.url)),
       'utf8',
     ),
-  ) as { houses: { id: string; name: string; color: string }[] };
+  ) as { houses: { id: string; name: string; color: string; shape?: string }[] };
 
-  it.each(config.houses.map((h) => [h.name, h.color]))(
-    '%s (%s) meets AA against a sheet',
-    (_name, color) => {
-      expect(ratio(color, token('color-sheet'))).toBeGreaterThanOrEqual(AA_BODY);
+  it.each(config.houses.map((h) => [h.name, h.color] as const))(
+    '%s works as a field and as text',
+    (name, colour) => {
+      const role = roleFor(colour, PAPER);
+      expect(contrastRatio(role.onField, role.field), `${name}: ink on field`).toBeGreaterThanOrEqual(
+        AA_BODY,
+      );
+      expect(contrastRatio(role.text, PAPER), `${name}: text on paper`).toBeGreaterThanOrEqual(
+        AA_BODY,
+      );
     },
   );
+
+  it('gives every house a distinct elementary form, so identity is never colour alone', () => {
+    const shapes = config.houses.map((h) => h.shape);
+    expect(shapes.every(Boolean)).toBe(true);
+    expect(new Set(shapes).size).toBe(config.houses.length);
+  });
+
+  it('gives every house a distinct colour too', () => {
+    const colours = config.houses.map((h) => h.color.toLowerCase());
+    expect(new Set(colours).size).toBe(config.houses.length);
+  });
 });
 
 describe('reduced motion is wired into the tokens', () => {
-  it('collapses the ink stroke and every transition', () => {
+  it('collapses the mark, the snap and every transition', () => {
     const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(block).toMatch(/--dur-mark:\s*1ms/);
-    expect(block).toMatch(/--dur-step:\s*1ms/);
+    expect(block).toMatch(/--dur-snap:\s*1ms/);
     expect(block).toMatch(/animation-duration:\s*0\.01ms\s*!important/);
   });
 });

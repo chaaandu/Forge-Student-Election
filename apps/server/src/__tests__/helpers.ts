@@ -23,8 +23,8 @@ export function testElectionConfig(overrides: Record<string, unknown> = {}) {
       ...(overrides.election as object | undefined),
     },
     houses: [
-      { id: 'aravalli', name: 'Aravalli', color: '#E4572E' },
-      { id: 'nilgiri', name: 'Nilgiri', color: '#2E86AB' },
+      { id: 'aravalli', name: 'Aravalli', color: '#DE2B1F', shape: 'square' },
+      { id: 'nilgiri', name: 'Nilgiri', color: '#1B4D9B', shape: 'circle' },
     ],
     positions: [
       {

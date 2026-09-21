@@ -50,11 +50,25 @@ export interface ElectionMeta {
   readonly isSeedData?: boolean;
 }
 
+/**
+ * Elementary forms, after Kandinsky's Bauhaus colour-form correspondence
+ * (red square, blue circle, yellow triangle) plus the arc, the fourth form
+ * Bauhaus composition leans on constantly.
+ *
+ * A house is identified by a form AS WELL AS a colour, so house identity is
+ * never carried by colour alone — which matters for colour-blind voters and is
+ * asserted in the web app's tests.
+ */
+export const HOUSE_SHAPES = ['square', 'circle', 'triangle', 'arc'] as const;
+export type HouseShape = (typeof HOUSE_SHAPES)[number];
+
 export interface House {
   readonly id: string;
   readonly name: string;
-  /** Hex colour used for that house's concourse. Presentation reads this; logic never does. */
+  /** Hex field colour. Presentation reads this; election logic never does. */
   readonly color: string;
+  /** The house's elementary form. Defaults to `square` when unset. */
+  readonly shape?: HouseShape;
   readonly motto?: string;
 }
 

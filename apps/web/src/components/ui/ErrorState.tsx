@@ -12,9 +12,9 @@ export interface ErrorStateProps {
 /**
  * Every failure state renders through here.
  *
- * A stamped notice on the ballot: a red rule, a plain headline, and a sentence
- * saying what happened and what to do. There is no bare "Something went wrong"
- * anywhere in this system.
+ * A stamped plate: a solid field carrying a plain headline, then a sentence
+ * saying what happened and what to do. Meaning first, always — there is no bare
+ * "Something went wrong" anywhere in this system.
  */
 export function ErrorState({
   headline,
@@ -23,28 +23,31 @@ export function ErrorState({
   secondaryAction,
   tone = 'alert',
 }: ErrorStateProps) {
-  const accent = tone === 'alert' ? 'var(--color-alert)' : 'var(--color-ink-soft)';
+  const field = tone === 'alert' ? 'var(--bh-red)' : 'var(--bh-yellow)';
+  const onField = tone === 'alert' ? '#FFFFFF' : 'var(--color-ink)';
 
   return (
-    <div
-      role="alert"
-      className="sheet mx-auto w-full max-w-xl overflow-hidden"
-      style={{ borderColor: `${accent}55` }}
-    >
-      <div style={{ height: 4, background: accent }} aria-hidden="true" />
+    <div role="alert" className="panel panel--raised mx-auto w-full max-w-xl overflow-hidden">
+      <div
+        className="px-7 py-5 sm:px-9"
+        style={{
+          background: field,
+          color: onField,
+          borderBottom: 'var(--rule-weight) solid var(--color-ink)',
+        }}
+      >
+        <h2 className="poster" style={{ fontSize: 'var(--text-xl)' }}>
+          {headline}
+        </h2>
+      </div>
 
       <div className="px-7 py-8 text-center sm:px-9">
-        <h2 style={{ fontSize: 'var(--text-xl)', color: 'var(--color-ink)' }}>{headline}</h2>
-
-        <p
-          className="mx-auto mt-4 max-w-md"
-          style={{ fontSize: 'var(--text-base)', color: 'var(--color-ink-soft)' }}
-        >
+        <p className="mx-auto max-w-md" style={{ fontSize: 'var(--text-base)' }}>
           {message}
         </p>
 
         {(action || secondaryAction) && (
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             {action && (
               <Button variant="primary" size="lg" onClick={action.onClick}>
                 {action.label}

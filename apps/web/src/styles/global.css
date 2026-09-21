@@ -4,19 +4,14 @@
 
 @theme inline {
   --color-paper: var(--color-paper);
-  --color-sheet: var(--color-sheet);
-  --color-edge: var(--color-edge);
-  --color-rule: var(--color-rule);
+  --color-card: var(--color-card);
   --color-ink: var(--color-ink);
   --color-ink-soft: var(--color-ink-soft);
   --color-ink-faint: var(--color-ink-faint);
   --color-mark: var(--color-mark);
-  --color-confirm: var(--color-confirm);
-  --color-alert: var(--color-alert);
-  --font-display: var(--font-display);
+  --font-poster: var(--font-poster);
+  --font-geometric: var(--font-geometric);
   --font-body: var(--font-body);
-  --radius-sheet: var(--radius-sheet);
-  --radius-control: var(--radius-control);
 }
 
 *,
@@ -39,35 +34,23 @@ body {
   font-size: var(--text-base);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
   overscroll-behavior: none;
-}
-
-/* The desk: paper fibre plus a barely-there warm vignette, so the page reads as
-   a surface rather than a flat colour. No gradient is visible as a gradient. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: var(--texture-fibre);
-  opacity: 0.35;
-  mix-blend-mode: multiply;
 }
 
 h1,
 h2,
 h3 {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-geometric);
   font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.15;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 p,
-figure {
+figure,
+ul,
+ol {
   margin: 0;
 }
 
@@ -80,12 +63,11 @@ input {
 :focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
-  border-radius: var(--radius-control);
 }
 
 ::selection {
-  background: var(--color-mark-wash);
-  color: var(--color-mark-deep);
+  background: var(--bh-yellow);
+  color: var(--color-ink);
 }
 
 .sr-only {
@@ -106,69 +88,88 @@ input {
   top: var(--space-4);
   z-index: 100;
   transform: translateY(-200%);
-  background: var(--color-ink);
-  color: var(--color-sheet);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-control);
-  font-weight: 600;
+  background: var(--bh-yellow);
+  color: var(--color-ink);
+  padding: var(--space-3) var(--space-5);
+  border: var(--rule-weight) solid var(--color-ink);
+  font-family: var(--font-geometric);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   text-decoration: none;
-  transition: transform 140ms var(--ease-paper);
+  transition: transform 140ms var(--ease-out);
 }
 .skip-link:focus {
   transform: translateY(0);
 }
 
-/* ------------------------------------------------------------- paper --- */
+/* --------------------------------------------------------------- panel --- */
 
 /**
- * A sheet of paper.
+ * A panel.
  *
- * Flat stock, a hairline edge, and a close warm shadow — the shadow a real
- * sheet casts on a desk, not a drop-shadow effect. Fibre texture is applied
- * with multiply so it darkens rather than hazes.
+ * Heavy black keyline and a hard offset block instead of a soft shadow — the
+ * look of overprinting, which is how depth was expressed before it could be
+ * simulated. No blur anywhere in this interface.
  */
-.sheet {
+.panel {
   position: relative;
-  background-color: var(--color-sheet);
-  border: 1px solid var(--color-edge);
-  border-radius: var(--radius-sheet);
-  box-shadow: var(--shadow-sheet);
+  background: var(--color-card);
+  border: var(--rule-weight) solid var(--color-ink);
+  border-radius: var(--radius-none);
 }
 
-.sheet::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background-image: var(--texture-fibre);
-  opacity: 0.22;
-  mix-blend-mode: multiply;
+.panel--raised {
+  box-shadow: var(--shadow-block);
 }
 
-/* A printed rule, as on a form. */
-.rule {
-  height: 1px;
-  background: var(--color-rule);
-  border: 0;
+/* ---------------------------------------------------------------- type --- */
+
+/** Poster headline. Bayer's 1923 lettering; uppercase by design. */
+.poster {
+  font-family: var(--font-poster);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.86;
 }
 
-/* The perforation above a final action: tear here. */
-.perforation {
-  height: 1px;
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--color-rule-strong) 0 6px,
-    transparent 6px 13px
-  );
-}
-
-/* Small caps label, as printed on an official form. */
+/** Small structural label, as set on a Bauhaus plate. */
 .label {
-  font-family: var(--font-body);
+  font-family: var(--font-geometric);
   font-size: var(--text-2xs);
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-ink-faint);
+}
+
+/** A big numeral. The Bauhaus set numbers large and unapologetically. */
+.numeral {
+  font-family: var(--font-poster);
+  font-weight: 400;
+  line-height: 0.8;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A heavy rule: structure, not decoration. */
+.bar {
+  height: var(--rule-weight);
+  background: var(--color-ink);
+  border: 0;
+}
+.bar--heavy {
+  height: var(--rule-weight-heavy);
+}
+
+/**
+ * A field: a solid block of colour with type on it.
+ *
+ * The `--field` and `--on-field` pair is always set together by the component
+ * that renders it, using inkOn() — never guessed in CSS.
+ */
+.field {
+  background: var(--field);
+  color: var(--on-field);
 }

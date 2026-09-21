@@ -6,39 +6,30 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: 'md' | 'lg';
   loading?: boolean;
-  /**
-   * Why the button is disabled, in plain words.
-   *
-   * A disabled control that does not say why is a dead end. This is announced,
-   * and the caller usually shows it beside the button as well.
-   */
+  /** Why the button is disabled, in plain words. Announced, and usually shown too. */
   disabledReason?: string;
   children: ReactNode;
 }
 
+/**
+ * A printer's block.
+ *
+ * Solid field, heavy keyline, hard offset. Pressing it drives the block into
+ * its own shadow — the whole control moves, which is far more satisfying than a
+ * colour change and needs no extra pixels to express.
+ */
 const base =
-  'relative inline-flex items-center justify-center gap-2 font-medium select-none ' +
-  'transition-[background-color,border-color,color,box-shadow,transform] duration-150 ' +
+  'bh-button relative inline-flex items-center justify-center gap-2.5 select-none ' +
+  'font-semibold uppercase tracking-[0.1em] ' +
+  'border-[3px] border-[var(--color-ink)] rounded-none ' +
+  'transition-[transform,box-shadow,background-color] duration-150 ' +
   'disabled:cursor-not-allowed';
 
 const variants: Record<Variant, string> = {
-  // A stamp of ink. The one obviously-primary action on any screen.
-  primary:
-    'bg-[var(--color-ink)] text-[var(--color-sheet)] border border-[var(--color-ink)] ' +
-    'hover:bg-[#2c2a24] active:translate-y-px ' +
-    'disabled:bg-[var(--color-sheet-sunk)] disabled:text-[var(--color-ink-faint)] ' +
-    'disabled:border-[var(--color-rule)]',
-  // A printed box you can press.
-  secondary:
-    'bg-[var(--color-sheet)] text-[var(--color-ink)] border border-[var(--color-rule-strong)] ' +
-    'hover:bg-[var(--color-sheet-sunk)] active:translate-y-px ' +
-    'disabled:text-[var(--color-ink-faint)] disabled:border-[var(--color-rule)]',
-  quiet:
-    'bg-transparent text-[var(--color-ink-soft)] border border-transparent ' +
-    'hover:text-[var(--color-ink)] hover:bg-[var(--color-sheet-sunk)] underline-offset-4',
-  danger:
-    'bg-[var(--color-alert)] text-[var(--color-sheet)] border border-transparent ' +
-    'hover:brightness-110 active:translate-y-px',
+  primary: 'bg-[var(--bh-yellow)] text-[var(--color-ink)]',
+  secondary: 'bg-[var(--color-card)] text-[var(--color-ink)]',
+  quiet: 'bg-transparent border-transparent text-[var(--color-ink-soft)] shadow-none',
+  danger: 'bg-[var(--bh-red)] text-white',
 };
 
 export function Button({
@@ -54,18 +45,27 @@ export function Button({
   const isDisabled = disabled || loading;
   const sizing =
     size === 'lg'
-      ? 'text-[var(--text-md)] px-7 py-3.5 rounded-[var(--radius-control)]'
-      : 'text-[var(--text-sm)] px-5 py-2.5 rounded-[var(--radius-control)]';
+      ? 'text-[var(--text-sm)] px-8 py-4'
+      : 'text-[var(--text-xs)] px-5 py-3';
+
+  const reasonId = `${rest.id ?? 'btn'}-reason`;
 
   return (
-    <button
+    <>
+      <button
       type="button"
       {...rest}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      aria-describedby={isDisabled && disabledReason ? `${rest.id ?? 'btn'}-reason` : undefined}
+      aria-describedby={isDisabled && disabledReason ? reasonId : undefined}
+      data-variant={variant}
       className={`${base} ${variants[variant]} ${sizing} ${className}`}
-      style={{ minHeight: 'var(--hit)', minWidth: 'var(--hit)', ...rest.style }}
+      style={{
+        fontFamily: 'var(--font-geometric)',
+        minHeight: 'var(--hit)',
+        minWidth: 'var(--hit)',
+        ...rest.style,
+      }}
     >
       {loading && (
         <span
@@ -74,11 +74,46 @@ export function Button({
         />
       )}
       {children}
+
+      <style>{`
+        .bh-button:not([data-variant="quiet"]) { box-shadow: var(--shadow-block-sm); }
+        .bh-button:not([data-variant="quiet"]):hover:not(:disabled) {
+          transform: translate(-1px, -1px);
+          box-shadow: 5px 5px 0 var(--color-ink);
+        }
+        /* Press drives the block down into its own shadow. */
+        .bh-button:not([data-variant="quiet"]):active:not(:disabled) {
+          transform: translate(4px, 4px);
+          box-shadow: 0 0 0 var(--color-ink);
+        }
+        .bh-button[data-variant="quiet"]:hover:not(:disabled) {
+          background: var(--color-sunk);
+          border-color: var(--color-ink);
+        }
+        .bh-button:disabled {
+          background: var(--color-sunk);
+          color: var(--color-ink-faint);
+          border-color: var(--color-ink-faint);
+          box-shadow: none;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .bh-button:hover:not(:disabled), .bh-button:active:not(:disabled) { transform: none }
+        }
+      `}</style>
+      </button>
+
+      {/*
+        Rendered OUTSIDE the button on purpose. As a child it would be
+        concatenated into the button's accessible name — "Continue, choose a
+        candidate to continue" — which is exactly the kind of noise a screen
+        reader user does not need on every focus. As a sibling referenced by
+        aria-describedby it is announced as a description instead.
+      */}
       {isDisabled && disabledReason && (
-        <span id={`${rest.id ?? 'btn'}-reason`} className="sr-only">
+        <span id={reasonId} className="sr-only">
           {disabledReason}
         </span>
       )}
-    </button>
+    </>
   );
 }

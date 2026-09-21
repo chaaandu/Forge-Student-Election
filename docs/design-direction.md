@@ -1,233 +1,223 @@
-# Design direction — "The Ballot"
+# Design direction — "Vote / Form"
 
-> Paper, ink, and the weight of a mark.
+> Primaries, elementary forms, heavy black rules, and a rigorous asymmetric grid.
 >
-> A vote is a considered, physical act, so the interface is made of paper rather
-> than of screens: warm laid stock, printed rules, and a mark you make in ink.
-> Everything is light, quiet and tactile. Nothing glows.
+> The Bauhaus was after a universal visual language for things everyone uses. An
+> election is exactly that kind of thing. So each position is a poster, and the
+> ballot is a portfolio of them.
 
 ## 0. What this replaced, and why
 
-The first direction was a split-flap departure board — dark, mechanical,
-industrial signage. It was rejected, correctly. An airport board is a machine
-telling you what is happening to you; a ballot is a thing you act on. The board
-also fought its own content: candidate photographs and human names sat badly on
-a surface built for abbreviations in amber monospace, and the "gates and
-departures" language wrapped every error message in a costume that had to be
-decoded before it could be understood.
+Two directions came before this one, and both are worth recording because the
+reasons still constrain the work.
 
-The paper direction fixes that at the root. Its plain voice **is** the theme:
-"You have already voted" needs no translation, and a ballot paper is the one
-metaphor for an election that is not a metaphor at all.
+**"Mesa Departures" — a split-flap departure board.** Rejected as cold and
+industrial. An airport board is a machine telling you what is happening *to*
+you; a ballot is a thing you act *on*. It also fought its own content —
+photographs and human names sat badly on a surface built for amber monospace
+abbreviations — and every error arrived in costume (`GATE CLOSED`) that had to
+be decoded before it could be understood.
 
-## 1. The concept, mapped
+**"The Ballot" — warm paper and terracotta ink.** Correct in substance and too
+quiet in execution. It solved the plain-language problem but read as restrained
+and beige where this wants energy.
 
-| Journey stage | What it is |
-| --- | --- |
-| Welcome | The ballot, waiting on the desk |
-| Check-in | Signing in at the table |
-| Identity confirmation | Your name at the top of the ballot |
-| Each position | One position, one sheet |
-| Review | The completed ballot |
-| Confirmation | A slip laid over it |
-| Submitting | Recording the vote |
-| Done | The ballot is in the box |
+**"Vote / Form" keeps what worked and adds the missing voltage.** Plain language
+stays — the errors are still sentences, not slogans. The paper substrate stays.
+What changes is that colour is now doing real work: saturated primaries as
+fields, elementary forms as identity, and black bars as structure.
 
-Used with restraint. The paper is the frame; the candidates are the content.
+## 1. The grammar
 
-## 2. Design tokens
+Four rules, taken from the source rather than from a mood board.
 
-Single source of truth: `apps/web/src/styles/tokens.css`, exposed to Tailwind v4
-via `@theme`. Every value below is a custom property; nothing is a magic number
-in a component.
+1. **A colour is a field, not ink.** Saturated colour fills a block; type on it
+   is black or white by luminance. §2.1.
+2. **Form carries meaning alongside colour.** Kandinsky's correspondence —
+   red square, blue circle, yellow triangle — plus the arc, the fourth form
+   Bauhaus composition leans on. Houses get a form *as well as* a colour, which
+   is both historically literate and the reason house identity survives colour
+   blindness. §3.
+3. **Bars are structure.** A heavy black rule divides; it does not decorate.
+   Corners are not rounded. A circle is a circle.
+4. **Depth is an offset, not a blur.** Panels sit on a hard black block, the way
+   a second impression sits under the first. There is no soft shadow and no
+   backdrop blur anywhere in the interface.
 
-### 2.1 Colour
+## 2. Tokens
+
+`apps/web/src/styles/tokens.css`. Every value is a custom property; nothing is a
+magic number in a component.
+
+### 2.1 Colour — and the rule that makes it work
 
 ```css
-/* paper — warm laid stock, never pure white */
---color-paper:      #F4F0E6;  /* the desk */
---color-sheet:      #FCFAF4;  /* a sheet resting on it */
---color-sheet-sunk: #EEE9DB;  /* input wells, recessed areas */
---color-edge:       #E4DDCC;  /* the shadowed edge of a sheet */
---color-rule:       #D9D1BE;  /* hairline rules, as on a printed form */
---color-rule-strong:#BDB39C;
+/* fields — for blocks, bars and forms. NEVER body text on paper. */
+--bh-red:    #DE2B1F;   --bh-blue:   #1B4D9B;
+--bh-yellow: #FFC20E;   --bh-green:  #1E7A4C;
 
-/* ink */
---color-ink:        #1B1A16;  /* body                 15.4:1 on paper */
---color-ink-soft:   #56524A;  /* secondary             6.6:1 */
---color-ink-faint:  #837C6D;  /* tertiary, large only  3.4:1 — never body */
+/* their text-safe counterparts, darkened until AA on paper. Hue preserved. */
+--bh-red-text:    #CE281D;  /* 4.56:1 */
+--bh-blue-text:   #1B4D9B;  /* 6.96:1 — already passes */
+--bh-yellow-text: #876707;  /* 4.52:1 — yellow can only be text this dark */
+--bh-green-text:  #1E7A4C;  /* 4.56:1 */
 
-/* the mark */
---color-mark:       #A9462C;  /* terracotta            5.1:1 */
---color-mark-wash:  #F3E0D8;  /* the faint stain behind a chosen card */
---color-confirm:    #47664E;  /* recorded              6.3:1 */
---color-alert:      #9B3322;  /* errors only           7.3:1 */
+--color-paper: #F2EDE1;   --color-card: #FFFFFF;   --color-sunk: #E8E2D4;
+--color-ink:   #141414;   /* 15.8:1 */
+--color-ink-soft: #514D48;/*  7.2:1 */
+--color-ink-faint:#7D766C;/*  3.8:1 — large only, never body */
+
+--color-rule: #141414;  --rule-weight: 3px;  --rule-weight-heavy: 6px;
+--shadow-block: 6px 6px 0 var(--color-ink);
 ```
 
-Terracotta is the ink you mark with — and the colour of a mesa at dusk, which
-is as much brand as this needs until real assets arrive.
+**Bauhaus yellow is 1.39:1 against paper.** As ink it is invisible; as a field
+with black type on it, 11.4:1. Same colour, opposite outcome — which is why the
+field/ink distinction is a rule rather than a preference.
 
-**Contrast is measured, not assumed.** `src/styles/__tests__/contrast.test.ts`
-reads the real stylesheet and fails the build if any pair drops below its
-required ratio. It has already caught two shipped-looking mistakes: the mark at
-4.48:1 on sunk paper (one notch under AA) and a Gladiators bronze at 3.7:1. A
-light palette makes this easy to get wrong in the opposite direction from a dark
-one — warm greys that look elegant on a calibrated display and vanish under a
-hall's overhead lights.
+`apps/web/src/lib/color.ts` implements it in three pure, unit-tested functions:
 
-House colours come from `election.config.json` and are asserted by the same
-test, so a colour chosen by whoever runs the election cannot quietly fail AA.
+| Function | Does |
+| --- | --- |
+| `inkOn(field)` | black or white, whichever is more readable on that field |
+| `readableOn(colour, bg, ratio)` | darkens until it passes, preserving hue |
+| `roleFor(colour)` | one configured colour → `{ field, onField, text, wash }` |
+
+This is what lets a house be configured with **one** hex value and still be
+correct in four different uses. `contrast.test.ts` then asserts the stylesheet
+and the live election configuration both hold up — and it has already caught
+three failures before they shipped: an earlier mark at 4.48:1, a Gladiators
+bronze at 3.7:1, and a drift between a CSS text variant and what `readableOn()`
+derives.
 
 ### 2.2 Typography
 
-| Role | Family | Notes |
+| Role | Family | Why |
 | --- | --- | --- |
-| Display, headings, the ballot masthead | **Fraunces Variable** | A warm, slightly wonky serif. Printed matter, not a product UI. |
-| Body, candidate names, all controls | **Inter Variable** | Chosen for legibility at arm's length; never set in the serif. |
-| Reference codes | system mono | One or two places. |
+| Poster headlines | **Staatliches** | Google's digitisation of **Herbert Bayer's title lettering for the 1923 Bauhaus exhibition catalogue**. The actual historical voice, not a pastiche. OFL-1.1. |
+| Labels, numerals, controls | **Jost\*** | An open Futura — the Bauhaus-descended geometric sans. OFL-1.1. |
+| Candidate names, body | **Inter** | Geometric faces have a low x-height, and 145 unfamiliar names read at a booth is the wrong place to pay for that. |
 
-Both self-hosted, latin subsets only (~170 KB total). No CDN at runtime: a hall
-with flaky wifi must not get a fallback-font flash mid-election.
+Self-hosted, latin subsets only (~176 KB). No CDN at runtime: a hall with flaky
+wifi must not get a fallback-font flash mid-election.
 
-Base size is `1.0625rem` rather than the usual `1rem` — this is read standing
-up, at a booth, often by someone in a hurry.
+Numerals are set large and unapologetically — the Bauhaus did, and a position
+number at 4 rem gives the sequence a sense of progress that a breadcrumb cannot.
 
-### 2.3 Space, radius, elevation
+### 2.3 Motion
 
 ```css
---radius-sm: 3px;  --radius-control: 6px;  --radius-sheet: 10px;
---shadow-sheet: 0 1px 1px rgb(58 48 30 / .05), 0 6px 18px -6px rgb(58 48 30 / .16);
---shadow-lift:  0 2px 4px rgb(58 48 30 / .07), 0 16px 34px -12px rgb(58 48 30 / .24);
---focus-ring:   0 0 0 2px var(--color-sheet), 0 0 0 4px var(--color-mark);
+--dur-mark: 380ms;  --dur-snap: 260ms;  --dur-step: 320ms;
+--ease-snap: cubic-bezier(.34, 1.56, .64, 1);  /* overshoot: a block dropping */
+--ease-out:  cubic-bezier(.22, 1, .36, 1);
 ```
 
-Paper has corners, not pills, so radii stay small. Shadows are warm and close —
-the shadow a real sheet casts on a desk, not a drop-shadow effect. Exactly two
-elevations.
+The overshoot curve is the whole feel: shapes and cards **snap** into place
+rather than easing, like a printer's block landing. No transition gates a click.
 
-Fibre texture is one inline SVG turbulence filter at low opacity with
-`mix-blend-mode: multiply`, so it darkens like pulp rather than hazing like
-video noise. No image request.
+## 3. House identity: colour **and** form
 
-### 2.4 Motion
+| House | Field | Form | Kandinsky |
+| --- | --- | --- | --- |
+| Samurai | red `#DE2B1F` | square | red ↔ square |
+| Knights | blue `#1B4D9B` | circle | blue ↔ circle |
+| Gladiators | yellow `#FFC20E` | triangle | yellow ↔ triangle |
+| Vikings | green `#1E7A4C` | arc | the fourth form |
 
-```css
---dur-mark:   420ms;  /* the ink stroke drawing itself */
---dur-select: 180ms;
---dur-step:   300ms;
---ease-ink:   cubic-bezier(.32,.72,.28,1);  /* a pen: quick start, settled finish */
---ease-paper: cubic-bezier(.22,1,.36,1);
-```
+`shape` is part of the election configuration, not hard-coded, and the contrast
+test asserts all four are distinct. A voter who cannot distinguish red from
+green still sees a square against an arc — and the house name is written beside
+it wherever it matters.
 
-No transition gates a click. Nothing loops except the indeterminate submit bar.
+A house contest takes that house's field across the whole plate header, so a
+student arrives at a screen that is unmistakably theirs.
 
-## 3. The signature: `InkMark`
+## 4. The signature interactions
 
-`apps/web/src/components/ink/InkMark.tsx`
+**`InkMark`** — a hand-drawn check that draws itself in one stroke. The path
+deliberately overshoots and its legs differ in length, with an SVG turbulence
+filter roughing the edge: a geometrically perfect mark reads as a logo, this
+reads as a hand. Used for choosing, for progress, for each review row, and for
+the confirmation.
 
-A hand-drawn check that draws itself in a single stroke, as if someone had just
-put a pen to the paper. It replaces the usual tick glyph because a tick is a UI
-convention and this is meant to feel like an act.
+**The card snap** — choosing a candidate drives a solid colour field across the
+foot of the card, drops the ink mark into the box, and moves the whole card up
+into a deeper offset block. Four simultaneous signals: mark, field, offset, and
+the literal word "Selected". Never colour alone.
 
-The path is **deliberately imperfect** — the stroke overshoots and the legs
-differ in length — and an SVG turbulence displacement gives the edge a faint
-wobble. A geometrically perfect mark reads as a logo; this reads as handwriting.
+**`BallotProgress`** — one elementary form per position *this voter* is eligible
+for. Answering fills it with colour, so the row assembles into a small
+composition as the ballot is completed. Forms and colours cycle on different
+periods so no two neighbours look alike. An employee sees six tokens, never six
+of ten.
 
-Used for: choosing a candidate, the progress boxes, each row of the completed
-ballot, and the confirmation on the done screen. Nowhere else.
+**`Burst`** — the celebration. Elementary forms in primaries thrown outward and
+settling, deliberately *not* confetti: confetti reads as a prize, and nothing
+here should suggest the voter won something or chose well.
 
-**Accessibility.** Decorative by default (`aria-hidden`); selection is carried
-by the card's `aria-checked`, its border and wash, and the literal word
-"Selected", so the mark is never the only signal and never a colour-only one.
-Under `prefers-reduced-motion` it renders fully drawn with no animation. Each
-instance gets a unique filter id so two marks on screen cannot collide.
+## 5. `Composition3D` — the welcome piece
 
-## 4. The welcome sheet (WebGL)
+Cube, disc, prism and half-cylinder in the primaries, under an **orthographic**
+camera. That is the point: an axonometric projection with no perspective
+convergence is how the Bauhaus and the Constructivists drew objects, and it
+keeps the image reading as a poster rather than as a render.
 
-`apps/web/src/components/paper/BallotSheet3D.tsx`
+Shading is quantised to three hard bands from screen-space derivatives, so every
+facet is flat, and each solid wears an inverted-hull black outline that carries
+the 2D keylines into three dimensions. No smooth shading, no specular, no
+shadow.
 
-A real sheet of ballot paper in three dimensions: resting undulation, corners
-that lift more than the middle, and a lift that follows the pointer as a hand
-would. Warm directional light, wrap lighting (paper is thin enough to transmit),
-a dry broad sheen for uncoated stock, and fibre grain at close range.
+**Five rules it obeys, all verified:**
 
-The election name is **printed onto the sheet** via a canvas texture rather than
-floated above it, so the type creases and catches the light with the paper. That
-is the whole trick — it reads as printed matter instead of a caption over a
-background.
+1. **Decoration, never dependency.** `CompositionSVG` is the real artwork —
+   complete, readable, instant. The 3D layer fades in over it and is
+   `aria-hidden`.
+2. **Never in the app bundle.** `import('three')` is dynamic; the production
+   check confirms `index.html` references the three chunk **zero** times. App
+   bundle 280 KB, three 747 KB, lazily.
+3. **Never loaded when it should not be.** Skipped under `prefers-reduced-motion`
+   and after a WebGL capability probe fails.
+4. **Never a burden.** DPR capped at 2, rendering paused on tab hide, every
+   geometry, material and renderer disposed on unmount.
+5. **The CTA works first.** "Begin voting" is interactive from first paint.
 
-### Rules it obeys
+## 6. Gamification — and its one hard limit
 
-1. **Decoration, never dependency.** The welcome screen renders a complete,
-   readable printed sheet in HTML. The 3D layer fades in on top of it and is
-   `aria-hidden`. That HTML sheet is what a screen reader reads, what renders
-   without WebGL, and what a reduced-motion voter sees — a full experience, not
-   a degraded one.
-2. **Never in the main bundle.** `import('three')` is dynamic. Rollup emits it
-   as a separate ~747 KB chunk that no voting path downloads; the application
-   bundle stays ~275 KB. `chunkSizeWarningLimit` is set above the three chunk
-   *and below double the app bundle*, so the warning still fires if the app
-   itself grows.
-3. **Never loaded when it should not be.** Skipped entirely under
-   `prefers-reduced-motion`, and after a WebGL capability probe fails.
-4. **Never a burden.** Pixel ratio capped at 2, rendering paused when the tab is
-   hidden, geometry/material/texture/renderer all disposed on unmount.
-5. **The CTA works first.** "Begin voting" is interactive from first paint,
-   before and without any of this.
+The user asked for this to be more fun. It is, and there is a line through it:
 
-## 5. Screen-by-screen motion
+> **Gamify participation. Never gamify the choice.**
 
-| Screen | On enter | Interaction |
+No candidate has a score, a rank, a badge or a leaderboard anywhere a voter can
+see. Nothing rewards picking one person over another, and nothing implies a
+"good" vote. What *is* playful:
+
+- progress as a composition you assemble;
+- the snap and the drawn mark — the small satisfactions of marking a paper;
+- position numbers set poster-large, which gives the sequence momentum;
+- a house's colour and form taking over its own plate;
+- the burst on completion, for having voted at all;
+- **the house turnout race on `/monitor`** — live lanes, house colours and
+  forms, leader highlighted. This is the real win: it drives turnout in the room
+  without touching the ballot. It shows *who voted*, never *what for*, and a
+  test asserts that payload contains no candidate id.
+
+## 7. Open source: what was evaluated and what was taken
+
+| Project | Licence | Verdict |
 | --- | --- | --- |
-| **Welcome** | Printed sheet paints immediately; 3D cross-fades over 700 ms when ready | Sheet lifts toward the pointer |
-| **Check-in** | Sheet fades in | Results list staggers 30 ms per row. No animation on names — a list you search must be instantly readable |
-| **Identity** | Sheet rises 12 px | Name set large enough for an invigilator to read across a booth |
-| **Position** | Slide 18 px in the direction of travel; cards rise 8 px, 45 ms apart, capped at 6 | Hover lifts 2 px. **Choosing draws the ink mark over 420 ms** |
-| **Review** | Rows fall in 45 ms apart; perforation above the final action | Edit per row |
-| **Confirmation** | Slip scales in with a 0.25° rotation, focus trapped on "Go back" | — |
-| **Submitting** | Indeterminate sweep — never implies known progress | — |
-| **Done** | Green mark draws in a box; three lines appear 650 ms apart | Resets after 4 s |
+| **Staatliches** (googlefonts) | OFL-1.1 | **Adopted.** Bayer's 1923 exhibition lettering. Nothing else is this authentic. |
+| **Jost\*** (indestructible type) | OFL-1.1 | **Adopted.** An open Futura for the geometric voice. |
+| **three.js** | MIT | **Adopted**, lazily and decoratively only. |
+| `bauhaus-avatar-generator` | MIT | Evaluated. Good idea, but portraits are generated once at build time and are placeholders until real photos land — a runtime dependency buys nothing. The deterministic-shapes idea is used in the build script instead. |
+| `bauhaus-ui-library` | MIT | **Rejected.** A young library; adopting a whole component system would mean re-doing our tested, accessible components against an unknown one days before an election. Wrong trade. |
+| React Bits | MIT + Commons Clause | Used by the first direction, removed with it. No code remains. |
 
-Under `prefers-reduced-motion` every row degrades to an opacity fade at 120 ms,
-and the done screen holds for the same 4 s. Nothing is removed.
+## 8. Guardrails
 
-## 6. Composition of a candidate
-
-```
-┌───────────────────────────┐   Photo 4:5, object-position center 25% (heads sit
-│          photo            │   high in portraits), lazy, dimensions reserved.
-│                           │   Fallback: initials set in the display serif.
-├───────────────────────────┤
-│  ☑  Preet Jain            │   A ballot line: box on the left, name beside it.
-│     Selected              │   The box takes the ink mark.
-└───────────────────────────┘
-```
-
-Composed like a printed ballot paper rather than a web card. Minimum 44 px
-targets, whole card clickable, `role="radio"` inside a `radiogroup`, roving
-tabindex, arrow keys to move and Space/Enter to mark.
-
-Selecting never advances the ballot — an accidental tap must not move it on.
-
-## 7. Guardrails
-
-- No glow, no neon, no dark surfaces, no glassmorphism, no gradient that reads
-  as a gradient.
-- No monospace as a decorative voice.
-- Themed language never replaces plain language. With paper, plain language *is*
-  the voice — which is why the error headlines are sentences a voter can read
-  at a glance.
+- No gradient that reads as a gradient, no glow, no glassmorphism, no blur.
+- No rounded corners beyond the 2 px needed to stop a control looking broken.
+- Colour is never the only carrier of meaning — not for selection, not for
+  house identity, not for errors.
+- Themed language never replaces plain language. Error headlines are sentences.
 - Decoration never delays input and never gates a click.
-- No sound, no confetti, no score. The celebration is a drawn mark and three
-  quiet lines.
-
-## 8. Component inventory
-
-**Paper** — `Sheet` · `BallotSheet3D` · `ballotPrint`
-**Ink** — `InkMark`
-**Election** — `CandidateCard` · `CandidateGrid` · `BallotProgress`
-**UI** — `Button` (primary/secondary/quiet/danger) · `TextField` · `Avatar` ·
-`Tag` · `Dialog` · `ErrorState` · `Wordmark`
-
-Every interactive component ships `focus-visible` styling from `--focus-ring`, a
-disabled state that explains itself, and a minimum 44 px hit area.
+- No sound. A shared room with a queue in it.

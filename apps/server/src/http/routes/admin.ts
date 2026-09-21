@@ -64,9 +64,18 @@ export function adminRoutes(ctx: AppContext): Router {
     const voters = ctx.repo.listVoters(ctx.config.election.id);
     const houses = new Map(ctx.config.houses.map((h) => [h.id, h.name]));
 
-    const byHouse: Record<string, { name: string; eligible: number; voted: number }> = {};
+    const byHouse: Record<
+      string,
+      { name: string; color: string; shape: string; eligible: number; voted: number }
+    > = {};
     for (const house of ctx.config.houses) {
-      byHouse[house.id] = { name: house.name, eligible: 0, voted: 0 };
+      byHouse[house.id] = {
+        name: house.name,
+        color: house.color,
+        shape: house.shape ?? 'square',
+        eligible: 0,
+        voted: 0,
+      };
     }
     for (const voter of voters) {
       if (!voter.houseId) continue;

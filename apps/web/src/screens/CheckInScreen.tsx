@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
-import { Sheet } from '@/components/paper/Sheet';
+import { Panel } from '@/components/bauhaus/Panel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
@@ -91,15 +91,22 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <Sheet raised>
-        <div className="px-6 pt-7 sm:px-9">
-          <p className="label">Check in</p>
-          <h1 className="mt-2" style={{ fontSize: 'var(--text-xl)' }}>
+      <Panel raised className="overflow-hidden">
+        <div
+          className="px-6 py-6 sm:px-9"
+          style={{
+            background: 'var(--bh-blue)',
+            color: '#FFFFFF',
+            borderBottom: 'var(--rule-weight) solid var(--color-ink)',
+          }}
+        >
+          <p className="label" style={{ color: '#FFFFFF', opacity: 0.75 }}>
+            Check in
+          </p>
+          <h1 className="poster mt-1" style={{ fontSize: 'var(--text-xl)' }}>
             {mode === 'entra' ? 'Sign in with your Mesa account' : 'Find your name'}
           </h1>
         </div>
-
-        <hr className="rule mt-6" />
 
         <div className="flex flex-col gap-6 px-6 pb-8 pt-7 sm:px-9">
           {mode === 'entra' ? (
@@ -116,8 +123,14 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                   minHeight: 'var(--hit)',
                   padding: '14px 28px',
                   borderRadius: 'var(--radius-control)',
-                  background: 'var(--color-ink)',
-                  color: 'var(--color-sheet)',
+                  background: 'var(--bh-yellow)',
+                  color: 'var(--color-ink)',
+                  border: '3px solid var(--color-ink)',
+                  boxShadow: 'var(--shadow-block-sm)',
+                  fontFamily: 'var(--font-geometric)',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
                   textDecoration: 'none',
                   fontSize: 'var(--text-md)',
                 }}
@@ -178,8 +191,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                           style={{
                             minHeight: 'var(--hit)',
                             padding: '12px 16px',
-                            background: 'var(--color-sheet)',
-                            border: '1px solid var(--color-rule)',
+                            background: 'var(--color-card)',
+                            border: '3px solid var(--color-ink)',
                             borderRadius: 'var(--radius-control)',
                           }}
                         >
@@ -211,10 +224,11 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
             </Button>
           </div>
         </div>
-      </Sheet>
+      </Panel>
 
       <style>{`
-        .roll-match:hover { background: var(--color-sheet-sunk); border-color: var(--color-rule-strong); }
+        .roll-match:hover { background: var(--bh-yellow); transform: translate(-2px,-2px); box-shadow: 4px 4px 0 var(--color-ink) }
+        .roll-match { transition: transform 150ms var(--ease-snap), box-shadow 150ms var(--ease-snap), background-color 150ms }
       `}</style>
     </div>
   );
@@ -250,8 +264,8 @@ function CodeStep({
       <div
         className="flex items-center gap-4 p-4"
         style={{
-          background: 'var(--color-sheet-sunk)',
-          border: '1px solid var(--color-rule)',
+          background: 'var(--color-sunk)',
+          border: '3px solid var(--color-ink)',
           borderRadius: 'var(--radius-control)',
         }}
       >

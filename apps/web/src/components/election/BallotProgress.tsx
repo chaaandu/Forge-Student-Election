@@ -1,5 +1,5 @@
-import type { Position } from '@mesa/election-core';
-import { InkMark } from '@/components/ink/InkMark';
+import type { HouseShape, Position } from '@mesa/election-core';
+import { Shape } from '@/components/bauhaus/Shape';
 
 export interface BallotProgressProps {
   steps: Position[];
@@ -7,53 +7,62 @@ export interface BallotProgressProps {
   selections: Record<string, string>;
 }
 
+const FORMS: HouseShape[] = ['square', 'circle', 'triangle', 'arc'];
+const FIELDS = ['var(--bh-red)', 'var(--bh-blue)', 'var(--bh-yellow)', 'var(--bh-green)'];
+
 /**
- * How far down the ballot you are.
+ * Progress as a composition you build.
  *
- * A row of printed boxes, one per position *this voter* is eligible for —
- * marked as they are answered. An employee sees six boxes, never six of ten.
- * The boxes are decorative; the "3 of 7" beside them is the accessible version.
+ * One token per position *this voter* is eligible for. Answering a position
+ * fills its form with colour, so the row assembles into a small Bauhaus
+ * composition as the ballot is completed. An employee sees six tokens, never
+ * six of ten.
+ *
+ * Forms cycle independently of colours, so no two adjacent tokens look alike
+ * and the sequence stays legible without colour. The "3 of 7" beside it is the
+ * accessible version; the tokens are decorative.
  */
 export function BallotProgress({ steps, currentIndex, selections }: BallotProgressProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <p className="label" style={{ color: 'var(--color-ink-soft)' }}>
+      <p
+        className="label"
+        style={{ color: 'var(--color-ink)', fontSize: 'var(--text-xs)', letterSpacing: '0.14em' }}
+      >
         {currentIndex + 1} of {steps.length}
       </p>
 
-      <ol aria-hidden="true" className="m-0 flex list-none items-center gap-1.5 p-0">
+      <ol aria-hidden="true" className="flex list-none items-center gap-2 p-0">
         {steps.map((step, index) => {
           const done = Boolean(selections[step.id]);
           const current = index === currentIndex;
+          const form = FORMS[index % FORMS.length]!;
+          const field = FIELDS[index % FIELDS.length]!;
 
           return (
-            <li key={step.id} className="relative flex items-center justify-center">
-              <span
-                style={{
-                  display: 'block',
-                  width: 18,
-                  height: 18,
-                  borderRadius: 2,
-                  border: `1.5px solid ${
-                    current
-                      ? 'var(--color-ink)'
-                      : done
-                        ? 'var(--color-mark)'
-                        : 'var(--color-rule-strong)'
-                  }`,
-                  background: current ? 'var(--color-sheet-sunk)' : 'transparent',
-                  transition: 'border-color 200ms var(--ease-paper)',
-                }}
+            <li
+              key={step.id}
+              className={`bh-token ${current ? 'bh-token--current' : ''}`}
+              style={{ animationDelay: `${index * 40}ms` }}
+            >
+              <Shape
+                form={form}
+                size={current ? 20 : 17}
+                color={done ? field : 'var(--color-ink)'}
+                outline={!done}
+                strokeWidth={3}
               />
-              {done && (
-                <span className="pointer-events-none absolute" style={{ transform: 'translateY(-1px)' }}>
-                  <InkMark marked size="sm" />
-                </span>
-              )}
             </li>
           );
         })}
       </ol>
+
+      <style>{`
+        .bh-token { display: inline-flex; transition: transform var(--dur-snap) var(--ease-snap) }
+        .bh-token--current { animation: token-pulse 1.9s var(--ease-out) infinite }
+        @keyframes token-pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.14) } }
+        @media (prefers-reduced-motion: reduce) { .bh-token--current { animation: none } }
+      `}</style>
     </div>
   );
 }
