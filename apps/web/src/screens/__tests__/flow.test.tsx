@@ -58,13 +58,14 @@ async function checkInAs(voter: typeof student | typeof employee) {
   mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099-01-01', voter });
 
   render(<App />);
-  await screen.findByRole('button', { name: /begin voting/i });
-  await user.click(screen.getByRole('button', { name: /begin voting/i }));
+  await screen.findByRole('button', { name: /start voting/i });
+  await user.click(screen.getByRole('button', { name: /start voting/i }));
 
   await user.type(await screen.findByLabelText(/your name/i), 'One');
   await user.click(await screen.findByRole('button', { name: new RegExp(voter.name, 'i') }));
   await user.click(await screen.findByRole('button', { name: /continue/i }));
-  await user.click(await screen.findByRole('button', { name: /start voting/i }));
+  // Identity confirmation: "That's me".
+  await user.click(await screen.findByRole('button', { name: /that.s me/i }));
 
   return user;
 }
@@ -114,7 +115,7 @@ describe('the employee journey', () => {
     expect(screen.getByText('Check your choices')).toBeInTheDocument();
     // Not an empty section — no section.
     expect(screen.queryByText(/house captain/i)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /^edit your choice/i })).toHaveLength(6);
+    expect(screen.getAllByRole('button', { name: /^change your pick/i })).toHaveLength(6);
   });
 });
 
@@ -124,7 +125,7 @@ describe('the student journey', () => {
     await completeAllGates(user);
 
     await screen.findByRole('button', { name: /confirm & submit vote/i });
-    expect(screen.getAllByRole('button', { name: /^edit your choice/i })).toHaveLength(7);
+    expect(screen.getAllByRole('button', { name: /^change your pick/i })).toHaveLength(7);
     expect(screen.getByText(/House Captain — Aravalli/i)).toBeInTheDocument();
     expect(screen.queryByText(/House Captain — Nilgiri/i)).not.toBeInTheDocument();
   });
@@ -134,12 +135,13 @@ describe('the student journey', () => {
     mockRollFor(student);
     mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: student });
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: /begin voting/i }));
+    await user.click(await screen.findByRole('button', { name: /start voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
     await user.click(await screen.findByRole('button', { name: /continue/i }));
 
     expect(await screen.findByText(/ending with your house captain/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /that.s me/i })).toBeInTheDocument();
   });
 });
 
@@ -165,7 +167,7 @@ describe('navigation and editing', () => {
     const button = screen.getByRole('button', { name: /continue/i });
 
     expect(button).toBeDisabled();
-    expect(screen.getByText(/choose a candidate to continue/i)).toBeInTheDocument();
+    expect(screen.getByText(/pick one to continue/i)).toBeInTheDocument();
 
     await user.click(button);
     // Still on gate 1.
@@ -177,7 +179,7 @@ describe('navigation and editing', () => {
     await completeAllGates(user);
     await screen.findByRole('button', { name: /confirm & submit vote/i });
 
-    await user.click(screen.getAllByRole('button', { name: /^edit your choice/i })[0]!);
+    await user.click(screen.getAllByRole('button', { name: /^change your pick/i })[0]!);
     expect(screen.getByRole('button', { name: /save and review/i })).toBeInTheDocument();
 
     const radios = within(screen.getByRole('radiogroup')).getAllByRole('radio');
@@ -296,7 +298,7 @@ describe('submission', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/NOT recorded/i);
     // Back on the boarding pass with all seven choices still there.
-    expect(screen.getAllByRole('button', { name: /^edit your choice/i })).toHaveLength(7);
+    expect(screen.getAllByRole('button', { name: /^change your pick/i })).toHaveLength(7);
   });
 
   it('blocks a voter the server reports as already voted', async () => {
@@ -327,7 +329,7 @@ describe('blocked states', () => {
     });
 
     render(<App />);
-    await user.click(await screen.findByRole('button', { name: /begin voting/i }));
+    await user.click(await screen.findByRole('button', { name: /start voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
     await user.click(await screen.findByRole('button', { name: /continue/i }));
@@ -343,9 +345,9 @@ describe('blocked states', () => {
     });
 
     render(<App />);
-    expect(await screen.findByText('Voting has not opened')).toBeInTheDocument();
+    expect(await screen.findByText('Voting has not opened yet')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/has not opened yet/i);
-    expect(screen.queryByRole('button', { name: /begin voting/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start voting/i })).not.toBeInTheDocument();
   });
 
   it('explains a closed election rather than offering a broken CTA', async () => {

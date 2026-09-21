@@ -69,31 +69,34 @@ export function CandidateGrid({
 
   return (
     /*
-      Fixed-width cards, centred — NOT a stretching grid.
+      Cards grow to fill the plate, capped — and the card height is fixed by the
+      photo, not by an aspect ratio.
 
-      This used `repeat(auto-fit, minmax(214px, 1fr))`, which shares the row out
-      between however many candidates there are. With four that gave sensible
-      cards; with two it gave two very wide ones, and since the portrait is 4:5
-      a wider card is a TALLER card. So the positions with the fewest candidates
-      produced the tallest pages — exactly backwards — and every step resized as
-      the voter moved through the ballot.
+      The first version used `minmax(214px, 1fr)`, which shared the row out
+      between however many candidates stood. Four gave sensible cards; two gave
+      two very wide ones, and because the photo was 4:5 a wider card was a
+      TALLER card. The positions with the fewest candidates produced the tallest
+      pages, and the layout resized under the voter at every step.
 
-      A fixed width makes one card identical on every position, so every
-      position plate is the same height and the page stops jumping. Two
-      candidates simply sit centred with air either side, which reads as
-      deliberate rather than stretched.
+      The second version pinned the width instead. That fixed the height but
+      left a two-candidate position looking sparse, with most of the plate
+      empty.
+
+      This does both: `auto-fit` lets two candidates widen into the space, the
+      300px cap stops them becoming letterboxes, and the fixed photo height
+      keeps every plate exactly as tall as every other.
     */
     <div
       ref={containerRef}
       role="radiogroup"
       aria-labelledby={labelledBy}
-      className="flex flex-wrap justify-center gap-4 sm:gap-5"
+      className="grid justify-center gap-4 sm:gap-5"
+      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(158px, 300px))' }}
     >
       {candidates.map((candidate, index) => (
         <div
           key={candidate.id}
           data-candidate-slot
-          className="bh-slot"
           style={{
             animation: 'card-in var(--dur-enter) var(--ease-paper) both',
             // Capped so a large field never makes the last card crawl in.
@@ -113,10 +116,6 @@ export function CandidateGrid({
       ))}
 
       <style>{`
-        /* One width for every card on every position, so each plate is the
-           same height. Upper bound keeps four across inside the plate; lower
-           bound keeps a card usable on a narrow screen. */
-        .bh-slot { width: clamp(158px, 19vw, 200px); }
         @keyframes card-in {
           from { opacity: 0; transform: translateY(8px) }
           to   { opacity: 1; transform: translateY(0) }

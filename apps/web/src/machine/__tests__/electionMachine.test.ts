@@ -298,7 +298,7 @@ describe('already-voted and closed elections', () => {
       election: { ...election, window: { open: false, reason: 'NOT_STARTED', at: '2099-01-01T09:00:00Z' } },
     });
     expect(state.phase).toBe('BLOCKED');
-    expect(state.error?.headline).toBe('Voting has not opened');
+    expect(state.error?.headline).toBe('Voting has not opened yet');
   });
 
   it('blocks when the election is closed', () => {

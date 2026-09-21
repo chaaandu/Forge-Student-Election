@@ -19,20 +19,28 @@ const candidates = (n: number): Candidate[] =>
  * drops `clamp()` from inline styles, and a shared class is the better place
  * for it regardless.
  */
-const slotClasses = (n: number): string[] => {
+const grid = (n: number): HTMLElement => {
   const { container } = render(
     <CandidateGrid candidates={candidates(n)} onSelect={() => {}} labelledBy="h" />,
   );
-  return [...container.querySelectorAll<HTMLElement>('[data-candidate-slot]')].map(
-    (el) => el.className,
-  );
+  return container.querySelector<HTMLElement>('[role="radiogroup"]')!;
 };
 
-const styleBlock = (n: number): string => {
+/**
+ * The height lives in a stylesheet rule: jsdom's CSSOM drops `clamp()` from
+ * inline styles, and a shared class is the better home for it regardless.
+ */
+const photoClasses = (n: number): string[] => {
   const { container } = render(
     <CandidateGrid candidates={candidates(n)} onSelect={() => {}} labelledBy="h" />,
   );
-  // Each card injects its own <style> too, so take them all.
+  return [...container.querySelectorAll<HTMLElement>('[data-photo]')].map((el) => el.className);
+};
+
+const css = (n: number): string => {
+  const { container } = render(
+    <CandidateGrid candidates={candidates(n)} onSelect={() => {}} labelledBy="h" />,
+  );
   return [...container.querySelectorAll('style')].map((el) => el.textContent ?? '').join('\n');
 };
 
@@ -46,39 +54,38 @@ const styleBlock = (n: number): string => {
  * at every step.
  */
 describe('CandidateGrid keeps every position the same size', () => {
-  it('gives a card the same width whether there are 2, 3 or 4 candidates', () => {
-    const two = slotClasses(2);
-    const three = slotClasses(3);
-    const four = slotClasses(4);
-
-    for (const set of [two, three, four]) {
-      expect(new Set(set).size, 'cards within one position differ').toBe(1);
+  it('fixes the photo height rather than its aspect ratio', () => {
+    // This is the whole mechanism. With an aspect ratio, a wider card is a
+    // taller card, so the positions with the FEWEST candidates produced the
+    // TALLEST pages. A fixed height decouples the two.
+    for (const n of [2, 3, 4]) {
+      expect(css(n), `${n} candidates`).toMatch(/\.bh-photo\s*\{[^}]*height:/);
+      expect(css(n), `${n} candidates still uses an aspect ratio`).not.toMatch(/aspect-ratio/);
     }
-    expect(two[0]).toBe(three[0]);
-    expect(three[0]).toBe(four[0]);
   });
 
-  it('caps the width, so a short field cannot stretch into a tall page', () => {
-    const css = styleBlock(2);
-    expect(css).toMatch(/\.bh-slot\s*\{[^}]*clamp\(/);
-    // The old behaviour: a fractional track that grew to fill the row.
-    expect(css).not.toContain('1fr');
-    // The same rule regardless of how many candidates stand.
-    expect(styleBlock(4)).toContain('.bh-slot { width: clamp(158px, 19vw, 200px); }');
+  it('gives the photo the same height whether there are 2, 3 or 4 candidates', () => {
+    const rule = /\.bh-photo\s*\{[^}]*\}/;
+    const two = css(2).match(rule)?.[0];
+    expect(two).toBeTruthy();
+    expect(css(3).match(rule)?.[0]).toBe(two);
+    expect(css(4).match(rule)?.[0]).toBe(two);
+    expect(new Set(photoClasses(4)).size).toBe(1);
   });
 
-  it('centres a short field rather than stretching it', () => {
-    const { container } = render(
-      <CandidateGrid candidates={candidates(2)} onSelect={() => {}} labelledBy="h" />,
-    );
-    expect(container.querySelector('[role="radiogroup"]')?.className).toContain('justify-center');
+  it('lets a short field widen into the plate instead of leaving it empty', () => {
+    const columns = grid(2).style.gridTemplateColumns || grid(2).getAttribute('style') || '';
+    expect(columns).toContain('auto-fit');
+    // Capped, so two candidates widen but do not become letterboxes.
+    expect(columns).toContain('300px');
+  });
+
+  it('centres the row', () => {
+    expect(grid(2).className).toContain('justify-center');
   });
 
   it('still exposes one radio per candidate', () => {
-    const { container } = render(
-      <CandidateGrid candidates={candidates(4)} onSelect={() => {}} labelledBy="h" />,
-    );
-    expect(container.querySelectorAll('[role="radio"]')).toHaveLength(4);
+    expect(grid(4).querySelectorAll('[role="radio"]')).toHaveLength(4);
   });
 });
 

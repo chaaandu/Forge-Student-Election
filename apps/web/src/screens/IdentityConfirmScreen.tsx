@@ -80,16 +80,16 @@ export function IdentityConfirmScreen({
               students a second one — this stays true with no edit.
             */}
             {endsWithHouseGate
-              ? `You will vote in ${gateCount} positions, ending with your house captain.`
-              : `You will vote in ${gateCount} leadership positions. House captains are voted on by students.`}
+              ? `${gateCount} choices, ending with your house captain.`
+              : `${gateCount} choices. House captains are voted on by students.`}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Button variant="primary" size="lg" onClick={onConfirm} autoFocus>
-              That&apos;s me — start voting <span aria-hidden="true">→</span>
+              That&apos;s me <span aria-hidden="true">→</span>
             </Button>
             <Button variant="quiet" size="lg" onClick={onStartOver}>
-              Not you? Start over
+              Not you? Start again
             </Button>
           </div>
         </div>

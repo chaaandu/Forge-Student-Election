@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500" role="img" aria-label="Portrait placeholder">
-  <rect width="400" height="500" fill="hsl(22 26% 93%)"/>
-  <circle cx="200" cy="196" r="96" fill="hsl(22 20% 87%)"/>
-  <ellipse cx="200" cy="476" rx="172" ry="176" fill="hsl(22 20% 87%)"/>
-  <text x="200" y="228" font-family="Georgia, 'Times New Roman', serif" font-size="88"
-        font-weight="600" fill="#628838" text-anchor="middle" letter-spacing="2"
-        opacity="0.9">AS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 460" width="600" height="460" role="img" aria-label="Photo to come">
+  <rect width="600" height="460" fill="hsl(34 24% 91%)"/>
+  <text x="300" y="268" font-family="Jost, 'Century Gothic', system-ui, sans-serif" font-size="150"
+        font-weight="500" fill="#628838" text-anchor="middle" letter-spacing="6"
+        opacity="0.82">AS</text>
 </svg>

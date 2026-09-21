@@ -71,11 +71,11 @@ export function DoneScreen({ holdSeconds, onFinished }: DoneScreenProps) {
           </ul>
 
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-faint)' }}>
-            Thank you for voting. This screen resets for the next person.
+            This screen resets in a moment for the next person.
           </p>
 
           <Button variant="secondary" onClick={onFinished} autoFocus>
-            Finish now
+            Done
           </Button>
         </div>
       </div>

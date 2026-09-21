@@ -87,8 +87,8 @@ export function PositionScreen({
         >
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
             {house
-              ? `Choose one candidate for ${house.name} house captain. You vote for your own house only.`
-              : 'Choose one candidate.'}
+              ? `Your house captain. You only vote for your own house.`
+              : 'Pick one.'}
           </p>
           <BallotProgress
             steps={steps}
@@ -100,7 +100,7 @@ export function PositionScreen({
 
         <div className="px-6 py-8 sm:px-8">
           <h2 id="position-heading" className="sr-only">
-            {step.title} — choose one candidate
+            {step.title} — pick one candidate
           </h2>
           <CandidateGrid
             candidates={candidates}
@@ -124,7 +124,7 @@ export function PositionScreen({
             size="lg"
             onClick={onNext}
             disabled={!selected}
-            disabledReason={`Choose a candidate for ${step.title} to continue.`}
+            disabledReason={`Pick a candidate for ${step.title} to continue.`}
           >
             {isEditing ? "Save and review" : "Continue"}
             <span aria-hidden="true">→</span>
@@ -133,7 +133,7 @@ export function PositionScreen({
           {/* The disabled reason, visible as well as announced. */}
           {!selected && (
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
-              Choose a candidate to continue.
+              Pick one to continue.
             </p>
           )}
         </div>

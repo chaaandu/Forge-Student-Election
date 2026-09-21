@@ -83,13 +83,13 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
 
               <p className="mt-5" style={{ fontSize: 'var(--text-md)', maxWidth: '38ch' }}>
                 {leadership.length} leadership positions
-                {hasHouseContests ? ', plus your house captain' : ''}. About two minutes — you
-                can change your choices right up until you submit.
+                {hasHouseContests ? ', plus your house captain' : ''}. Two minutes, give or
+                take — and you can change your mind right up until you submit.
               </p>
 
               <div className="mt-7">
                 <Button variant="primary" size="lg" onClick={onCheckIn} autoFocus>
-                  Begin voting <span aria-hidden="true">→</span>
+                  Start voting <span aria-hidden="true">→</span>
                 </Button>
               </div>
             </div>
@@ -132,7 +132,7 @@ export function SeedDataBanner() {
         fontSize: 'var(--text-xs)',
       }}
     >
-      Demo data — these are not the real candidates and no vote here counts
+      Practice run — these are not the real candidates, and nothing here counts
     </p>
   );
 }

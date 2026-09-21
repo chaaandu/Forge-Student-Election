@@ -31,7 +31,7 @@ describe('the invigilator monitor', () => {
     const page = await fetch(`${server.url}/monitor`);
     expect(page.status).toBe(200);
     const html = await page.text();
-    expect(html).toContain('Invigilator');
+    expect(html).toContain('Election desk');
     expect(html).toContain('Admin token');
 
     // The page is public; the data behind it is not.
@@ -93,7 +93,35 @@ describe('the invigilator monitor', () => {
     expect(new Set(houses.map((h) => h.shape)).size).toBe(houses.length);
   });
 
-  it('flags demo data so an invigilator cannot mistake a rehearsal for the real thing', async () => {
+  it('resolves every element its script reaches for', async () => {
+    // The same class of bug that froze the ballot sheet: a null from
+    // getElementById throws on first property access. Here it would blank the
+    // screen someone is running the room from.
+    const { JSDOM } = await import('jsdom');
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+
+    const script = page.slice(page.indexOf('<script>') + 8, page.lastIndexOf('</script>'));
+    const dom = new JSDOM(page.replace(/<script[\s\S]*?<\/script>/g, '')).window.document;
+
+    const ids = new Set([
+      ...[...script.matchAll(/getElementById\(['"]([\w-]+)['"]\)/g)].map((m) => m[1]!),
+      ...[...script.matchAll(/\$\(['"]([\w-]+)['"]\)/g)].map((m) => m[1]!),
+    ]);
+
+    expect(ids.size).toBeGreaterThan(10);
+    for (const id of ids) {
+      expect(dom.getElementById(id), `#${id} is referenced but does not exist`).not.toBeNull();
+    }
+  });
+
+  it('uses the width instead of a narrow column', async () => {
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+    // Turnout and houses beside the roll, not stacked down a 900px strip.
+    expect(page).toMatch(/\.cols\s*\{[^}]*grid-template-columns/);
+    expect(page).toContain('max-width:1360px');
+  });
+
+  it('flags a practice run so nobody mistakes it for the real thing', async () => {
     const body = await (await monitor()).json();
     expect(body.election).toHaveProperty('isSeedData');
     expect(body.authMode).toBe('supervised');

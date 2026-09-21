@@ -14,6 +14,11 @@ const FIELDS = ['var(--bh-red)', 'var(--bh-blue)', 'var(--bh-yellow)', 'var(--bh
  * confetti reads as a game reward, and nothing here should suggest the voter
  * *won* something. This marks that they took part.
  *
+ * Two phases, and the second is the one that matters: the pieces fly out, then
+ * keep drifting and fade away. An earlier version ran only the first phase, so
+ * the shapes stopped dead on their last keyframe and hung there looking stuck —
+ * the screen read as broken rather than finished.
+ *
  * Under reduced motion the same pieces render in their final positions, so the
  * composition is still there; it simply does not fly.
  */
@@ -61,7 +66,9 @@ export function Burst({ pieces = 18 }: { pieces?: number }) {
 
       <style>{`
         .burst-piece {
-          animation: burst 900ms var(--ease-snap) both;
+          animation:
+            burst 820ms var(--ease-snap) both,
+            drift 5s 820ms cubic-bezier(.33,0,.4,1) both;
           will-change: transform, opacity;
         }
         @keyframes burst {
@@ -69,7 +76,26 @@ export function Burst({ pieces = 18 }: { pieces?: number }) {
           35%  { opacity: 1 }
           100% { transform: translate(var(--x), var(--y)) scale(1) rotate(var(--r)); opacity: .92 }
         }
-        @media (prefers-reduced-motion: reduce) { .burst-piece { animation: none } }
+        /*
+          The second phase is the point. The burst alone ended on its last
+          keyframe and simply stopped, so the shapes read as frozen mid-air —
+          the screen looked broken rather than finished. They now keep drifting
+          outward and fade out, so the composition clears instead of hanging.
+        */
+        @keyframes drift {
+          0%   { transform: translate(var(--x), var(--y)) scale(1) rotate(var(--r)); opacity: .92 }
+          100% {
+            transform:
+              translate(calc(var(--x) * 1.45), calc(var(--y) * 1.45 - 26px))
+              scale(1.06) rotate(calc(var(--r) * 1.6));
+            opacity: 0;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          /* No flight and no fade: the pieces are simply there, then the screen
+             resets. Motion is the decoration, not the message. */
+          .burst-piece { animation: none }
+        }
       `}</style>
     </div>
   );

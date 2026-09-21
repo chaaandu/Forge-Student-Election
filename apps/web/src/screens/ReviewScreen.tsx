@@ -1,6 +1,5 @@
 import type { Candidate, House, Position } from '@mesa/election-core';
 import type { VoterProfile } from '@/lib/api';
-import { InkMark } from '@/components/ink/InkMark';
 import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -50,7 +49,7 @@ export function ReviewScreen({
           }}
         >
           <p className="label" style={{ color: 'var(--color-paper)', opacity: 0.7 }}>
-            Your completed ballot
+            Almost done
           </p>
           <h1 className="poster mt-2" style={{ fontSize: 'var(--text-xl)' }}>
             Check your choices
@@ -72,46 +71,59 @@ export function ReviewScreen({
             return (
               <li
                 key={step.id}
-                className="bh-row flex items-center gap-4 px-6 py-4 sm:px-8"
+                className="bh-row flex items-center gap-4 px-6 py-3.5 sm:px-8"
                 style={{
                   borderBottom: '2px solid var(--color-ink)',
                   animationDelay: `${Math.min(index, 8) * 45}ms`,
                 }}
               >
-                <span
-                  aria-hidden="true"
-                  className="relative flex shrink-0 items-center justify-center"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    border: `3px solid ${candidate ? (role?.text ?? 'var(--bh-red-text)') : 'var(--color-ink-faint)'}`,
-                  }}
-                >
-                  {candidate && (
-                    <span className="absolute" style={{ transform: 'translate(1px, -1px)' }}>
-                      <InkMark marked size="sm" color={role?.text ?? 'var(--bh-red-text)'} />
+                {/*
+                  The candidate's own photo, not a tick box.
+
+                  This row used to lead with an outlined square holding an ink
+                  mark. Next to a choice already made, an outlined square reads
+                  as a checkbox waiting to be ticked — the one thing this row
+                  must not suggest, since nothing here is editable in place.
+                  A face says "this is who you picked" without any convention to
+                  decode.
+                */}
+                <span className="bh-thumb" aria-hidden="true">
+                  {candidate?.photoUrl ? (
+                    <img src={candidate.photoUrl} alt="" width={52} height={52} loading="lazy" />
+                  ) : (
+                    <span className="bh-thumb__initials">
+                      {(candidate?.name ?? '?')
+                        .replace(/['’]/g, '')
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((w) => w[0])
+                        .join('')
+                        .toUpperCase()}
                     </span>
                   )}
                 </span>
 
                 <div className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    {house && <HouseCrest house={house} size={20} />}
+                    {house && <HouseCrest house={house} size={16} />}
                     <span className="label" style={role ? { color: role.text } : undefined}>
                       {step.title}
                     </span>
                   </span>
-                  <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-md)', fontWeight: 600 }}>
-                    {candidate ? candidate.name : '— not chosen —'}
+                  <p
+                    className="mt-0.5 truncate"
+                    style={{ fontSize: 'var(--text-md)', fontWeight: 600 }}
+                  >
+                    {candidate ? candidate.name : 'Not chosen yet'}
                   </p>
                 </div>
 
                 <Button
                   variant="quiet"
                   onClick={() => onEdit(step.id)}
-                  aria-label={`Edit your choice for ${step.title}`}
+                  aria-label={`Change your pick for ${step.title}`}
                 >
-                  Edit
+                  Change
                 </Button>
               </li>
             );
@@ -135,7 +147,7 @@ export function ReviewScreen({
               size="lg"
               onClick={onSubmit}
               disabled={!complete}
-              disabledReason="Every position needs a selection before you can submit."
+              disabledReason="Every position needs a pick before you can submit."
             >
               Confirm &amp; Submit Vote
             </Button>
@@ -145,6 +157,16 @@ export function ReviewScreen({
 
       <style>{`
         .bh-row { animation: row-in var(--dur-enter) var(--ease-out) both }
+        .bh-thumb {
+          flex: none; width: 52px; height: 52px; overflow: hidden;
+          border: 2px solid var(--color-ink); background: var(--color-sunk);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .bh-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center 22% }
+        .bh-thumb__initials {
+          font-family: var(--font-geometric); font-weight: 600;
+          font-size: var(--text-sm); color: var(--color-ink-soft);
+        }
         @keyframes row-in {
           from { opacity: 0; transform: translateY(6px) }
           to   { opacity: 1; transform: translateY(0) }

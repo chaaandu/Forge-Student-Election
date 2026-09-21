@@ -112,9 +112,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           {mode === 'entra' ? (
             <>
               <p style={{ color: 'var(--color-ink-soft)' }}>
-                You will be sent to Microsoft to sign in, then brought straight back. We use your
-                sign-in only to check you are on the voter roll and that you have not already
-                voted.
+                You will sign in with Microsoft and come straight back. We only use it to check
+                you are on the roll and have not already voted.
               </p>
               <a
                 href="/api/auth/entra/start"
@@ -163,14 +162,14 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                 autoComplete="off"
                 spellCheck={false}
                 onChange={(event) => setQuery(event.target.value)}
-                hint="Type at least two letters. We only show a few matches at a time."
+                hint="Start typing — two letters is enough."
                 {...(error ? { error } : {})}
               />
 
               <div aria-live="polite" className="min-h-2">
                 {searching && (
                   <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
-                    Searching…
+                    Looking…
                   </p>
                 )}
 
@@ -290,7 +289,7 @@ function CodeStep({
           maxLength={12}
           spellCheck={false}
           onChange={(event) => setCode(event.target.value.toUpperCase())}
-          hint="The six characters on the slip you were given. Letter case does not matter."
+          hint="Six characters, from the slip you were handed. Case does not matter."
           {...(error ? { error } : {})}
           style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.24em' }}
         />
@@ -314,7 +313,7 @@ function CodeStep({
           Continue
         </Button>
         <Button variant="quiet" onClick={onChangeName} type="button">
-          Not you? Choose a different name
+          Not you? Pick a different name
         </Button>
       </div>
     </form>

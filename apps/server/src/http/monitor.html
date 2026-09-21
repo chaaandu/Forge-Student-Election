@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="light" />
-<title>Mesa Elections — Invigilator</title>
+<title>Election desk — Mesa</title>
 <!--
-  The invigilator's screen.
+  The election desk.
   Built for one job: standing in a room, seeing at a glance how many have voted,
   and finding who has not. Everything that does not serve that is gone.
 
@@ -16,74 +16,78 @@
 <style>
   :root{
     --paper:#F2EDE1; --card:#FFF; --ink:#141414; --soft:#514D48; --faint:#7D766C;
-    --rule:#141414; --line:#D8D1C2;
-    --yellow:#FFC20E; --red:#DE2B1F; --green:#1E7A4C;
+    --line:#D8D1C2; --yellow:#FFC20E; --red:#B83325; --green:#1E7A4C;
     --sans:'Jost','Century Gothic',system-ui,-apple-system,'Segoe UI',sans-serif;
     --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
-  .wrap{max-width:900px;margin:0 auto;padding:28px 20px 80px}
-  h1{font-size:26px;margin:0;font-weight:600;letter-spacing:-.01em}
-  .label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--faint)}
+  .wrap{max-width:1360px;margin:0 auto;padding:24px 24px 72px}
+  h1{font-size:24px;margin:0;font-weight:600;letter-spacing:-.01em}
+  h2{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:var(--faint);margin:0}
   .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  :focus-visible{outline:none;box-shadow:0 0 0 3px var(--paper),0 0 0 6px var(--red)}
 
-  /* -------------------------------------------------------------- head -- */
-  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
-    flex-wrap:wrap;padding-bottom:16px;border-bottom:3px solid var(--rule)}
-  .live{display:inline-flex;align-items:center;gap:7px;color:var(--green)}
+  /* ---------------------------------------------------------- header --- */
+  header{display:flex;justify-content:space-between;align-items:center;gap:20px;
+    flex-wrap:wrap;padding:0 0 16px;border-bottom:3px solid var(--ink)}
+  .sub{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .live{display:inline-flex;align-items:center;gap:8px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--green);animation:p 2s ease-in-out infinite}
-  @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.28}}
   @media (prefers-reduced-motion:reduce){.dot{animation:none}}
 
-  /* ------------------------------------------------------------ turnout -- */
-  .hero{margin:28px 0 0;padding:24px;background:var(--card);border:3px solid var(--rule)}
-  .hero__n{font-size:clamp(48px,11vw,78px);line-height:.92;font-weight:600;font-family:var(--mono)}
-  .hero__n small{font-size:.38em;color:var(--faint);font-weight:500}
-  .hero__bar{height:16px;margin-top:18px;background:var(--paper);border:3px solid var(--rule)}
-  .hero__fill{height:100%;background:var(--yellow);transition:width .6s cubic-bezier(.22,1,.36,1)}
-  .split{display:flex;gap:28px;flex-wrap:wrap;margin-top:16px}
-  .split div{font-size:14px;color:var(--soft)}
+  /* ------------------------------------------------------------ grid --- */
+  .cols{display:grid;gap:20px;margin-top:20px;grid-template-columns:340px minmax(0,1fr)}
+  @media (max-width:940px){ .cols{grid-template-columns:minmax(0,1fr)} }
+
+  .panel{background:var(--card);border:3px solid var(--ink);padding:20px}
+  .panel + .panel{margin-top:20px}
+
+  /* --------------------------------------------------------- turnout --- */
+  .big{font-family:var(--mono);font-size:clamp(44px,6vw,64px);line-height:.95;font-weight:600;margin:10px 0 0}
+  .big small{font-size:.36em;color:var(--faint);font-weight:500}
+  .bar{height:14px;margin-top:14px;background:var(--paper);border:2px solid var(--ink)}
+  .bar i{display:block;height:100%;background:var(--yellow);transition:width .6s cubic-bezier(.22,1,.36,1)}
+  .split{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:var(--soft)}
   .split b{font-family:var(--mono);color:var(--ink)}
 
-  /* ------------------------------------------------------------- houses -- */
-  .houses{margin-top:16px;padding:20px 24px;background:var(--card);border:3px solid var(--rule)}
-  .lane{display:grid;grid-template-columns:120px 1fr 58px;align-items:center;gap:14px;margin-top:12px}
-  .lane:first-of-type{margin-top:14px}
-  .lane__name{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px}
-  .lane__crest{width:22px;height:auto;flex:none}
-  .lane__track{height:18px;background:var(--paper);border:2px solid var(--rule)}
-  .lane__fill{height:100%;transition:width .6s cubic-bezier(.22,1,.36,1)}
-  .lane__n{text-align:right;font-family:var(--mono);font-size:14px;color:var(--soft)}
+  /* ---------------------------------------------------------- houses --- */
+  .lane{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;margin-top:14px}
+  .lane img{width:26px;height:auto;display:block}
+  .lane svg{display:block}
+  .lane__name{font-size:14px;font-weight:600}
+  .lane__bar{grid-column:2 / -1;height:10px;background:var(--paper);border:2px solid var(--ink);margin-top:-6px}
+  .lane__bar i{display:block;height:100%;transition:width .6s cubic-bezier(.22,1,.36,1)}
+  .lane__n{font-family:var(--mono);font-size:13px;color:var(--soft)}
 
-  /* --------------------------------------------------------------- list -- */
-  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:28px 0 0}
-  input[type=search],input[type=password]{background:var(--card);border:3px solid var(--rule);
-    color:var(--ink);padding:11px 14px;font:inherit;min-height:46px;flex:1;min-width:220px}
-  button{background:var(--card);border:3px solid var(--rule);color:var(--ink);
-    padding:11px 16px;font:inherit;font-weight:600;min-height:46px;cursor:pointer;
-    text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+  /* ----------------------------------------------------------- list --- */
+  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  input[type=search],input[type=password]{background:var(--card);border:3px solid var(--ink);
+    color:var(--ink);padding:11px 14px;font:inherit;min-height:46px;flex:1;min-width:200px}
+  button{background:var(--card);border:3px solid var(--ink);color:var(--ink);padding:11px 16px;
+    font:inherit;font-weight:600;min-height:46px;cursor:pointer;text-transform:uppercase;
+    letter-spacing:.08em;font-size:12px;white-space:nowrap}
   button:hover{background:var(--paper)}
   button[aria-pressed=true]{background:var(--yellow)}
   button.ghost{border-color:transparent;background:transparent;color:var(--soft)}
-  :focus-visible{outline:none;box-shadow:0 0 0 3px var(--paper),0 0 0 6px var(--red)}
 
-  ul{list-style:none;margin:16px 0 0;padding:0}
-  li{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--card);
-    border:2px solid var(--line);margin-bottom:-2px}
-  li.voted{border-left:6px solid var(--green)}
+  .rows{list-style:none;margin:0;padding:0;
+    display:grid;gap:0;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .rows li{display:flex;align-items:center;gap:12px;padding:11px 14px;
+    border:1px solid var(--line);margin:-1px 0 0 -1px;min-width:0}
+  .rows li.voted{border-left:5px solid var(--green)}
   .who{flex:1;min-width:0}
-  .who b{display:block;font-weight:600}
-  .who span{font-size:13px;color:var(--faint)}
-  .when{font-family:var(--mono);font-size:13px;color:var(--soft);white-space:nowrap}
-  .tick{width:22px;height:22px;border:2px solid var(--line);flex:none}
+  .who b{display:block;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .who span{font-size:12px;color:var(--faint)}
+  .when{font-family:var(--mono);font-size:12px;color:var(--soft);white-space:nowrap}
+  .tick{width:20px;height:20px;border:2px solid var(--line);flex:none}
   .tick.on{border-color:var(--green);background:var(--green)}
-  .empty{padding:32px;text-align:center;color:var(--faint);background:var(--card);border:2px solid var(--line)}
+  .empty{padding:36px;text-align:center;color:var(--faint)}
 
-  .warn{margin-bottom:20px;padding:12px 16px;background:var(--yellow);
-    border:3px solid var(--rule);text-align:center;font-weight:600;font-size:13px;
-    text-transform:uppercase;letter-spacing:.1em}
-  .gate{max-width:420px;margin:14vh auto;padding:28px;background:var(--card);border:3px solid var(--rule)}
+  .warn{margin-bottom:18px;padding:12px 16px;background:var(--yellow);border:3px solid var(--ink);
+    text-align:center;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+  .gate{max-width:420px;margin:14vh auto;padding:28px;background:var(--card);border:3px solid var(--ink)}
   .err{color:var(--red);margin-top:12px;font-size:14px;font-weight:600}
 </style>
 </head>
@@ -91,52 +95,57 @@
 <div class="wrap">
 
   <div id="gate" class="gate">
-    <h1>Invigilator</h1>
-    <p style="color:var(--soft);margin:10px 0 0">Enter the admin token. It stays in this tab only.</p>
+    <h1>Election desk</h1>
+    <p style="color:var(--soft);margin:10px 0 0">Enter the admin token. It stays in this tab.</p>
     <form id="gateForm" style="margin-top:20px">
       <input type="password" id="token" placeholder="Admin token" autocomplete="off"
              style="width:100%" aria-label="Admin token" />
-      <button type="submit" style="width:100%;margin-top:12px;background:var(--yellow)">Open</button>
+      <button type="submit" style="width:100%;margin-top:12px;background:var(--yellow)">Open the desk</button>
       <p class="err" id="gateErr" role="alert" hidden></p>
     </form>
   </div>
 
   <div id="app" hidden>
-    <div id="seed" class="warn" hidden>Demo data — nothing here counts</div>
+    <div id="seed" class="warn" hidden>Practice run — nothing here counts</div>
 
     <header>
       <div>
-        <p class="label" id="mode"></p>
+        <p class="sub" id="mode"></p>
         <h1 id="title">Mesa Elections</h1>
       </div>
-      <div style="text-align:right">
-        <span class="live"><span class="dot"></span><span class="label" style="color:var(--green)">Live</span></span>
-        <p class="label" id="updated" style="margin:4px 0 0">—</p>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span class="live"><span class="dot"></span><span class="sub" style="color:var(--green)">Live</span></span>
+        <span class="sub" id="updated">—</span>
+        <button class="ghost" id="signout">Sign out</button>
       </div>
     </header>
 
-    <section class="hero">
-      <p class="label">Turnout</p>
-      <p class="hero__n" id="turnout">—</p>
-      <div class="hero__bar"><div class="hero__fill" id="turnoutBar" style="width:0%"></div></div>
-      <div class="split" id="byType"></div>
-    </section>
+    <div class="cols">
+      <div>
+        <section class="panel">
+          <h2>Turnout</h2>
+          <p class="big" id="turnout">—</p>
+          <div class="bar"><i id="turnoutBar" style="width:0%"></i></div>
+          <div class="split" id="byType"></div>
+        </section>
 
-    <section class="houses" id="houses" hidden>
-      <p class="label">By house</p>
-      <div id="lanes"></div>
-    </section>
+        <section class="panel" id="houses" hidden>
+          <h2>By house</h2>
+          <div id="lanes"></div>
+        </section>
+      </div>
 
-    <div class="tools">
-      <input type="search" id="q" placeholder="Search a name…" aria-label="Search voters" />
-      <button data-f="no" aria-pressed="true">Not yet voted</button>
-      <button data-f="all" aria-pressed="false">Everyone</button>
-      <button class="ghost" id="signout">Sign out</button>
+      <section class="panel">
+        <div class="tools">
+          <input type="search" id="q" placeholder="Search a name…" aria-label="Search voters" />
+          <button data-f="no" aria-pressed="true">Still to vote</button>
+          <button data-f="all" aria-pressed="false">Everyone</button>
+        </div>
+        <h2 id="count"></h2>
+        <ul class="rows" id="rows"></ul>
+        <p class="empty" id="empty" hidden></p>
+      </section>
     </div>
-
-    <p class="label" id="count" style="margin-top:14px"></p>
-    <ul id="rows"></ul>
-    <p class="empty" id="empty" hidden>Nobody matches that search.</p>
   </div>
 </div>
 
@@ -144,7 +153,7 @@
 (function () {
   var KEY = 'mesa.monitor.token';
   var token = sessionStorage.getItem(KEY) || '';
-  // Defaults to the list an invigilator actually needs: who is still missing.
+  // Defaults to the list someone at the desk actually needs: who is missing.
   var filter = 'no';
   var query = '';
   var data = null;
@@ -158,26 +167,23 @@
     });
   }
 
-  // The four elementary forms, matching the voting screens. Shape as well as
-  // colour, so the lanes read without colour vision.
+  // The four elementary forms, matching the voting screens. Used when a house
+  // has no crest, so the lanes still read without colour vision.
   function shapeSvg(form, color) {
     var body = {
-      square:   '<rect x="1" y="1" width="16" height="16" fill="' + color + '"/>',
-      circle:   '<circle cx="9" cy="9" r="8" fill="' + color + '"/>',
-      triangle: '<path d="M9 1 L17 17 L1 17 Z" fill="' + color + '"/>',
-      arc:      '<path d="M1 17 A 8 8 0 0 1 17 17 Z" fill="' + color + '"/>'
-    }[form] || '<rect x="1" y="1" width="16" height="16" fill="' + color + '"/>';
-    return '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">' + body + '</svg>';
+      square:   '<rect x="1" y="1" width="20" height="20" fill="' + color + '"/>',
+      circle:   '<circle cx="11" cy="11" r="10" fill="' + color + '"/>',
+      triangle: '<path d="M11 1 L21 21 L1 21 Z" fill="' + color + '"/>',
+      arc:      '<path d="M1 21 A 10 10 0 0 1 21 21 Z" fill="' + color + '"/>'
+    }[form] || '<rect x="1" y="1" width="20" height="20" fill="' + color + '"/>';
+    return '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">' + body + '</svg>';
   }
 
-  // The real shield when the house has one; the elementary form when it does
-  // not. Either way the name sits beside it, so nothing rests on the artwork.
   function crest(h) {
-    return h.crestUrl
-      ? '<img class="lane__crest" src="' + esc(h.crestUrl) + '" alt="" ' +
-        'onerror="this.replaceWith(document.createRange().createContextualFragment(' +
-        "'" + shapeSvg(h.shape, h.color).replace(/'/g, "\\'") + "'))\" />"
-      : shapeSvg(h.shape, h.color);
+    if (!h.crestUrl) return shapeSvg(h.shape, h.color);
+    var fallback = shapeSvg(h.shape, h.color).replace(/"/g, '&quot;');
+    return '<img src="' + esc(h.crestUrl) + '" alt="" ' +
+      'onerror="this.outerHTML=&quot;' + fallback.replace(/&quot;/g, '\\u0027') + '&quot;" />';
   }
 
   async function load() {
@@ -203,7 +209,7 @@
     $('updated').textContent = 'Updated ' + new Date(data.generatedAt).toLocaleTimeString();
 
     var t = data.turnout;
-    $('turnout').innerHTML = t.overall.voted + ' <small>/ ' + t.overall.eligible + '</small>';
+    $('turnout').innerHTML = t.overall.voted + ' <small>of ' + t.overall.eligible + '</small>';
     $('turnoutBar').style.width = pct(t.overall.voted, t.overall.eligible) + '%';
     $('byType').innerHTML = Object.keys(t.byType).map(function (k) {
       var g = t.byType[k];
@@ -215,11 +221,11 @@
     $('houses').hidden = houses.length === 0;
     $('lanes').innerHTML = houses.map(function (h) {
       var p = pct(h.voted, h.eligible);
-      return '<div class="lane">' +
-        '<span class="lane__name">' + crest(h) + esc(h.name) + '</span>' +
-        '<span class="lane__track"><span class="lane__fill" style="width:' + p + '%;background:' + esc(h.color) + '"></span></span>' +
-        '<span class="lane__n">' + h.voted + '/' + h.eligible + '</span>' +
-      '</div>';
+      return '<div class="lane">' + crest(h) +
+          '<span class="lane__name">' + esc(h.name) + '</span>' +
+          '<span class="lane__n">' + h.voted + '/' + h.eligible + '</span>' +
+          '<span class="lane__bar"><i style="width:' + p + '%;background:' + esc(h.color) + '"></i></span>' +
+        '</div>';
     }).join('');
 
     var q = query.trim().toLowerCase();
@@ -231,18 +237,23 @@
 
     $('count').textContent = filter === 'no'
       ? list.length + ' still to vote'
-      : list.length + ' of ' + data.voters.length + ' shown';
+      : list.length + ' of ' + data.voters.length;
+
     $('empty').hidden = list.length > 0;
-    // Capped: an invigilator scans, they do not scroll 145 rows.
-    $('rows').innerHTML = list.slice(0, 60).map(function (v) {
+    $('empty').textContent = q
+      ? 'Nobody matches that search.'
+      : filter === 'no' ? 'Everyone has voted.' : 'Nobody on the roll yet.';
+
+    // Capped: someone at a desk scans, they do not scroll 145 rows.
+    $('rows').innerHTML = list.slice(0, 90).map(function (v) {
       return '<li class="' + (v.hasVoted ? 'voted' : '') + '">' +
         '<span class="tick ' + (v.hasVoted ? 'on' : '') + '"></span>' +
         '<span class="who"><b>' + esc(v.name) + '</b><span>' +
           (v.house ? esc(v.house) + ' · ' : '') + v.type + '</span></span>' +
         '<span class="when">' + (v.votedAt ? new Date(v.votedAt).toLocaleTimeString() : '') + '</span>' +
       '</li>';
-    }).join('') + (list.length > 60
-      ? '<li style="justify-content:center;color:var(--faint)">+ ' + (list.length - 60) + ' more — search to narrow</li>'
+    }).join('') + (list.length > 90
+      ? '<li style="justify-content:center;color:var(--faint)">+ ' + (list.length - 90) + ' more — search to narrow</li>'
       : '');
   }
 

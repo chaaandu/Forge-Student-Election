@@ -55,9 +55,16 @@ export function CandidateCard({
       className="bh-candidate group flex cursor-pointer flex-col overflow-hidden"
       style={{ ['--field' as string]: field, ['--on-field' as string]: onFieldInk }}
     >
+      {/*
+        A fixed HEIGHT, not an aspect ratio. This is what lets the cards widen
+        to fill the plate when only two candidates stand without the page
+        growing taller: a wider card stays exactly as tall, and the photo simply
+        crops wider.
+      */}
       <div
-        className="relative w-full overflow-hidden"
-        style={{ aspectRatio: '4 / 5', background: 'var(--color-sunk)' }}
+        className="bh-photo relative w-full overflow-hidden"
+        data-photo
+        style={{ background: 'var(--color-sunk)' }}
       >
         {showPhoto ? (
           <img
@@ -69,7 +76,9 @@ export function CandidateCard({
             decoding="async"
             onError={() => setImageFailed(true)}
             className="h-full w-full object-cover"
-            style={{ objectPosition: 'center 25%' }}
+            // Heads sit high in a portrait; bias the crop upward so a wide card
+            // still frames a face rather than a chest.
+            style={{ objectPosition: 'center 22%' }}
           />
         ) : (
           <div
@@ -141,6 +150,9 @@ export function CandidateCard({
       </div>
 
       <style>{`
+        /* A fixed HEIGHT, never an aspect ratio: it is what lets a card widen
+           to fill the plate without the page growing taller. */
+        .bh-photo { height: clamp(180px, 24vh, 232px); }
         .bh-candidate {
           background: var(--color-card);
           border: 3px solid var(--color-ink);

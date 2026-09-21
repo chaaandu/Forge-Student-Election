@@ -314,6 +314,25 @@ candidates sit centred with air either side, which reads as deliberate rather
 than stretched. The upper bound keeps four across inside the plate; the lower
 keeps a card usable on a narrow screen.
 
+## 6c. Voice
+
+Warm and precise. Short sentences, second person, no jargon, no exclamation
+marks, no filler. Say what happened, then what to do about it. Never be cute
+about the vote itself — the warmth belongs to the person, the precision to the
+act.
+
+Two rules decide most wording:
+
+- **Errors lead with what it means for the voter**, not with what failed.
+  *"Your vote was not recorded, and nothing has been saved. Try again — and if
+  it fails a second time, tell the person running the election."*
+- **Nothing implies the voter chose well.** We celebrate turning up, never the
+  choice.
+
+Everything a voter reads under pressure is in `src/lib/copy.ts` so it cannot be
+softened by accident. The review warning is required verbatim and is asserted
+by test.
+
 ## 7. Open source: what was evaluated and what was taken
 
 | Project | Licence | Verdict |
