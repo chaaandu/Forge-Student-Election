@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { PublicElection } from '@/lib/api';
 import { PaperBackdrop } from '@/components/paper/PaperBackdrop';
 import { CompositionSVG } from '@/components/bauhaus/CompositionSVG';
-import { HouseCrest } from '@/components/bauhaus/HouseCrest';
 import { Shape } from '@/components/bauhaus/Shape';
 import { Button } from '@/components/ui/Button';
 
@@ -27,7 +26,7 @@ export interface WelcomeScreenProps {
 export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
   const [backdropReady, setBackdropReady] = useState(false);
   const leadership = election.positions.filter((p) => p.kind === 'leadership');
-  const houses = election.houses;
+  const hasHouseContests = election.positions.some((p) => p.kind === 'house-captain');
 
   return (
     <div className="welcome relative flex min-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden">
@@ -62,7 +61,7 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
           </span>
         </div>
 
-        <div className="max-w-xl">
+        <div className="max-w-xl lg:max-w-[46%]">
           <div className="panel panel--raised overflow-hidden">
             <div
               className="px-6 py-3 sm:px-8"
@@ -82,7 +81,7 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
 
               <p className="mt-5" style={{ fontSize: 'var(--text-md)', maxWidth: '38ch' }}>
                 {leadership.length} leadership positions
-                {houses.length > 0 ? ', plus your house captain' : ''}. About two minutes — you
+                {hasHouseContests ? ', plus your house captain' : ''}. About two minutes — you
                 can change your choices right up until you submit.
               </p>
 
@@ -101,16 +100,12 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
           )}
         </div>
 
-        {/* House strip: colour AND form, so identity never rests on colour. */}
-        {houses.length > 0 && (
-          <ul className="flex flex-wrap items-center gap-x-8 gap-y-4 p-0">
-            {houses.map((house) => (
-              <li key={house.id}>
-                <HouseCrest house={house} size={38} withName nameColor="rgba(242,237,225,.78)" />
-              </li>
-            ))}
-          </ul>
-        )}
+        {/*
+          No house strip here. The four crests are printed on the ballot sheet
+          itself, and repeating them along the foot of the screen competed with
+          it for attention without telling a voter anything new — houses are
+          named again at the house contest, where they matter.
+        */}
       </div>
     </div>
   );

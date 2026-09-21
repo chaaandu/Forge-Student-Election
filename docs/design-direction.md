@@ -150,9 +150,13 @@ proportions, so the layout it occupies is the layout the real crest will occupy.
 Colour is declared rather than sampled by code, because a dominant-colour pass
 over a black shield returns black.
 
-The crests appear on the welcome screen, the position header of a house
-contest, the identity pass, the review rows, the monitor lanes — and on the
-ballot sheet itself.
+The crests appear on the ballot sheet itself, the position header of a house
+contest, the identity pass, the review rows, and the monitor lanes.
+
+They are deliberately **not** repeated along the foot of the welcome screen.
+They are printed on the sheet a metre away from the voter's eye; a second row of
+them competed for attention without saying anything new. Houses are named again
+at the house contest, which is where a voter needs them.
 
 A house contest takes that house's field across the whole plate header with its
 crest beside the position, so a student arrives at a screen that is
@@ -212,7 +216,8 @@ that the engine was not touched.
 | Change | Reason |
 | --- | --- |
 | Certificate content | The authored variant reads "SITE OF THE YEAR / NOCTURNE STUDIO / SEASON XP" — a design award for a fictional studio. It now carries the election, the real houses (with their Bauhaus forms), and the 75/25 weighting. House names and colours are read from `election.config.json`, so the artwork cannot drift from the ballot. |
-| Background word | NOCTURNE → MESA |
+| Background word removed | The authored variant sets a giant word behind the sheet. The election title already sits on the panel beside it, and two of them compete. |
+| Sheet offset right | On wide viewports the sheet sits in the right half, leaving the left to the panel. It stays centred on narrow ones, where there is no room to give. `group.position.x` is written every frame by the animation loop, so the offset is folded into that expression rather than set once. |
 | Accents | lime/cyan → the Mesa yellow and a blue lifted for the dark sheet |
 | Fonts inlined as data URIs | The authored file fetches Google Fonts at runtime. A hall kiosk must not depend on a third-party request mid-election. Inlining also sidesteps CORS: the frame is sandboxed *without* `allow-same-origin`, so it has an opaque origin and a same-origin font file would be refused too. |
 | House crests inlined and drawn onto the sheet | The ballot carries the four shields. Inlined for the same opaque-origin reason as the fonts — the frame cannot fetch `/houses/*.png` either. |

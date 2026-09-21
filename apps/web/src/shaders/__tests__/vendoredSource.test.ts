@@ -123,6 +123,22 @@ describe('the derived Mesa document', () => {
     expect(derived).not.toMatch(/Hover<\/b> to light/);
   });
 
+  it('drops the giant background word, which competed with the panel title', () => {
+    expect(derived).not.toContain('<div id="bg">');
+    expect(derived).not.toContain('NOCTURNE');
+    // The title belongs to the panel beside the sheet, not behind it.
+    expect(derived).not.toMatch(/<h1>MESA<\/h1>/);
+  });
+
+  it('offsets the sheet to the right on wide viewports only', () => {
+    expect(derived).toContain('sheetOffsetX');
+    // Folded into the per-frame expression, because the loop writes this every
+    // frame; setting it once would be overwritten immediately.
+    expect(derived).toContain('group.position.x = sheetOffsetX +');
+    // Centred when there is no room to give.
+    expect(derived).toMatch(/camera\.aspect >= 1\.15 \? visW\*0\.18 : 0/);
+  });
+
   it('carries the authored engine byte-for-byte', () => {
     // The strongest statement available: the derivation touched the content
     // layer and nothing else. Both documents embed three.js r149 and the paper

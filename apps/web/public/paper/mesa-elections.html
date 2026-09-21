@@ -31,7 +31,7 @@ body{
   line-height:.8;white-space:nowrap;
   -webkit-user-select:none;user-select:none;
   font-family:"Inter Tight",sans-serif;font-weight:600;letter-spacing:-.055em;
-  font-size:clamp(96px,18.6vw,420px);color:rgba(255,194,14,.10);
+  font-size:clamp(96px,18.6vw,420px);color:rgba(206,242,168,.115);
 }
 
 /* ---------- layers over it ---------- */
@@ -54,7 +54,6 @@ body{
 
 </style>
 
-<div id="bg"><h1>MESA</h1></div>
 
 <div id="dof"></div>
 <canvas id="gl"></canvas>
@@ -548,6 +547,7 @@ window.addEventListener('pointerleave', ()=>{ hoverTarget=0; });
    5. RESIZE
    ====================================================================== */
 let vw=0, vh=0;
+let sheetOffsetX = 0;
 function resize(){
   vw = window.innerWidth; vh = window.innerHeight;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
@@ -557,6 +557,9 @@ function resize(){
   const visW = visH*camera.aspect;
   const wCap = Math.min(0.88, 0.60 + Math.max(0, 1.45 - camera.aspect)*0.45);
   group.scale.setScalar(Math.min(visH*0.735/SH, visW*wCap/SW));
+  // Wide enough for a two-column welcome screen: give the left half to the
+  // panel and sit the sheet in the right. Narrow screens stack, so it stays put.
+  sheetOffsetX = camera.aspect >= 1.15 ? visW*0.18 : 0;
 }
 window.addEventListener('resize', resize);
 
@@ -609,7 +612,7 @@ function frame(){
   group.rotation.x = dragPitch - mouse.y*0.11 + Math.sin(t*0.19)*0.026*idle + rise*0.28;
   group.rotation.z = Math.sin(t*0.27)*0.018*idle;
   group.position.y = Math.sin(t*0.36)*0.06*idle - rise*0.7;
-  group.position.x = Math.sin(t*0.21)*0.05*idle + mouse.x*0.10;
+  group.position.x = sheetOffsetX + Math.sin(t*0.21)*0.05*idle + mouse.x*0.10;
   group.updateMatrixWorld();
 
   hover += (hoverTarget - hover) * Math.min(1, dt*4.5);

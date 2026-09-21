@@ -25,7 +25,13 @@
  *                           refused by CORS. Inlining removes the request, the
  *                           CORS question and the failure mode together, and
  *                           lets the sandbox stay tight.
- *   3. Background word    — NOCTURNE → MESA.
+ *   3. Background word    — removed. The authored variant sets a giant word
+ *                           behind the sheet; the Mesa title already sits on
+ *                           the panel beside it, and two of them compete.
+ *   3b. Sheet offset       — the sheet is moved to the right on wide viewports
+ *                           so the panel on the left has clear room. It stays
+ *                           centred on narrow ones, where there is no room to
+ *                           give.
  *   4. Accent constants   — the lime/cyan pair → the Mesa yellow and a blue
  *                           lifted for legibility on the dark sheet.
  *   5. drawGame()         — the certificate content. The authored variant reads
@@ -160,9 +166,35 @@ replace(
 `,
 );
 
-// 3 ── background word
-replace('background word', '<div id="bg"><h1>NOCTURNE</h1></div>', '<div id="bg"><h1>MESA</h1></div>');
-replace('background word tint', 'color:rgba(206,242,168,.115);', 'color:rgba(255,194,14,.10);');
+// 3 ── remove the background word. The election title lives on the panel
+//      beside the sheet; a second giant word behind it just competes.
+replace('background word removed', '<div id="bg"><h1>NOCTURNE</h1></div>\n', '');
+
+// 3b ── sit the sheet to the right, so the panel on the left has room.
+//       `group.position.x` is written every frame by the animation loop, so the
+//       offset has to be folded into that expression rather than set once.
+replace(
+  'sheet offset — resize',
+  `  const wCap = Math.min(0.88, 0.60 + Math.max(0, 1.45 - camera.aspect)*0.45);
+  group.scale.setScalar(Math.min(visH*0.735/SH, visW*wCap/SW));`,
+  `  const wCap = Math.min(0.88, 0.60 + Math.max(0, 1.45 - camera.aspect)*0.45);
+  group.scale.setScalar(Math.min(visH*0.735/SH, visW*wCap/SW));
+  // Wide enough for a two-column welcome screen: give the left half to the
+  // panel and sit the sheet in the right. Narrow screens stack, so it stays put.
+  sheetOffsetX = camera.aspect >= 1.15 ? visW*0.18 : 0;`,
+);
+
+replace(
+  'sheet offset — declaration',
+  'let vw=0, vh=0;\nfunction resize(){',
+  'let vw=0, vh=0;\nlet sheetOffsetX = 0;\nfunction resize(){',
+);
+
+replace(
+  'sheet offset — loop',
+  'group.position.x = Math.sin(t*0.21)*0.05*idle + mouse.x*0.10',
+  'group.position.x = sheetOffsetX + Math.sin(t*0.21)*0.05*idle + mouse.x*0.10',
+);
 
 // 4 ── remove the demo hint. On a kiosk the only instruction should be how to
 //      vote, and that lives on the panel beside the sheet.
