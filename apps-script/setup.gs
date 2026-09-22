@@ -11,7 +11,7 @@
  */
 
 /* global CONFIG, TABS, sheet_, book_, ScriptApp, SpreadsheetApp,
-   PropertiesService, CacheService */
+   PropertiesService, CacheService, renderDashboard */
 
 var HEADERS = {
   Roll: ['voter_id', 'name', 'email', 'type', 'house'],
@@ -186,7 +186,9 @@ function clearAllVotesFromMenu() {
     var result = resetElectionDestructively(typed.getResponseText().trim());
     ui.alert('Done', result, ui.ButtonSet.OK);
   } catch (err) {
-    ui.alert('Nothing was cleared', String(err && err.message ? err.message : err), ui.ButtonSet.OK);
+    // Not "nothing was cleared" — the reset verifies itself now, and the
+    // message it throws says exactly how much it could not shift.
+    ui.alert('The reset did not finish', String(err && err.message ? err.message : err), ui.ButtonSet.OK);
   }
 }
 
@@ -204,18 +206,80 @@ function resetElectionDestructively(confirmElectionName) {
       'Refusing to reset. Call this with the election name exactly: ' + CONFIG.election.name,
     );
   }
-  for (var i = 0; i < [TABS.voters, TABS.ballots, TABS.results].length; i += 1) {
-    var name = [TABS.voters, TABS.ballots, TABS.results][i];
-    var tab = sheet_(name);
-    if (tab.getLastRow() > 1) {
-      tab.getRange(2, 1, tab.getLastRow() - 1, tab.getLastColumn()).clearContent();
+  var names = [TABS.voters, TABS.ballots, TABS.results];
+  for (var i = 0; i < names.length; i += 1) {
+    var tab = sheet_(names[i]);
+    var last = tab.getLastRow();
+    if (last > 1) {
+      /*
+        ROWS DELETED, not emptied.
+
+        This used to call clearContent(), which blanks the cells and leaves the
+        rows exactly where they were. A row that still exists still counts
+        towards getLastRow(), and getLastRow() is what the publish fingerprint,
+        the dashboard and the next ballot's insert point are all derived from -
+        so a sheet that looked empty went on reporting votes that were gone,
+        and the next vote was written below the ghosts rather than at the top.
+      */
+      tab.deleteRows(2, last - 1);
     }
+    // deleteRows can take the tab down to its header alone, and appending to a
+    // sheet with one row throws. Give the next election somewhere to land.
+    if (tab.getMaxRows() < 2) tab.insertRowsAfter(1, 200);
   }
-  SpreadsheetApp.flush();
+
+  /*
+    THE REPLAY WINDOW IS CLOSED TOO.
+
+    `castBallot_` answers a repeated submission with the receipt it already
+    earned, which is what stops a dropped reply looking like a double vote. It
+    remembers those for six hours - comfortably longer than the gap between a
+    rehearsal and the real thing.
+
+    Left alone across a reset, a kiosk still holding a rehearsal ballot's key
+    would be told "recorded" from that memory, and nothing would be written.
+    The voter would be thanked and would not be counted, which is the one
+    failure this system must never produce. Bumping the epoch makes every key
+    issued before the reset unrecognisable, so a resubmission is a real vote.
+  */
+  var props = PropertiesService.getScriptProperties();
+  var epoch = Number(props.getProperty('BALLOT_EPOCH') || 1) + 1;
+  props.setProperty('BALLOT_EPOCH', String(epoch));
+
   // Both publish guards key off the ballot count, and a reset takes it to a
   // number it has held before. Cleared explicitly so the next publish redraws
   // rather than deciding the empty sheet it is looking at is already current.
-  PropertiesService.getScriptProperties().deleteProperty('RESULTS_AT');
-  PropertiesService.getScriptProperties().deleteProperty('DASHBOARD_AT');
-  return 'Cleared. Every cast vote has been destroyed.';
+  props.deleteProperty('RESULTS_AT');
+  props.deleteProperty('DASHBOARD_AT');
+
+  SpreadsheetApp.flush();
+
+  /*
+    The Dashboard is redrawn NOW, not at the next trigger.
+
+    It is the tab everyone actually looks at, and it is drawn from the count
+    rather than being part of it - so clearing the votes left it showing the
+    old turnout and the old leaders for up to five minutes. Somebody checking
+    that the reset worked read that as a vote that would not clear.
+  */
+  renderDashboard(true);
+
+  /*
+    Read back, rather than assume.
+
+    A reset that quietly half-worked is worse than one that failed, because
+    nobody looks again. These are counted from the sheet after the fact.
+  */
+  var left =
+    Math.max(0, sheet_(TABS.voters).getLastRow() - 1) +
+    Math.max(0, sheet_(TABS.ballots).getLastRow() - 1) +
+    Math.max(0, sheet_(TABS.results).getLastRow() - 1);
+  if (left > 0) {
+    throw new Error(
+      'Cleared what it could, but ' + left + ' row(s) are still on the Voters, Ballots or ' +
+        'Results tabs. Check for a filter or a protected range on those tabs, then run it again.',
+    );
+  }
+
+  return 'Cleared. Every cast vote has been destroyed, and the dashboard is back to zero.';
 }

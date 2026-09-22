@@ -510,6 +510,24 @@ function named_(code, message) {
 }
 
 /**
+ * Which run of this election we are in.
+ *
+ * A reset bumps it, and it namespaces the replay memory below. Without that,
+ * a kiosk still holding a rehearsal ballot's key after the votes were cleared
+ * would be answered from that memory - thanked, and never written to the
+ * sheet. Cheap to read: Script Properties, not the spreadsheet.
+ */
+function ballotEpoch_() {
+  var props = PropertiesService.getScriptProperties();
+  var value = props.getProperty('BALLOT_EPOCH');
+  if (!value) {
+    value = '1';
+    props.setProperty('BALLOT_EPOCH', value);
+  }
+  return value;
+}
+
+/**
  * The receipt shown to the voter, derived from their SUBMISSION, not their ballot.
  *
  * It used to be the first eight characters of the ballot's UUID. That was fine
@@ -562,7 +580,7 @@ function castBallot_(token, selections, idempotencyKey) {
     refused by the check under the lock, exactly as before.
   */
   var key = idempotencyKey ? String(idempotencyKey) : '';
-  var replayKey = key ? 'idem:' + key : null;
+  var replayKey = key ? 'idem:' + ballotEpoch_() + ':' + key : null;
   if (replayKey) {
     var prior = CacheService.getScriptCache().get(replayKey);
     if (prior) return JSON.parse(prior);
