@@ -1,4 +1,5 @@
 import type { Candidate, House, Position } from '@mesa/election-core';
+import { kioskPass, setKioskPass } from './kioskPass';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 const KIOSK_TOKEN = import.meta.env.VITE_KIOSK_TOKEN ?? 'dev-kiosk-token';
@@ -108,6 +109,13 @@ export interface PublicElection {
     /** Identity rests on the invigilator; switches on booth-facing affordances. */
     requiresSupervision: boolean;
   };
+  /**
+   * True when the deployment has a shared password in front of voting.
+   *
+   * Absent on the Express server and on an older script, which reads as false —
+   * so the gate is never shown to a voter whose backend could not open it.
+   */
+  requiresUnlock?: boolean;
   configVersion: string;
 }
 
@@ -244,6 +252,23 @@ async function request<T>(
 }
 
 export const api = {
+  /**
+   * Exchange the shared password for a device pass.
+   *
+   * The password is never compared here; it is sent to Apps Script, which holds
+   * it in Script Properties and answers with a signed pass. Nothing about the
+   * password reaches the bundle, which is the entire point of doing it this way
+   * rather than with a string comparison in the browser.
+   */
+  unlock: async (email: string, password: string) => {
+    const result = await callAppsScript<{ pass: string }>(
+      { action: 'unlock', email, password },
+      { method: 'POST' },
+    );
+    setKioskPass(result.pass);
+    return result;
+  },
+
   election: () =>
     usingAppsScript
       ? callAppsScript<PublicElection>({ action: 'election' }, { method: 'GET' })
@@ -252,7 +277,7 @@ export const api = {
   lookup: (query: string) =>
     usingAppsScript
       ? callAppsScript<{ results: RollMatch[]; truncated: boolean }>(
-          { action: 'lookup', query },
+          { action: 'lookup', query, pass: kioskPass() },
           { method: 'GET' },
         )
       : request<{ results: RollMatch[]; truncated: boolean }>('/api/auth/lookup', {
@@ -271,7 +296,10 @@ export const api = {
   /** Supervised check-in: the voter selects their own name at the booth. */
   selectVoter: (voterId: string) =>
     usingAppsScript
-      ? callAppsScript<CheckInResult>({ action: 'select', voterId }, { method: 'POST' })
+      ? callAppsScript<CheckInResult>(
+          { action: 'select', voterId, pass: kioskPass() },
+          { method: 'POST' },
+        )
       : request<CheckInResult>('/api/auth/select', {
           method: 'POST',
           headers: { 'x-kiosk-token': KIOSK_TOKEN },
@@ -305,7 +333,7 @@ export const api = {
   submitBallot: (token: string, selections: Record<string, string>, idempotencyKey: string) =>
     usingAppsScript
       ? callAppsScript<SubmitResult>(
-          { action: 'ballot', token, selections, idempotencyKey },
+          { action: 'ballot', token, selections, idempotencyKey, pass: kioskPass() },
           /*
             Sixty seconds, not twenty.
 

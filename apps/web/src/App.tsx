@@ -14,7 +14,9 @@ import { Dialog } from '@/components/ui/Dialog';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { GROUND } from '@/lib/ground';
+import { clearKioskPass, kioskPass } from '@/lib/kioskPass';
 import { AuroraBackdrop } from '@/components/backdrop/AuroraBackdrop';
+import { UnlockScreen } from '@/screens/UnlockScreen';
 import { WelcomeScreen, SeedDataBanner } from '@/screens/WelcomeScreen';
 import { CheckInScreen } from '@/screens/CheckInScreen';
 import { IdentityConfirmScreen } from '@/screens/IdentityConfirmScreen';
@@ -40,9 +42,19 @@ function toMachineError(error: unknown): MachineError {
           retryable: false,
         };
       case 'ELECTION_CLOSED':
-        return { code: error.code, headline: HEADLINE.closed, message: error.message, retryable: false };
+        return {
+          code: error.code,
+          headline: HEADLINE.closed,
+          message: error.message,
+          retryable: false,
+        };
       case 'ELECTION_NOT_STARTED':
-        return { code: error.code, headline: HEADLINE.notOpen, message: error.message, retryable: false };
+        return {
+          code: error.code,
+          headline: HEADLINE.notOpen,
+          message: error.message,
+          retryable: false,
+        };
       case 'UNAUTHORIZED':
         return {
           code: error.code,
@@ -127,11 +139,18 @@ export function App() {
 
         if (handoff) {
           const result = await api.exchangeHandoff(handoff);
-          if (!cancelled) dispatch({ type: 'IDENTIFIED', voter: result.voter, token: result.token });
+          if (!cancelled)
+            dispatch({ type: 'IDENTIFIED', voter: result.voter, token: result.token });
         }
       } catch (error) {
         // Logged for the returning officer's benefit on election day; the voter
         // gets the plain sentence below. Nothing sensitive reaches this path.
+        if (error instanceof ApiError && error.code === 'LOCKED') {
+          // The pass expired, or the password was changed during the day.
+          clearKioskPass();
+          setUnlocked(false);
+          return;
+        }
         console.error('[mesa] could not start the election session', error);
         if (!cancelled) {
           dispatch({
@@ -139,8 +158,7 @@ export function App() {
             error: {
               code: 'ELECTION_UNAVAILABLE',
               headline: HEADLINE.unavailable,
-              message:
-                "This is on us, not you. Tell the person running the election.",
+              message: 'This is on us, not you. Tell the person running the election.',
               retryable: true,
             },
           });
@@ -180,7 +198,8 @@ export function App() {
 
   // ------------------------------------------------------- idle reset ---
   useEffect(() => {
-    const active = state.phase !== 'WELCOME' && state.phase !== 'LOADING' && state.phase !== 'DEPARTED';
+    const active =
+      state.phase !== 'WELCOME' && state.phase !== 'LOADING' && state.phase !== 'DEPARTED';
     if (!active) return;
 
     let timer = setTimeout(handleReset, IDLE_RESET_MS);
@@ -278,6 +297,17 @@ export function App() {
   // sat in a cream picture frame — which reads as a rendering fault, not as a
   // choice, and made the jump to the light ballot a discontinuity rather than a
   // transition. Everything else keeps the frame.
+  /*
+    The shared password in front of voting, when the deployment has one.
+
+    `requiresUnlock` comes from the server, so a build pointed at a backend
+    without a gate never shows a door it cannot open — and one pointed at a
+    gated backend cannot skip it, because the script refuses roll search,
+    check-in and casting without the pass regardless of what the UI does.
+  */
+  const [unlocked, setUnlocked] = useState(() => Boolean(kioskPass()));
+  const needsUnlock = state.election?.requiresUnlock === true && !unlocked;
+
   const isWelcome = state.phase === 'WELCOME';
 
   /*
@@ -358,7 +388,11 @@ export function App() {
         as whitespace. It centres SAFELY — a plate taller than the window still
         starts at the top, so nothing is ever scrolled off above the viewport.
       */}
-      <main id="main" tabIndex={-1} className="page-main relative z-10 flex flex-1 flex-col outline-none">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="page-main relative z-10 flex flex-1 flex-col outline-none"
+      >
         {state.phase === 'LOADING' && (
           <div className="mx-auto w-full max-w-lg">
             <Panel>
@@ -372,7 +406,14 @@ export function App() {
           </div>
         )}
 
-        {state.phase === 'BLOCKED' && state.error && (
+        {needsUnlock && state.election && (
+          <UnlockScreen
+            electionName={state.election.election.name}
+            onUnlocked={() => setUnlocked(true)}
+          />
+        )}
+
+        {!needsUnlock && state.phase === 'BLOCKED' && state.error && (
           <div className="flex flex-col gap-6">
             <ErrorState
               headline={state.error.headline}
@@ -383,7 +424,7 @@ export function App() {
           </div>
         )}
 
-        {state.phase === 'WELCOME' && state.election && (
+        {!needsUnlock && state.phase === 'WELCOME' && state.election && (
           <WelcomeScreen
             election={state.election}
             onCheckIn={() => dispatch({ type: 'BEGIN_CHECK_IN' })}
@@ -434,7 +475,12 @@ export function App() {
                 headline={state.error.headline}
                 message={state.error.message}
                 {...(state.error.retryable
-                  ? { action: { label: 'Try again', onClick: () => dispatch({ type: 'OPEN_FINAL_CALL' }) } }
+                  ? {
+                      action: {
+                        label: 'Try again',
+                        onClick: () => dispatch({ type: 'OPEN_FINAL_CALL' }),
+                      },
+                    }
                   : {})}
                 secondaryAction={{
                   label: 'Dismiss',
@@ -470,7 +516,11 @@ export function App() {
         actions={
           <>
             {/* "Go back" is first, so it takes focus: the safe action is the default. */}
-            <Button variant="secondary" size="lg" onClick={() => dispatch({ type: 'CLOSE_FINAL_CALL' })}>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => dispatch({ type: 'CLOSE_FINAL_CALL' })}
+            >
               {COPY.finalCall.goBack}
             </Button>
             <Button
@@ -486,7 +536,10 @@ export function App() {
         }
       >
         <p style={{ fontSize: 'var(--text-md)' }}>{COPY.finalCall.body}</p>
-        <p className="mt-3" style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+        <p
+          className="mt-3"
+          style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}
+        >
           All {state.steps.length} choices go in together.
         </p>
       </Dialog>

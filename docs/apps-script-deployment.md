@@ -92,6 +92,42 @@ becomes eligible to vote again immediately.
 There is no undo and no copy anywhere else. If you want the rehearsal data kept,
 **File → Make a copy** of the spreadsheet first.
 
+## Optional: a password in front of voting
+
+The ballot URL is public by necessity — voters open it on their own phones —
+but a link travels further than it is meant to. One shared password can sit in
+front of starting a ballot at all.
+
+**Apps Script → Project Settings → Script Properties**, add two:
+
+| Property | Value |
+| --- | --- |
+| `KIOSK_EMAIL` | the address you will type |
+| `KIOSK_PASSWORD` | the password you will type |
+
+That is the whole switch. Set neither and there is no gate; the deployment
+behaves exactly as before.
+
+The password is checked **in Apps Script**, never in the browser. A password the
+SPA compares is a password compiled into the JavaScript bundle, readable by
+anyone who opens developer tools — the same mistake as putting the spreadsheet
+key in the client. What the browser gets back is a signed pass it cannot forge,
+kept in `localStorage` so each device is asked once and not again between
+voters.
+
+It is enforced on roll search, check-in and casting — the three that touch the
+roll or the votes — so bypassing the screen by calling the script directly does
+not work either. Reading the candidate list stays open, because the gate screen
+has to be able to say which election you have arrived at.
+
+**What it is not.** One password shared by a room is a door, not an identity. It
+does not say who you are, and the screen does not imply otherwise. Who may vote
+is still decided by the roll, and one vote per person is still enforced under
+the lock.
+
+To change it, edit the property and redeploy. Passes already issued stay valid
+for up to 18 hours; clear a device by clearing its browser storage.
+
 ## What this is weaker at, stated plainly
 
 The database version made some things structurally impossible. This does not,
