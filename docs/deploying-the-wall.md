@@ -7,8 +7,28 @@ database and no network at run time, so it can go on any static host.
 The rest of the application cannot. The ballot talks to an Express server with a
 SQLite database behind it, and neither runs on a static host or a serverless
 function with a read-only filesystem. **A Vercel deployment of this repository
-serves the wall correctly; the ballot renders but every check-in fails**, because
-there is no `/api` to answer it. Point a projector at it, not a booth.
+serves the wall correctly; the ballot cannot work there**, because there is no
+`/api` to answer it. Point a projector at it, not a booth.
+
+That was a sentence in this document and nothing else, so the deployment went on
+serving a ballot which failed on its very first request with
+
+```
+Failed to load resource: the server responded with a status of 404
+[mesa] could not start the election session
+SyntaxError: Unexpected token 'T', "The page c"... is not valid JSON
+```
+
+— Vercel's own HTML 404 page (`The page could not be found`) arriving where the
+SPA expected JSON. Fixed in two layers:
+
+- `apps/web/src/lib/api.ts` no longer lets a non-JSON body throw a bare
+  `SyntaxError` out of `request()`. It becomes an `ApiError` with code
+  `UPSTREAM`, counted as a network-class failure, because the same thing happens
+  behind a reverse proxy returning an HTML 502 or a venue captive portal — and
+  in those cases a ballot must stay retryable with the *same* idempotency key.
+- `vercel.json` redirects `/` to `/wall`, so nobody is handed a ballot that has
+  nothing to talk to.
 
 ## Vercel
 
@@ -95,6 +115,13 @@ Two things were wrong and both are fixed:
 - everything else → `/index.html`, the usual SPA fallback. Vercel only applies a
   rewrite when no static file matches, so `/noren/forge-speeches.html`,
   `/paper/*` and the hashed assets are still served directly.
+
+`redirects` sends `/` to `/wall`. It has to be a redirect rather than a rewrite
+for the same reason the SPA fallback works at all: Vercel checks the filesystem
+*before* applying rewrites, and `/` matches `index.html`, so a rewrite on `/`
+would never fire. Redirects are evaluated before that check. The ballot build is
+still deployed and still reachable at `/index.html` if you want to look at the
+screens — it simply is not what a visitor lands on.
 
 The `(?!api/)` guard keeps a future serverless API reachable. There is none
 today; it is there so adding one does not silently return the SPA.

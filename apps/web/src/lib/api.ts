@@ -79,7 +79,7 @@ export class ApiError extends Error {
 
   /** True when the request may not have reached the server at all. */
   get isNetwork(): boolean {
-    return this.code === 'NETWORK' || this.code === 'TIMEOUT';
+    return this.code === 'NETWORK' || this.code === 'TIMEOUT' || this.code === 'UPSTREAM';
   }
 
   get isRetryable(): boolean {
@@ -115,7 +115,34 @@ async function request<T>(
   }
 
   const text = await response.text();
-  const body = text ? (JSON.parse(text) as unknown) : null;
+
+  /*
+    Something other than the election server can answer on this URL, and when it
+    does it answers in HTML: a static host with no /api behind it, a reverse
+    proxy's own 502 page, a venue captive portal. `JSON.parse` on that threw a
+    bare SyntaxError that escaped this function entirely — so every caller lost
+    the ApiError contract it branches on (`isNetwork`, `isRetryable`, `code`),
+    and the console read `Unexpected token 'T', "The page c"...` instead of
+    saying the server was never reached. A Vercel deployment of the SPA showed
+    exactly this on every check-in.
+
+    UPSTREAM rather than SERVER_ERROR, and counted as a network failure: the
+    request may or may not have reached the server, which is precisely the
+    condition under which a ballot must be retried with the SAME idempotency
+    key rather than abandoned.
+  */
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new ApiError(
+        'UPSTREAM',
+        'We could not reach the election server. Something else answered instead.',
+        response.status,
+      );
+    }
+  }
 
   if (!response.ok) {
     const envelope = body as { error?: { code?: string; message?: string; details?: unknown } };
