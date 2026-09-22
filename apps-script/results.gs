@@ -17,7 +17,7 @@
  * read, so the existing Dashboard keeps working untouched.
  */
 
-/* global CONFIG, TABS, sheet_, rows_, positionById_ */
+/* global CONFIG, TABS, sheet_, rows_, positionById_, renderDashboard */
 
 /** Matches TIE_TOLERANCE in packages/election-core/src/results.ts. */
 var TIE_TOLERANCE = 1e-9;
@@ -87,10 +87,17 @@ function tallies_() {
   return byPosition;
 }
 
-function calculateResults_() {
+/**
+ * The count, as structured data.
+ *
+ * Split out from the row writer so the Results tab and the Dashboard read the
+ * SAME arithmetic rather than each doing its own. Two tabs quietly disagreeing
+ * about who is winning is the one failure neither would announce.
+ */
+function resultsModel_() {
   var counts = tallies_();
-  var generatedAt = new Date().toISOString();
-  var out = [];
+  var generatedAt = new Date();
+  var model = [];
 
   var ordered = CONFIG.positions.slice().sort(function (a, b) {
     return a.order - b.order;
@@ -158,11 +165,32 @@ function calculateResults_() {
       index = end;
     }
 
-    for (var r = 0; r < standing.length; r += 1) {
-      var row = standing[r];
+    model.push({
+      positionId: position.id,
+      title: position.title,
+      houseId: position.houseId || null,
+      basis: weightingLabel_(position),
+      votesCast: (bucket.totals.student || 0) + (bucket.totals.employee || 0),
+      candidates: standing,
+      generatedAt: generatedAt,
+    });
+  }
+
+  return model;
+}
+
+function calculateResults_() {
+  var model = resultsModel_();
+  var out = [];
+
+  for (var i = 0; i < model.length; i += 1) {
+    var position = model[i];
+    var stamp = position.generatedAt.toISOString();
+    for (var r = 0; r < position.candidates.length; r += 1) {
+      var row = position.candidates[r];
       out.push([
         position.title,
-        weightingLabel_(position),
+        position.basis,
         row.candidate,
         row.studentVotes,
         row.studentPercentage,
@@ -173,7 +201,7 @@ function calculateResults_() {
         row.score,
         row.rank,
         row.tied,
-        generatedAt,
+        stamp,
       ]);
     }
   }
@@ -191,18 +219,34 @@ function calculateResults_() {
 function publishResults() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) throw new Error('Busy — results were not published.');
+  var values;
   try {
-    var values = calculateResults_();
+    values = calculateResults_();
     var tab = sheet_(TABS.results);
     if (tab.getLastRow() > 1) {
       tab.getRange(2, 1, tab.getLastRow() - 1, tab.getLastColumn()).clearContent();
     }
     if (values.length > 0) tab.getRange(2, 1, values.length, 13).setValues(values);
     SpreadsheetApp.flush();
-    return values.length;
   } finally {
     lock.releaseLock();
   }
+
+  /*
+    OUTSIDE THE LOCK, deliberately.
+
+    This is the same script lock `castBallot_` takes, and drawing the Dashboard
+    is a few hundred spreadsheet operations. Held inside, a redraw every minute
+    would stall every ballot cast during it - and a voter pressing submit in
+    that window would be told the election was busy. Nothing here is part of
+    recording a vote, so nothing here is worth blocking one.
+
+    Drawing from the same model a moment later is fine: the worst case is a
+    Dashboard one publish behind, which the next minute corrects.
+  */
+  renderDashboard();
+
+  return values.length;
 }
 
 /**
@@ -216,11 +260,17 @@ function scheduledPublish() {
   publishResults();
 }
 
+/** The menu item redraws unconditionally - someone who asks wants it now. */
+function refreshDashboardNow() {
+  return renderDashboard(true);
+}
+
 /** A menu on the spreadsheet, so the desk never needs the script editor. */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Election')
     .addItem('Publish results now', 'publishResults')
+    .addItem('Refresh dashboard', 'refreshDashboardNow')
     .addItem('Set up / repair', 'setup')
     .addSeparator()
     .addItem('Clear all votes…', 'clearAllVotesFromMenu')
