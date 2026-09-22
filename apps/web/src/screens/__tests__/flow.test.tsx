@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { election, employee, student } from '@/machine/__tests__/fixtures';
 import { COPY, HEADLINE } from '@/lib/copy';
+import { ApiError as ApiErrorCtor } from '@/lib/api';
 import type * as ApiModule from '@/lib/api';
 
 /** A controllable API. Every test decides what the server says and when. */
@@ -392,5 +393,70 @@ describe('blocked states', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/person running the election/i);
     expect(alert.textContent).not.toMatch(/^something went wrong\.?$/i);
+  });
+});
+
+/**
+ * Supervised check-in does not wait for the server.
+ *
+ * The session round trip used to sit in front of the Continue button, which on
+ * the Apps Script deployment meant seconds of spinner before a screen that only
+ * shows the voter their own name back.
+ */
+describe('check-in does not block on the session', () => {
+  it('moves the voter on while the session is still in flight', async () => {
+    const user = userEvent.setup();
+    mockRollFor(student);
+    // Never resolves for the lifetime of this test.
+    mocks.selectVoter.mockReturnValue(new Promise(() => {}));
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /start voting/i }));
+    await user.type(await screen.findByLabelText(/your name/i), 'One');
+    await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
+    await user.click(await screen.findByRole('button', { name: /continue/i }));
+
+    expect(await screen.findByRole('button', { name: /that.s me/i })).toBeInTheDocument();
+  });
+
+  it('asks for the session as soon as the name is picked, not on Continue', async () => {
+    const user = userEvent.setup();
+    mockRollFor(student);
+    mocks.selectVoter.mockReturnValue(new Promise(() => {}));
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /start voting/i }));
+    await user.type(await screen.findByLabelText(/your name/i), 'One');
+    await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
+
+    // The head start: one click earlier than it used to be.
+    expect(mocks.selectVoter).toHaveBeenCalledWith(student.id);
+  });
+
+  /*
+    The roll the browser matched against can be stale - someone may have voted
+    on another kiosk since it was fetched. The server's answer has to reach the
+    voter wherever the flow has taken them.
+  */
+  it('stops a voter mid-flow when the session comes back refused', async () => {
+    const user = userEvent.setup();
+    mockRollFor(student);
+    let refuse: (error: unknown) => void = () => {};
+    mocks.selectVoter.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        refuse = reject;
+      }),
+    );
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /start voting/i }));
+    await user.type(await screen.findByLabelText(/your name/i), 'One');
+    await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
+    await user.click(await screen.findByRole('button', { name: /continue/i }));
+    await screen.findByRole('button', { name: /that.s me/i });
+
+    refuse(new ApiErrorCtor('ALREADY_VOTED', 'Our records show you have already voted.', 409));
+
+    expect(await screen.findByText(HEADLINE.alreadyVoted)).toBeInTheDocument();
   });
 });

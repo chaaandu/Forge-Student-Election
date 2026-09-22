@@ -60,7 +60,17 @@ export type MachineAction =
   | { type: 'ELECTION_LOADED'; election: PublicElection }
   | { type: 'FATAL'; error: MachineError }
   | { type: 'BEGIN_CHECK_IN' }
-  | { type: 'IDENTIFIED'; voter: VoterProfile; token: string }
+  /*
+    `token` may be null.
+
+    Under supervised check-in the session is fetched in the BACKGROUND while
+    the voter confirms who they are and works through the gates, because that
+    one round trip used to stall the Continue button for seconds. The token is
+    awaited once, at submission, by which time it has long since arrived. It is
+    still the server that issues it and still the server that decides what a
+    ballot means - nothing about who may vote moved into the browser.
+  */
+  | { type: 'IDENTIFIED'; voter: VoterProfile; token: string | null }
   | { type: 'CONFIRM_IDENTITY' }
   | { type: 'SELECT'; positionId: string; candidateId: string }
   | { type: 'NEXT' }

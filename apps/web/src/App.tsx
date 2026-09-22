@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { api, ApiError, type CheckInResult } from '@/lib/api';
+import { api, ApiError, type CheckInResult, type VoterProfile } from '@/lib/api';
 import { COPY, HEADLINE } from '@/lib/copy';
 import {
   currentStep,
@@ -87,6 +87,14 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [attempt, setAttempt] = useState(0);
   const idempotencyRef = useRef<string | null>(null);
+  /*
+    The check-in session, still in flight.
+
+    Supervised check-in no longer waits for it: the voter moves on the instant
+    they press Continue, and this promise is awaited once, at submission. See
+    `handleIdentified`.
+  */
+  const sessionRef = useRef<Promise<CheckInResult> | null>(null);
   const tokenRef = useRef<string | null>(null);
   tokenRef.current = state.token;
 
@@ -141,7 +149,10 @@ export function App() {
 
         if (handoff) {
           const result = await api.exchangeHandoff(handoff);
-          if (!cancelled) dispatch({ type: 'IDENTIFIED', voter: result.voter, token: result.token });
+          if (!cancelled) {
+            sessionRef.current = Promise.resolve(result);
+            dispatch({ type: 'IDENTIFIED', voter: result.voter, token: result.token });
+          }
         }
       } catch (error) {
         // Logged for the returning officer's benefit on election day; the voter
@@ -234,15 +245,69 @@ export function App() {
     setAttempt(0);
     const token = tokenRef.current;
     if (token) void api.endSession(token).catch(() => undefined);
+    sessionRef.current = null;
     dispatch({ type: 'RESET' });
   }, [clearDraft]);
 
-  const handleIdentified = useCallback((result: CheckInResult) => {
-    dispatch({ type: 'IDENTIFIED', voter: result.voter, token: result.token });
-  }, []);
+  const handleIdentified = useCallback(
+    ({ voter, session }: { voter: VoterProfile; session: Promise<CheckInResult> | null }) => {
+      sessionRef.current = session;
+      dispatch({ type: 'IDENTIFIED', voter, token: null });
+
+      /*
+        A refusal has to find the voter wherever they have got to.
+
+        The session request is no longer in front of the Continue button, so
+        its answer arrives while they are confirming their name or partway
+        through the gates. ALREADY_VOTED is the one that matters, and it can
+        come back two ways: as a rejection, or as a profile that simply says
+        so. Both have to stop them there rather than waiting until they have
+        filled in a ballot that was never going to count.
+
+        This is also what covers a STALE ROLL. The copy the browser matched
+        against may have been fetched before someone voted on another kiosk;
+        it can only ever miss a new vote, never invent one, so the server's
+        answer is the one that corrects it.
+      */
+      session?.then(
+        (result) => {
+          if (!result.voter.hasVoted) return;
+          dispatch({
+            type: 'FATAL',
+            error: {
+              code: 'ALREADY_VOTED',
+              headline: HEADLINE.alreadyVoted,
+              message: COPY.error.alreadyVoted,
+              retryable: false,
+            },
+          });
+        },
+        (error: unknown) => {
+          dispatch({ type: 'FATAL', error: toMachineError(error) });
+        },
+      );
+    },
+    [],
+  );
 
   const submit = useCallback(async () => {
-    const token = tokenRef.current;
+    /*
+      The one place the session is actually needed.
+
+      By now it has been in flight since the voter picked their name, through
+      the confirmation screen and every gate, so this await almost always
+      returns immediately. When it does not, waiting here is right: this is the
+      moment the voter is expecting something to happen.
+    */
+    let token = tokenRef.current;
+    if (!token && sessionRef.current) {
+      try {
+        token = (await sessionRef.current).token;
+      } catch (error) {
+        dispatch({ type: 'SUBMIT_FAILED', error: toMachineError(error) });
+        return;
+      }
+    }
     if (!token) return;
 
     // Generated once per ballot and kept for every retry. A fresh key on retry

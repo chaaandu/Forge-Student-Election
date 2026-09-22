@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { api, rollSearchIsLocal, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
+import {
+  api,
+  rollSearchIsLocal,
+  ApiError,
+  type CheckInResult,
+  type PublicElection,
+  type RollMatch,
+  type VoterProfile,
+} from '@/lib/api';
+import { isEligible } from '@mesa/election-core';
 import { Panel } from '@/components/bauhaus/Panel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -12,8 +21,49 @@ import { COPY } from '@/lib/copy';
 
 export interface CheckInScreenProps {
   election: PublicElection;
-  onIdentified: (voter: Awaited<ReturnType<typeof api.selectVoter>>) => void;
+  onIdentified: (result: {
+    voter: VoterProfile;
+    /** The session, possibly still in flight. Awaited at submission. */
+    session: Promise<CheckInResult> | null;
+  }) => void;
   onBack: () => void;
+}
+
+/**
+ * The voter's own gate sequence, worked out here.
+ *
+ * `isEligible` is the domain core's single eligibility predicate - the same
+ * function the server runs - so this is the browser computing the same answer
+ * for speed, not a second opinion about who may vote. The server still decides
+ * what a ballot means: it re-reads the voter and re-validates every selection
+ * against its own record before anything is recorded.
+ *
+ * Doing it here is what lets check-in stop waiting on a round trip.
+ */
+function profileFor(election: PublicElection, match: RollMatch): VoterProfile {
+  // `Voter.houseId` is absent-or-a-string; a roll match carries null. The
+  // distinction matters to `isEligible`, which compares it against a position's
+  // house scope.
+  const voter = {
+    id: match.id,
+    name: match.name,
+    email: match.maskedEmail,
+    type: match.type,
+    ...(match.houseId ? { houseId: match.houseId } : {}),
+  };
+
+  return {
+    id: match.id,
+    name: match.name,
+    email: match.maskedEmail,
+    type: match.type,
+    houseId: match.houseId,
+    hasVoted: match.hasVoted,
+    eligiblePositionIds: election.positions
+      .filter((position) => isEligible(voter, position))
+      .sort((a, b) => a.order - b.order)
+      .map((position) => position.id),
+  };
 }
 
 /**
@@ -34,6 +84,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   const [busy, setBusy] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchId = useRef(0);
+  const sessionRef = useRef<Promise<CheckInResult> | null>(null);
 
   const mode = election.auth.mode;
   // The roll payload already carries houseId and nothing was reading it.
@@ -116,15 +167,54 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
     };
   }, [query, mode, chosen]);
 
+  /*
+    Ask for the session the moment a name is picked.
+
+    There is a second click between here and Continue - the voter reads their
+    own name back and presses it - and that is free time the round trip can
+    happen in.
+  */
+  function chooseName(match: RollMatch) {
+    setChosen(match);
+    setError(null);
+    if (mode !== 'access-code') {
+      sessionRef.current = api.selectVoter(match.id);
+      // Attached now so a rejection is never an unhandled promise; App.tsx
+      // attaches the handler that actually shows it to the voter.
+      sessionRef.current.catch(() => undefined);
+    }
+  }
+
   async function identify(voterId: string, accessCode?: string) {
     setBusy(true);
     setError(null);
     try {
-      const result =
-        mode === 'access-code'
-          ? await api.verifyCode(voterId, accessCode ?? '')
-          : await api.selectVoter(voterId);
-      onIdentified(result);
+      /*
+        SUPERVISED CHECK-IN DOES NOT WAIT HERE.
+
+        This used to await `selectVoter`, so pressing Continue stalled on one
+        Apps Script round trip - the same 0.5s-to-30s hop the search was moved
+        off. The voter sat on a spinner before a screen that only shows them
+        their own name back.
+
+        Everything that screen needs is already known: the roll supplied the
+        name and house, and the gate sequence follows from the election config
+        by the same predicate the server uses. So the journey continues now and
+        the session, already in flight since the name was picked, is awaited
+        once at submission.
+
+        Access codes still wait, and must: entering the code IS the
+        authentication, and its answer is the point of the step.
+      */
+      if (mode !== 'access-code') {
+        const chosenMatch = chosen;
+        if (!chosenMatch) return;
+        onIdentified({ voter: profileFor(election, chosenMatch), session: sessionRef.current });
+        return;
+      }
+
+      const result = await api.verifyCode(voterId, accessCode ?? '');
+      onIdentified({ voter: result.voter, session: Promise.resolve(result) });
     } catch (checkInError) {
       if (checkInError instanceof ApiError) {
         const remaining = (checkInError.details as { attemptsRemaining?: number } | undefined)
@@ -203,6 +293,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                 setChosen(null);
                 setCode('');
                 setError(null);
+                // Whatever was fetched belongs to the name they just abandoned.
+                sessionRef.current = null;
               }}
             />
           ) : (
@@ -258,7 +350,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                         <li key={match.id}>
                           <button
                             type="button"
-                            onClick={() => setChosen(match)}
+                            onClick={() => chooseName(match)}
                             className="roll-match flex w-full items-center gap-4 text-left"
                             style={
                               house
