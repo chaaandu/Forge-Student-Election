@@ -1,0 +1,50 @@
+{
+  "id": "woven-cloth",
+  "schemaVersion": 1,
+  "retrievedFrom": "https://threeui.com/source-code/woven-cloth.json",
+  "retrievedAt": "2026-09-22T01:07:26.169Z",
+  "files": [
+    {
+      "path": "src/shaders/woven-cloth/WovenCloth.tsx",
+      "vendored": "woven-cloth/WovenCloth.tsx",
+      "bytes": 2993,
+      "sha256": "5a89ff035bdf33dbc642d2916b56dbe94e89cb0af184474c139ffbfe5a720550"
+    },
+    {
+      "path": "src/shaders/neuform-isolated/NeuformCraftEffects.tsx",
+      "vendored": "neuform-isolated/NeuformCraftEffects.tsx",
+      "bytes": 10720,
+      "sha256": "0a1680c3c119dba8c61d946322afa0b64d36dfd80956fb5e7c3fd017d7bfa450"
+    },
+    {
+      "path": "src/shaders/neuform-isolated/sources/lumina-weavers-cloth.html",
+      "vendored": "neuform-isolated/sources/lumina-weavers-cloth.html",
+      "bytes": 17470,
+      "sha256": "9bfd56ef7579a92cb6385b3e93866bc3ff54fa4489a0febb9809b720e2946fb6"
+    },
+    {
+      "path": "src/shaders/woven-cloth/woven-cloth-iridescent.html",
+      "vendored": "woven-cloth/sources/woven-cloth-iridescent.html",
+      "bytes": 21728,
+      "sha256": "e3b14adac39dfef04ed0bb0df99e86a1aa0aaf7cea4f8ecc4d5e0931b48bee7b"
+    },
+    {
+      "path": "src/shaders/woven-cloth/woven-cloth-atelier.html",
+      "vendored": "woven-cloth/sources/woven-cloth-atelier.html",
+      "bytes": 18979,
+      "sha256": "f9be15756ff385db9cd3b7082b139d10b84a4eba0b3c4f19749b305570a7191f"
+    },
+    {
+      "path": "src/shaders/woven-cloth/woven-cloth-washi.html",
+      "vendored": "woven-cloth/sources/woven-cloth-washi.html",
+      "bytes": 18332,
+      "sha256": "00e5971f139e5427e56a062c12d7e8e3590938b9a400753693b360d1e4d1a5c1"
+    },
+    {
+      "path": "src/shaders/threeui.css",
+      "vendored": "threeui.css",
+      "bytes": 40715,
+      "sha256": "efe4447139f1358dd8e9be68edf6fa46cbefbd1de423a4d6c439ca61d2c8eccf"
+    }
+  ]
+}

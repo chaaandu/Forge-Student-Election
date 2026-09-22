@@ -2,3 +2,9 @@ node_modules
 dist
 coverage
 *.md
+apps/web/public/paper
+apps/web/public/noren
+
+# Vendored ThreeUI source is stored verbatim and hash-verified against the
+# integration brief. Reformatting it fails those tests, which is the point.
+apps/web/vendor

@@ -42,7 +42,10 @@ export function createApp(ctx: AppContext, options: AppOptions = {}): Express {
       if (origin && allowed.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Vary', 'Origin');
-        res.setHeader('Access-Control-Allow-Headers', 'content-type,authorization,idempotency-key,x-kiosk-token');
+        res.setHeader(
+          'Access-Control-Allow-Headers',
+          'content-type,authorization,idempotency-key,x-kiosk-token',
+        );
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
       }
       if (req.method === 'OPTIONS') {
@@ -90,7 +93,41 @@ export function createApp(ctx: AppContext, options: AppOptions = {}): Express {
 
   const staticDir = options.staticDir ? resolve(options.staticDir) : undefined;
   if (staticDir && existsSync(staticDir)) {
+    /**
+     * The two derived artwork documents are framed by our own pages.
+     *
+     * `X-Frame-Options: DENY` above is right for every other response — a
+     * ballot must never be embeddable — but DENY is absolute: it refuses the
+     * frame even to the same origin. The welcome backdrop and the speeches wall
+     * both load their scene in an `<iframe>`, so under DENY a production
+     * deployment renders Chrome's blocked-content placeholder instead of the
+     * artwork. In development there is no such header, which is exactly why
+     * this only appears once it is deployed.
+     *
+     * Narrowed to `SAMEORIGIN` for these two prefixes only. They are inert
+     * artwork: no data, no API call, no session, and the frames that load them
+     * are sandboxed without `allow-same-origin` and so cannot reach back.
+     */
+    app.use(['/paper', '/noren'], (_req, res, next) => {
+      res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+      next();
+    });
+
     app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
+
+    /**
+     * The speeches wall, projected in the hall.
+     *
+     * It is a second page in the web build, not a route inside the ballot, so
+     * the SPA catch-all below would hand a projector the voting screen. Named
+     * explicitly, and before it. Served without the `.html` because this is a
+     * URL somebody types on the day.
+     */
+    app.get('/wall', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      res.sendFile(resolve(staticDir, 'wall.html'));
+    });
+
     app.get(/^(?!\/api\/).*/, (_req, res) => {
       res.setHeader('Cache-Control', 'no-store');
       res.sendFile(resolve(staticDir, 'index.html'));

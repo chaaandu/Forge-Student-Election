@@ -278,6 +278,105 @@ An earlier Bauhaus WebGL piece (elementary solids under an orthographic camera)
 was replaced by the paper backdrop above. It is gone, along with the `three`
 dependency it needed. `CompositionSVG` remains as the static artwork.
 
+`three` is back in `devDependencies` only, and nothing imports it. The speeches
+wall below inlines the r160 bundle into a static document at build time; it
+never reaches a browser through the application bundle. See §5d.
+
+## 5d. The speeches wall — ThreeUI `woven-cloth`, washi noren
+
+A separate page from the ballot, at `/wall`. It is projected in the hall
+while candidates speak, and it says three things: whose election it is, and what
+is happening. Nothing on it is interactive, because nobody is standing at it.
+
+An indigo-dyed kozo noren hangs on a wooden rod, backlit through a shoji. Three
+panels, freed by slits in the cloth, sway on their own beat. It is the same
+world as the welcome backdrop — one object, lit, in a dark room — and a
+deliberate contrast with the light Bauhaus plates a voter actually marks.
+
+### Provenance
+
+| | |
+| --- | --- |
+| Retrieved from | `https://threeui.com/source-code/woven-cloth.json` |
+| Variant | `washi` (revision SHA-256 `9bfd56ef7579`) |
+| Vendored verbatim at | `apps/web/vendor/threeui/woven-cloth/` (see the README) |
+| Hashes | all seven registered files match the SHA-256 published in the brief |
+| Re-checked by | `src/shaders/__tests__/norenSource.test.ts`, every test run |
+
+Nothing was eyeballed from the preview. `scripts/build-noren-variant.mjs`
+re-verifies the source hash, then applies an enumerated set of **content-only**
+patches to produce `public/noren/forge-speeches.html`. The test diffs the
+authored script against the derived one line by line and fails on any removal it
+does not already know about, so the cloth simulation cannot quietly drift.
+
+### What was changed, and why
+
+| Change | Reason |
+| --- | --- |
+| Sleeve lettering | The authored cloth prints nothing on the uncut band above the rule. It now carries **FORGE STUDENTS**. That band is the one place a line can run the whole way across, because the alpha mask cuts the slits from `TH*BAND` downward. |
+| Panel wording | **WOVEN** / **CLOTH** is the component's own wordmark. It reads **ELECTION** / **SPEECHES**. Both are eight letters, so the panels stay symmetrical; the type steps down from the authored 96/116 to 68/82 and re-centres on the katazome frame, because eight glyphs have to fit where five did. |
+| Crest | The authored checkerboard *mon* is replaced by the school's mark. The authored **ring** around it is kept — it is what makes the centre panel read as a crest rather than a sticker. |
+| The mark is stencilled, not stamped | The PNG is dark ink on white. Everything else printed on this cloth is the resist-dyed cream `#f3ece0`, and a white tile in the middle of an indigo noren reads as a mistake. The image's darkness becomes the cream instead, which is what katazome does to a sheet. |
+| three.js inlined | The authored document pulls r160 from `cdn.jsdelivr.net` at runtime. A hall projector must not depend on a third-party request, and the frame is sandboxed *without* `allow-same-origin`, so it could not fetch our own copy either. The file npm installs for `three@0.160.0` is **byte-identical** to the one jsdelivr serves from that URL; the build asserts it, so this is an inlining and not an engine change. |
+| Redraw once the mark decodes | The authored file builds its `CanvasTexture` in one synchronous pass. An image decode is not synchronous, so the mark is printed onto the live cloth canvas afterwards and the texture re-uploaded. Without this the centre panel stays empty. |
+
+Untouched: the Verlet cloth and the cut links that free the panels, the wind
+model, the deckle edge and its alpha mask, the indigo vat, the laid and chain
+lines, the kozo fibres, the katazome frames, the vermilion seal, the rod and
+cords, the shoji backlight, the lighting rig, the material, the camera fit and
+the reduced-motion path.
+
+### Why there is no responsive layout
+
+The wall has no CSS layout to scale, because everything it says is printed into
+the **texture**. The authored `fit()` rebuilds the camera on every resize and
+takes the larger of a vertical and a horizontal fit, so the whole noren is in
+frame at any aspect. Verified in Chrome at 1080×720, 1280×800, 1440×900,
+1600×900, 1920×1080 and 1920×1200: the cloth is fully visible at each, and
+`scrollHeight`/`scrollWidth` never exceed the viewport — the 100vh, no-scroll
+requirement holds without a breakpoint.
+
+### Two deliberate deviations from the authored integration
+
+1. **Served from `/public` via `src`, not inlined via `srcDoc`.** Same trade as
+   §5: the authored `WovenCloth` imports every variant with `?raw`, which with
+   three.js inlined is ~2 MB of JavaScript in the bundle. The component in
+   `components/noren/WovenCloth.tsx` keeps the authored prop contract, clamps,
+   filter and sandbox exactly, and points at the derived document instead.
+2. **A separate Vite entry, not a route.** `wall.html` and `index.html` are
+   built as two pages. Sharing an entry would put a 3D scene in the voting
+   bundle and the voting machine in the projector's, and neither wants the
+   other.
+
+   It is reached at **`/wall`**, without the extension, because it is a URL
+   somebody types into a projector-room browser on the day. Vite's dev and
+   preview servers map a bare path to `index.html`, and the production server
+   has an SPA catch-all that does the same, so all three would quietly hand the
+   projector the ballot. A rewrite in `vite.config.ts` and a named route in
+   `apps/server/src/http/app.ts` take the path before either fallback sees it.
+
+### `X-Frame-Options: DENY` blocked the artwork, and only once deployed
+
+The server sets `X-Frame-Options: DENY` on every response. That is right for a
+ballot — it must never be embeddable — but DENY is absolute: it refuses the
+frame to the **same origin** too. Both this wall and the §5 welcome backdrop
+load their scene in an `<iframe>` from our own origin, so a production
+deployment rendered Chrome's blocked-content placeholder instead of the scene.
+
+Development has no such header, which is exactly why it survived to here. Found
+by serving the real build behind the real middleware and looking at it.
+
+`/paper` and `/noren` are now narrowed to `SAMEORIGIN`; everything else, the two
+pages included, stays `DENY`. Those two prefixes are inert artwork — no data, no
+API call, no session — and the frames that load them are sandboxed without
+`allow-same-origin`, so they cannot reach back out. `apps/server/src/__tests__/wall.test.ts`
+pins both halves of that.
+
+On a machine with no usable WebGL the wall falls back to the same three words
+in HTML. A black rectangle on a projector is not an option, and `onLoad` cannot
+tell us — the frame's document loads perfectly happily over a void, which is why
+the check is asked in the parent.
+
 ## 6. Gamification — and its one hard limit
 
 The user asked for this to be more fun. It is, and there is a line through it:
