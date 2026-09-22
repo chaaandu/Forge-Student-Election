@@ -130,6 +130,54 @@ function installTrigger_() {
 }
 
 /**
+ * Clear the votes, from the Sheet's own menu, with a confirmation.
+ *
+ * The typed-name guard below is the real protection; this is the way to reach
+ * it without opening the script editor. Two dialogs on purpose: the first says
+ * plainly what is about to be destroyed and how much of it there is, the second
+ * makes you type the election's name. Clearing an election should take a moment
+ * of deliberate effort, and a single "are you sure?" is a reflex people learn
+ * to click through.
+ */
+function clearAllVotesFromMenu() {
+  var ui = SpreadsheetApp.getUi();
+
+  var ballots = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
+  var voters = Math.max(0, sheet_(TABS.voters).getLastRow() - 1);
+
+  if (voters === 0 && ballots === 0) {
+    ui.alert('Nothing to clear', 'No votes have been recorded yet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  var warn = ui.alert(
+    'Clear every vote?',
+    voters +
+      ' people have voted, across ' +
+      ballots +
+      ' recorded selections.\n\n' +
+      'This permanently deletes the Voters, Ballots and Results tabs back to their headers. ' +
+      'It cannot be undone, and there is no copy anywhere else.\n\nContinue?',
+    ui.ButtonSet.YES_NO,
+  );
+  if (warn !== ui.Button.YES) return;
+
+  var typed = ui.prompt(
+    'Type the election name to confirm',
+    'Enter exactly:  ' + CONFIG.election.name,
+    ui.ButtonSet.OK_CANCEL,
+  );
+  if (typed.getSelectedButton() !== ui.Button.OK) return;
+
+  try {
+    var result = resetElectionDestructively(typed.getResponseText().trim());
+    ui.alert('Done', result, ui.ButtonSet.OK);
+  } catch (err) {
+    ui.alert('Nothing was cleared', String(err && err.message ? err.message : err), ui.ButtonSet.OK);
+  }
+}
+
+/**
  * Destroy every cast vote and start over.
  *
  * Named so nobody runs it by accident, and it refuses unless handed the
