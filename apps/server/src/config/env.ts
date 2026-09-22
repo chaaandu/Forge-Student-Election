@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { config as loadDotenv } from 'dotenv';
+import { fileURLToPath } from 'node:url';
 
 loadDotenv();
 
@@ -13,6 +14,24 @@ loadDotenv();
 
 const MIN_SECRET_LENGTH = 32;
 const PLACEHOLDER = /replace-me|changeme|example|xxxx/i;
+
+/**
+ * Anchor the path defaults to this package, not to the working directory.
+ *
+ * They used to be `./config/...`, which `resolve()` reads against `cwd`. That is
+ * only correct when the server is started from `apps/server`, so the deployment
+ * command the documentation gives — `node apps/server/dist/main.js` from the
+ * repository root — died on `ENOENT .../config/election.config.json` before it
+ * reached a single guard. An operator sees a missing-file error naming a path
+ * that is not the path the file is at.
+ *
+ * `src/config/` and `dist/config/` sit at the same depth, so one expression
+ * serves the TypeScript sources and the compiled output alike. An explicitly
+ * set variable is left alone and stays relative to `cwd`, which is what someone
+ * typing a path on a command line means by it.
+ */
+const packageFile = (relative: string): string =>
+  fileURLToPath(new URL(`../../${relative}`, import.meta.url));
 
 const bool = z
   .string()
@@ -31,9 +50,9 @@ const schema = z.object({
   PORT: int(8787),
   DEV_CORS_ORIGIN: z.string().default('http://localhost:5173'),
 
-  ELECTION_CONFIG_PATH: z.string().default('./config/election.config.json'),
-  VOTER_ROLL_PATH: z.string().default('./config/voters.json'),
-  DATABASE_PATH: z.string().default('./data/elections.sqlite'),
+  ELECTION_CONFIG_PATH: z.string().default(packageFile('config/election.config.json')),
+  VOTER_ROLL_PATH: z.string().default(packageFile('config/voters.json')),
+  DATABASE_PATH: z.string().default(packageFile('data/elections.sqlite')),
 
   // supervised  — voter picks their name at a booth with an invigilator present.
   //                Identity is established by that person, not by software.

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "framework": null,
+
+  "installCommand": "npm ci --include=dev",
+
+  "buildCommand": "npm run build -w @mesa/web",
+  "outputDirectory": "apps/web/dist",
+
+  "redirects": [{ "source": "/", "destination": "/wall", "permanent": false }],
+
+  "rewrites": [
+    { "source": "/wall", "destination": "/wall.html" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

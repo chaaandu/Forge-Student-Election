@@ -43,7 +43,9 @@
     "results:publish": "node scripts/publish-results.mjs",
     "sheets:retry": "node -e \"const t=process.env.ADMIN_API_TOKEN;fetch('http://localhost:'+(process.env.PORT||8787)+'/api/admin/sync/retry',{method:'POST',headers:{authorization:'Bearer '+t}}).then(r=>r.json()).then(j=>console.log(j))\"",
     "photos:import": "node scripts/import-candidate-photos.mjs",
-    "predev": "npm run photos:import --silent"
+    "predev": "npm run photos:import --silent",
+    "election:serve": "node scripts/election-day.mjs",
+    "election:tunnel": "node scripts/election-day.mjs --tunnel"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

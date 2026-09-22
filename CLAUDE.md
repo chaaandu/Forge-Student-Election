@@ -725,7 +725,7 @@ uncapped"*.
 ```bash
 npm run preflight        # verify + refuse demo data
 npm run build
-NODE_ENV=production node apps/server/dist/main.js
+npm run election:serve   # or: NODE_ENV=production node apps/server/dist/main.js
 ```
 
 In production the API serves the built SPA from the same origin, so a deployment
@@ -733,14 +733,40 @@ is one Node process and one mounted volume for `DATABASE_PATH`. Same-origin
 removes CORS and third-party-cookie questions entirely. Terminate TLS in front
 and enable HSTS.
 
+`npm run election:serve` is that command with the two checks around it that were
+being made by hand: it refuses to start without a build, waits for `/api/health`
+rather than reporting success at spawn, prints the LAN addresses a kiosk can
+reach, and takes the server down cleanly on Ctrl-C. `npm run election:tunnel`
+adds a free Cloudflare quick tunnel for a public https URL when the kiosks
+cannot be put on the same wifi — needs `cloudflared` on `PATH`
+(`brew install cloudflared`), no account and no card. The tunnel moves nothing:
+the database still lives on that laptop, and the URL is regenerated on every
+restart.
+
 **Back up `DATABASE_PATH` and its `-wal` file on a schedule, and rehearse a
 restore before election day.** The whole election is that one file.
 
+### Why there is no cloud deployment
+
+One person one vote is a `BEGIN IMMEDIATE` transaction against a single SQLite
+file owned by a single process (ADR-3). A serverless host — Vercel, Netlify,
+Lambda — gives a read-only filesystem, a `/tmp` wiped between invocations, and
+several concurrent instances that cannot see each other's writes. It does not
+refuse to run there; it accepts ballots into databases that are then discarded.
+A platform-as-a-service free tier fails the same way more slowly: no persistent
+disk, and the container recycled when idle. Anything hosting this needs a
+process that stays up and a disk that persists.
+
 ### Vercel — the wall only
 
-`vercel.json` deploys `apps/web` as a static build. **The wall works there; the
-ballot renders but every check-in fails**, because there is no `/api`. Point a
-projector at it, not a booth.
+`vercel.json` deploys `apps/web` as a static build. There is no `/api` behind
+it, so the ballot cannot work there: check-in used to fail with
+`Unexpected token 'T', "The page c"...`, which is Vercel's own HTML 404 arriving
+where JSON was expected. `/` now **redirects to `/wall`**, so the deployment is
+only the thing that actually works there. Point a projector at it, not a booth.
+(A `redirect` rather than a `rewrite` because Vercel checks the filesystem
+before applying rewrites, and `/` matches `index.html` — a rewrite would be
+ignored.)
 
 Three things that had to be pinned, each of which cost a debugging session
 (`docs/deploying-the-wall.md`):
