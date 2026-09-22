@@ -135,3 +135,98 @@ describe('matchRoll', () => {
     expect(matchRoll(roll, "  '  ").results).toEqual([]);
   });
 });
+
+/**
+ * The Apps Script search path.
+ *
+ * Exercised through a freshly imported module because `usingAppsScript` is
+ * decided once, at load, from the environment.
+ */
+describe('lookup against Apps Script', () => {
+  const EXEC = 'https://script.google.com/macros/s/AKfy/exec';
+
+  async function freshApi(onFetch: (url: string) => Promise<Response>) {
+    vi.stubEnv('VITE_APPS_SCRIPT_URL', EXEC);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string | URL) => onFetch(String(input))),
+    );
+    vi.resetModules();
+    window.sessionStorage.clear();
+    return import('../api');
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    window.sessionStorage.clear();
+  });
+
+  const json = (body: unknown) =>
+    new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+
+  const ROLL = [
+    { id: 'v1', name: 'Abeer Bhati', maskedEmail: 'ab•••@x.co', type: 'student', houseId: null, hasVoted: false },
+  ];
+
+  /*
+    The regression this exists for: `lookup` used to `await` the roll fetch,
+    which handed the first voter to type the whole of the slow fetch it was
+    meant to remove.
+  */
+  it('answers the first query without waiting for the roll to arrive', async () => {
+    let releaseRoll = () => {};
+    const rollBlocked = new Promise<void>((resolve) => {
+      releaseRoll = resolve;
+    });
+
+    const { api } = await freshApi(async (url) => {
+      if (url.includes('action=roll')) {
+        await rollBlocked; // never resolves during this assertion
+        return json({ voters: ROLL });
+      }
+      return json({ results: [{ ...ROLL[0], name: 'From the server' }], truncated: false });
+    });
+
+    const answered = await api.lookup('ab');
+
+    expect(answered.results[0]?.name).toBe('From the server');
+    releaseRoll();
+  });
+
+  it('matches locally once the roll has landed, with no further request', async () => {
+    const calls: string[] = [];
+    const { api } = await freshApi(async (url) => {
+      calls.push(url);
+      return url.includes('action=roll')
+        ? json({ voters: ROLL })
+        : json({ results: [], truncated: false });
+    });
+
+    await api.primeRoll();
+    const before = calls.length;
+
+    expect((await api.lookup('abeer')).results[0]?.name).toBe('Abeer Bhati');
+    expect(calls.length).toBe(before);
+  });
+
+  it('keeps the roll across a reload, so a refreshed kiosk does not wait again', async () => {
+    const first = await freshApi(async () => json({ voters: ROLL }));
+    await first.api.primeRoll();
+
+    // A reload: the module is re-imported, but sessionStorage is not cleared.
+    vi.stubEnv('VITE_APPS_SCRIPT_URL', EXEC);
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string | URL) => {
+        calls.push(String(input));
+        return Promise.resolve(json({ voters: ROLL }));
+      }),
+    );
+    vi.resetModules();
+    const { api } = await import('../api');
+
+    expect((await api.lookup('abeer')).results[0]?.name).toBe('Abeer Bhati');
+    expect(calls).toEqual([]);
+  });
+});

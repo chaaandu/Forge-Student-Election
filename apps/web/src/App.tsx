@@ -100,6 +100,20 @@ export function App() {
         if (cancelled) return;
         dispatch({ type: 'ELECTION_LOADED', election });
 
+        /*
+          Fetch the roll NOW, not when the check-in screen opens.
+
+          It is one slow request, and the voter is about to spend several
+          seconds reading the welcome screen and reaching for the keyboard.
+          Spending those seconds on it means the search is already instant by
+          the time anyone types. Started at check-in it raced the first
+          keystroke, and usually lost.
+
+          Not awaited, and failure is not surfaced: this only ever makes the
+          search faster, and `api.lookup` answers without it.
+        */
+        void api.primeRoll();
+
         // Returning from Microsoft: exchange the one-time handoff code for a
         // session. The session token itself is never placed in a URL.
         const params = new URLSearchParams(window.location.search);

@@ -43,12 +43,12 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   );
 
   /*
-    Fetch the roll while the voter is still reaching for the keyboard.
+    A second chance at the roll, in case boot missed it.
 
-    Against Apps Script this is the whole of the search cost, paid once, in the
-    seconds between the screen appearing and the first letter. Express does not
-    need it and this is a no-op there. Failure is not surfaced: `api.lookup`
-    falls back to asking the server per query.
+    App.tsx primes this as soon as the election loads, which is where the time
+    actually is. This one costs nothing when that worked — the result is
+    cached — and covers the case where it failed. Express does not need it and
+    it is a no-op there.
   */
   useEffect(() => {
     if (mode === 'entra') return;

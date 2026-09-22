@@ -315,7 +315,41 @@ export const rollSearchIsLocal = usingAppsScript;
 /** How many names the list shows. Mirrors the cap the server applies. */
 const ROLL_RESULTS = 8;
 
-let cachedRoll: RollMatch[] | null = null;
+const ROLL_CACHE_KEY = 'mesa.roll';
+
+/**
+ * The roll survives a reload.
+ *
+ * Fetching it is the one slow thing left in the search, and a kiosk that is
+ * refreshed between voters would otherwise pay that wait again every time.
+ *
+ * sessionStorage, not localStorage: it lasts as long as the tab the election
+ * is being run in and no longer, so a roll does not outlive the election on a
+ * shared school machine.
+ */
+function readStoredRoll(): RollMatch[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(ROLL_CACHE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as RollMatch[]) : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch {
+    // A quota error, private browsing, or a half-written value. The roll is a
+    // cache; losing it costs one fetch.
+    return null;
+  }
+}
+
+function storeRoll(roll: RollMatch[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(ROLL_CACHE_KEY, JSON.stringify(roll));
+  } catch {
+    // As above.
+  }
+}
+
+let cachedRoll: RollMatch[] | null = usingAppsScript ? readStoredRoll() : null;
 let rollInFlight: Promise<RollMatch[]> | null = null;
 
 /**
@@ -339,6 +373,7 @@ function fetchRoll(): Promise<RollMatch[]> {
       { method: 'GET' },
     ).then((payload) => {
       cachedRoll = payload.voters ?? [];
+      storeRoll(cachedRoll);
       return cachedRoll;
     });
     // Cleared whether it resolved or threw, so a failed prime can be retried
@@ -482,21 +517,25 @@ export const api = {
     // short to search on whichever path answers.
     if (trimmed.length < 2) return { results: [], truncated: false };
 
-    let roll = cachedRoll;
-    if (!roll) {
-      try {
-        roll = await fetchRoll();
-      } catch {
-        // The roll could not be fetched. Ask the server this one query rather
-        // than leaving the voter with a search box that does nothing.
-        return callAppsScript<{ results: RollMatch[]; truncated: boolean }>(
-          { action: 'lookup', query: trimmed },
-          { method: 'GET' },
-        );
-      }
-    }
+    if (cachedRoll) return matchRoll(cachedRoll, trimmed);
 
-    return matchRoll(roll, trimmed);
+    /*
+      NEVER WAIT FOR THE ROLL.
+
+      This used to `await fetchRoll()`, which handed the first voter to type
+      the whole of the slow fetch — the exact wait the local search exists to
+      remove, just moved from every keystroke to the first one.
+
+      So the roll is started in the background and this query is answered the
+      old way, which is no worse than before it existed. Once the roll lands,
+      every keystroke after it is free.
+    */
+    void fetchRoll().catch(() => {});
+
+    return callAppsScript<{ results: RollMatch[]; truncated: boolean }>(
+      { action: 'lookup', query: trimmed },
+      { method: 'GET' },
+    );
   },
 
   verifyCode: (voterId: string, code: string) =>
