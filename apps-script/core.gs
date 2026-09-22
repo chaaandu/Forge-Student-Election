@@ -259,10 +259,9 @@ function doGet(e) {
       Keep the code the thrower chose.
 
       This flattened everything to SERVER_ERROR/500, which loses the one thing
-      the client branches on. A locked device asking for a roll search came back
-      as a 500 rather than LOCKED, so the ballot showed a generic failure
-      instead of returning to the unlock screen — the recovery path existed and
-      could never fire. doPost had this right; doGet did not.
+      the client branches on — a refusal the ballot can recover from looked
+      identical to the script falling over, so it showed a generic failure
+      instead of the right screen. doPost had this right; doGet did not.
     */
     return fail_(
       err && err.code ? err.code : 'SERVER_ERROR',
