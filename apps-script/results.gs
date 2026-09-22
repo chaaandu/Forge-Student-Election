@@ -222,5 +222,7 @@ function onOpen() {
     .createMenu('Election')
     .addItem('Publish results now', 'publishResults')
     .addItem('Set up / repair', 'setup')
+    .addSeparator()
+    .addItem('Clear all votes…', 'clearAllVotesFromMenu')
     .addToUi();
 }

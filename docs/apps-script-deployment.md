@@ -76,9 +76,21 @@ The `/exec` URL stays the same.
 - Results refresh themselves every minute. **Election → Publish results now**
   on the Sheet menu forces one.
 
-To clear practice votes, run `resetElectionDestructively` from the script editor
-with the election's own name as the argument. It refuses anything else — this is
-the only way to remove a ballot and should never be a reflex.
+### Clearing the rehearsal votes
+
+On the Sheet: **Election → Clear all votes…**
+
+It tells you how much is about to be destroyed, then makes you type the
+election's name — `Forge Student Elections` — exactly. Two dialogs on purpose: a
+single "are you sure?" is a reflex people learn to click through, and this is
+the only way a cast ballot can be removed.
+
+It clears **Voters**, **Ballots** and **Results** back to their header rows. The
+Roll and Candidates tabs are left alone, so you do not have to re-seed; everyone
+becomes eligible to vote again immediately.
+
+There is no undo and no copy anywhere else. If you want the rehearsal data kept,
+**File → Make a copy** of the spreadsheet first.
 
 ## What this is weaker at, stated plainly
 
