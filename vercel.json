@@ -8,9 +8,10 @@
   "buildCommand": "npm run build -w @mesa/web",
   "outputDirectory": "apps/web/dist",
 
-  "redirects": [{ "source": "/", "destination": "/wall", "permanent": false }],
+  "redirects": [{ "source": "/", "destination": "/voting", "permanent": false }],
 
   "rewrites": [
+    { "source": "/voting", "destination": "/index.html" },
     { "source": "/wall", "destination": "/wall.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

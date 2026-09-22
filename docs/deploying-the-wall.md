@@ -116,12 +116,25 @@ Two things were wrong and both are fixed:
   rewrite when no static file matches, so `/noren/forge-speeches.html`,
   `/paper/*` and the hashed assets are still served directly.
 
-`redirects` sends `/` to `/wall`. It has to be a redirect rather than a rewrite
-for the same reason the SPA fallback works at all: Vercel checks the filesystem
-*before* applying rewrites, and `/` matches `index.html`, so a rewrite on `/`
-would never fire. Redirects are evaluated before that check. The ballot build is
-still deployed and still reachable at `/index.html` if you want to look at the
-screens — it simply is not what a visitor lands on.
+`redirects` sends `/` to `/voting`. It has to be a redirect rather than a
+rewrite for the same reason the SPA fallback works at all: Vercel checks the
+filesystem *before* applying rewrites, and `/` matches `index.html`, so a
+rewrite on `/` would never fire. Redirects are evaluated before that check.
+
+That redirect used to point at `/wall`, because the ballot could not work on a
+static host at all. With the Apps Script backend it can, so the three URLs on
+this deployment are now:
+
+| Path | What it serves |
+| --- | --- |
+| `/voting` | the ballot |
+| `/wall` | the speeches wall |
+| `/` | redirects to `/voting` |
+
+There is deliberately **no `/monitor` here.** That page is served by the Express
+API from `apps/server/src/http/monitor.html` and every byte of data it renders
+comes from `/api/admin/*`, which does not exist on a static host. On the Apps
+Script deployment the Dashboard tab of the spreadsheet is the election desk.
 
 The `(?!api/)` guard keeps a future serverless API reachable. There is none
 today; it is there so adding one does not silently return the SPA.
