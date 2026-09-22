@@ -17,7 +17,8 @@
  * read, so the existing Dashboard keeps working untouched.
  */
 
-/* global CONFIG, TABS, sheet_, rows_, positionById_, renderDashboard */
+/* global CONFIG, TABS, sheet_, rows_, positionById_, renderDashboard,
+   CacheService, PropertiesService, SpreadsheetApp */
 
 /** Matches TIE_TOLERANCE in packages/election-core/src/results.ts. */
 var TIE_TOLERANCE = 1e-9;
@@ -216,9 +217,55 @@ function calculateResults_() {
  * reading a mix of this publish and the last one would show a contest twice.
  * History lives in the Ballots tab, which is only ever added to.
  */
-function publishResults() {
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) throw new Error('Busy — results were not published.');
+function publishResults(force) {
+  /*
+    NO SCRIPT LOCK. This is the change that stopped ballots timing out.
+
+    This used to take `LockService.getScriptLock()` - the same lock
+    `castBallot_` takes to make one-person-one-vote enforceable. Counting is a
+    read; recording a vote is a write; sharing one mutex between them means the
+    count blocks the vote.
+
+    What that looked like on the day: nobody had voted, so the count was empty
+    and the publish was nearly free. The moment the FIRST ballot landed, every
+    minute-trigger from then on had real work to do - tally every selection,
+    rewrite the Results tab, then clear and redraw the whole Dashboard. The
+    next voter pressed "Cast my vote", queued behind that, and waited past the
+    kiosk's own timeout. They were shown "Still sending" for a vote that was
+    about to be recorded perfectly.
+
+    Nothing here is part of recording a vote, so nothing here may block one. A
+    publish that overlaps a ballot can read a tally one selection short; the
+    next publish corrects it. A ballot that cannot be cast corrects nothing.
+  */
+  var fingerprint = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
+  var props = PropertiesService.getScriptProperties();
+
+  /*
+    An unchanged count is not republished.
+
+    The trigger fires all day whether or not anybody has voted. Rewriting the
+    identical Results tab costs a clear, a write and a flush against the
+    spreadsheet people are voting into, for a picture nobody can tell apart
+    from the one already there.
+  */
+  if (!force && props.getProperty('RESULTS_AT') === String(fingerprint)) {
+    return 0;
+  }
+
+  /*
+    Two publishes must not overlap.
+
+    Without the lock there is nothing stopping the next trigger starting while
+    this one is still drawing, which is how a Dashboard ends up half this
+    count and half the last. A cache flag is the right weight for it: it keeps
+    publishes off each other without putting anything between a voter and the
+    ballot box, and it expires on its own if an execution dies holding it.
+  */
+  var cache = CacheService.getScriptCache();
+  if (!force && cache.get('publishing')) return 0;
+  cache.put('publishing', '1', 300);
+
   var values;
   try {
     values = calculateResults_();
@@ -228,36 +275,36 @@ function publishResults() {
     }
     if (values.length > 0) tab.getRange(2, 1, values.length, 13).setValues(values);
     SpreadsheetApp.flush();
+
+    // Recorded only after the write succeeded, so a publish that threw is
+    // retried by the next trigger rather than being remembered as done.
+    props.setProperty('RESULTS_AT', String(fingerprint));
+
+    renderDashboard(force);
   } finally {
-    lock.releaseLock();
+    cache.remove('publishing');
   }
 
-  /*
-    OUTSIDE THE LOCK, deliberately.
-
-    This is the same script lock `castBallot_` takes, and drawing the Dashboard
-    is a few hundred spreadsheet operations. Held inside, a redraw every minute
-    would stall every ballot cast during it - and a voter pressing submit in
-    that window would be told the election was busy. Nothing here is part of
-    recording a vote, so nothing here is worth blocking one.
-
-    Drawing from the same model a moment later is fine: the worst case is a
-    Dashboard one publish behind, which the next minute corrects.
-  */
-  renderDashboard();
-
-  return values.length;
+  return values ? values.length : 0;
 }
 
 /**
  * Keep the Results tab fresh without anyone remembering to.
  *
- * Installed by `setup()` on a one-minute timer. It is cheap — a few hundred
- * rows — and it means the Dashboard is never stale by more than a minute while
- * voting is open.
+ * Installed by `setup()` on a five-minute timer, not a one-minute one. Every
+ * run of this competes with live voting for the same spreadsheet, and the
+ * desk does not read the Dashboard once a minute — it glances at it between
+ * voters. Five minutes of staleness costs nobody anything; a minute of it cost
+ * a voter their submission. "Refresh dashboard" on the Election menu is there
+ * for the moment somebody does want it now.
  */
 function scheduledPublish() {
-  publishResults();
+  publishResults(false);
+}
+
+/** The menu item publishes unconditionally - someone who asks wants it now. */
+function publishResultsNow() {
+  return publishResults(true) + ' rows published.';
 }
 
 /** The menu item redraws unconditionally - someone who asks wants it now. */
@@ -269,7 +316,7 @@ function refreshDashboardNow() {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Election')
-    .addItem('Publish results now', 'publishResults')
+    .addItem('Publish results now', 'publishResultsNow')
     .addItem('Refresh dashboard', 'refreshDashboardNow')
     .addItem('Set up / repair', 'setup')
     .addSeparator()

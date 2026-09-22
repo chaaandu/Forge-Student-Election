@@ -97,6 +97,9 @@ export function App() {
   const sessionRef = useRef<Promise<CheckInResult> | null>(null);
   const tokenRef = useRef<string | null>(null);
   tokenRef.current = state.token;
+  /** Who is at the booth, so a dropped check-in can be asked for again. */
+  const voterRef = useRef<VoterProfile | null>(null);
+  voterRef.current = state.voter;
 
   // --------------------------------------------------------- bootstrap ---
   useEffect(() => {
@@ -300,6 +303,26 @@ export function App() {
           });
         },
         (error: unknown) => {
+          /*
+            A DROPPED CHECK-IN MUST NOT DESTROY A FILLED-IN BALLOT.
+
+            This dispatched FATAL for every failure, and FATAL is unguarded by
+            phase - so a check-in whose reply never arrived threw the voter out
+            of wherever they had got to onto a full-screen panel whose only
+            button starts the ballot again. The panel said "Nothing is lost.
+            Your choices are still on this screen"; the one thing the voter
+            could do next discarded them.
+
+            A refusal still has to stop them there: ALREADY_VOTED, NOT_ON_ROLL
+            and NOT_ELIGIBLE are answers, and carrying on would fill in a ballot
+            that was never going to count. A network failure is not an answer.
+            So it is dropped here and re-asked at submission, where `submit`
+            surfaces it on the review screen with every selection intact.
+          */
+          if (error instanceof ApiError && error.isNetwork) {
+            sessionRef.current = null;
+            return;
+          }
           dispatch({ type: 'FATAL', error: toMachineError(error) });
         },
       );
@@ -308,35 +331,48 @@ export function App() {
   );
 
   const submit = useCallback(async () => {
-    /*
-      The one place the session is actually needed.
-
-      By now it has been in flight since the voter picked their name, through
-      the confirmation screen and every gate, so this await almost always
-      returns immediately. When it does not, waiting here is right: this is the
-      moment the voter is expecting something to happen.
-    */
-    let token = tokenRef.current;
-    if (!token && sessionRef.current) {
-      try {
-        token = (await sessionRef.current).token;
-      } catch (error) {
-        dispatch({ type: 'SUBMIT_FAILED', error: toMachineError(error) });
-        return;
-      }
-    }
-    if (!token) return;
-
     // Generated once per ballot and kept for every retry. A fresh key on retry
     // would turn a timeout into a second vote.
     idempotencyRef.current ??= crypto.randomUUID();
     const key = idempotencyRef.current;
 
+    /*
+      SUBMIT_START FIRST, before anything that can fail.
+
+      Resolving the session used to happen above this line, and a failure there
+      returned early - after which `SUBMIT_FAILED` is ignored, because the
+      machine only accepts it from SUBMITTING. The voter pressed "Cast my vote"
+      and nothing at all happened. Entering SUBMITTING first means every failure
+      below has somewhere to land.
+    */
     dispatch({ type: 'SUBMIT_START', idempotencyKey: key });
+
+    /*
+      The one place the session is actually needed.
+
+      By now it has been in flight since the voter picked their name, through
+      the confirmation screen and every gate, so this almost always returns
+      immediately. When it was dropped instead, it is asked again here rather
+      than being treated as fatal - check-in writes nothing, so re-asking is
+      free, and this is the moment the voter is expecting something to happen.
+    */
+    const resolveToken = async (): Promise<string> => {
+      if (tokenRef.current) return tokenRef.current;
+      if (!sessionRef.current) {
+        const voterId = voterRef.current?.id;
+        if (!voterId) {
+          throw new ApiError('UNAUTHORIZED', COPY.error.sessionExpired, 401);
+        }
+        sessionRef.current = api.selectVoter(voterId);
+        sessionRef.current.catch(() => undefined);
+      }
+      return (await sessionRef.current).token;
+    };
 
     const send = async (tryNumber: number): Promise<void> => {
       setAttempt(tryNumber);
       try {
+        const token = await resolveToken();
         const result = await api.submitBallot(token, state.selections, key);
         clearDraft();
         dispatch({ type: 'SUBMIT_SUCCESS', receiptId: result.receiptId });
@@ -344,6 +380,9 @@ export function App() {
         // One automatic retry for a network blip — safe because the key is the
         // same, so a request that actually landed will replay, not duplicate.
         if (error instanceof ApiError && error.isNetwork && tryNumber === 1) {
+          // A rejected promise stays rejected. Cleared so the retry asks the
+          // server again instead of re-reading the same failure.
+          if (!tokenRef.current) sessionRef.current = null;
           await new Promise((resolve) => setTimeout(resolve, 1500));
           return send(2);
         }

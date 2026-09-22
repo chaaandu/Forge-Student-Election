@@ -5,7 +5,7 @@
  * and voters.json. Hand-editing this makes the hosted ballot disagree with the
  * repository about who is standing, and the repository is the source of truth.
  *
- * Generated 2026-09-22T06:06:32.987Z
+ * Generated 2026-09-22T11:39:45.657Z
  * 10 contests · 25 candidates · 145 on the roll
  */
 

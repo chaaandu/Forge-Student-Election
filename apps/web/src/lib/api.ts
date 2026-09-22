@@ -160,7 +160,22 @@ async function callAppsScript<T>(
       });
     } catch (error) {
       last = error;
-      const retryable = error instanceof ApiError && error.code === 'UPSTREAM';
+      /*
+        TIMEOUT retries too, not just UPSTREAM.
+
+        A request that was still in flight when we gave up on it is the same
+        situation as one whose reply was dropped: we do not know whether it
+        landed. Treating only the second as retryable meant a slow election -
+        one voter queued behind another's write - produced a single 45-second
+        wait and then a failure, on a request that would have succeeded.
+
+        Safe for every action routed through here: the reads are reads, `select`
+        issues a token and writes nothing, and `ballot` carries an idempotency
+        key the script now honours from the sheet itself, so a repeat is
+        answered with the original receipt rather than recorded twice.
+      */
+      const retryable =
+        error instanceof ApiError && (error.code === 'UPSTREAM' || error.code === 'TIMEOUT');
       if (!retryable || attempt === attempts) break;
       // Short and growing. The failure is not congestion we are contributing
       // to, so there is no reason to back off hard — but spacing them slightly
@@ -593,7 +608,19 @@ export const api = {
   /** Supervised check-in: the voter selects their own name at the booth. */
   selectVoter: (voterId: string) =>
     usingAppsScript
-      ? callAppsScript<CheckInResult>({ action: 'select', voterId }, { method: 'POST' })
+      ? callAppsScript<CheckInResult>(
+          { action: 'select', voterId },
+          /*
+            A longer budget than the default twenty seconds.
+
+            Check-in now runs in the background while the voter confirms their
+            name and works through the gates, so this has the whole ballot to
+            complete in - but it is also the request everything else depends
+            on, and on the default budget one slow hop failed it outright. The
+            wait costs the voter nothing; the failure cost them the ballot.
+          */
+          { method: 'POST', timeoutMs: 30_000, budgetMs: 75_000 },
+        )
       : request<CheckInResult>('/api/auth/select', {
           method: 'POST',
           headers: { 'x-kiosk-token': KIOSK_TOKEN },
@@ -629,7 +656,7 @@ export const api = {
       ? callAppsScript<SubmitResult>(
           { action: 'ballot', token, selections, idempotencyKey },
           /*
-            Sixty seconds, not twenty.
+            Forty-five seconds, not twenty, and retried until the budget is out.
 
             Apps Script answers in about a second but Google's content layer in
             front of it is slow and wildly variable — measured between 0.5s and
@@ -642,7 +669,7 @@ export const api = {
             alarming, and a voter who has just pressed the button should not be
             told something went wrong because Google was thinking.
           */
-          { method: 'POST', timeoutMs: 60_000, budgetMs: 150_000 },
+          { method: 'POST', timeoutMs: 45_000, budgetMs: 120_000 },
         )
       : request<SubmitResult>('/api/ballots', {
           method: 'POST',

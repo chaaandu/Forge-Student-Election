@@ -20,13 +20,14 @@ locking, so the whole read-check-write happens under a script lock.
 
 ## What you deploy
 
-Four files in `apps-script/`:
+Five files in `apps-script/`:
 
 | File | What it is |
 | --- | --- |
 | `Config.gs` | **Generated.** The election — contests, candidates, roll, weights |
 | `core.gs` | The API: check-in, eligibility, validation, casting a ballot |
-| `results.gs` | Weighting, ranking, the Results tab, the one-minute refresh |
+| `results.gs` | Weighting, ranking, the Results tab, the five-minute refresh |
+| `dashboard.gs` | Draws the Dashboard tab — turnout, who is leading, the full field |
 | `setup.gs` | Creates tabs, seeds Roll and Candidates, installs the trigger |
 
 Regenerate `Config.gs` whenever the election data changes:
@@ -46,10 +47,10 @@ list 1, 2, 3, which prints an exact tie as a first and a second place.
 ## Steps
 
 1. **Open the Sheet** → Extensions → Apps Script.
-2. **Paste the four files in**, one per script file, names matching.
+2. **Paste the five files in**, one per script file, names matching.
 3. **Run `setup`** once. Grant the permissions it asks for. It creates any
    missing tab, seeds Roll and Candidates from `Config.gs`, and installs the
-   trigger that refreshes Results every minute.
+   trigger that refreshes Results every five minutes.
 4. **Deploy** → New deployment → type **Web app**:
    - Execute as: **Me**
    - Who has access: **Anyone**
@@ -73,7 +74,8 @@ The `/exec` URL stays the same.
 - The ballot is the Vercel URL. It does not change.
 - Turnout, who has voted, and the live count are on the **Dashboard** tab —
   open it on a phone. That is the election desk.
-- Results refresh themselves every minute. **Election → Publish results now**
+- Results refresh themselves every five minutes, and only when the count has
+  actually moved. **Election → Publish results now**
   on the Sheet menu forces one.
 
 ### Clearing the rehearsal votes

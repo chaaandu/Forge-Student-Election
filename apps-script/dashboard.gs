@@ -145,7 +145,10 @@ function renderDashboard(force) {
   var book = book_();
   var existing = book.getSheetByName(DASHBOARD_TAB);
 
-  var fingerprint = rows_(TABS.ballots).length;
+  // getLastRow, not rows_(): the fingerprint is a COUNT, and reading every
+  // ballot in the sheet to find out how many there are is the expensive way to
+  // ask a question the row number already answers.
+  var fingerprint = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
   if (existing && !force && dashboardIsCurrent_(fingerprint)) {
     return 'Dashboard already current.';
   }

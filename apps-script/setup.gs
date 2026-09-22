@@ -10,11 +10,15 @@
  * their headers. Those hold cast votes.
  */
 
-/* global CONFIG, TABS, sheet_, book_ */
+/* global CONFIG, TABS, sheet_, book_, ScriptApp, SpreadsheetApp,
+   PropertiesService, CacheService */
 
 var HEADERS = {
   Roll: ['voter_id', 'name', 'email', 'type', 'house'],
-  Voters: ['voter_id', 'name', 'email', 'type', 'house', 'has_voted', 'voted_at'],
+  // `idempotency_key` is the client's random submission key, kept so a retry
+  // of a vote that WAS recorded can be answered with its receipt instead of
+  // being refused as a duplicate. It names a submission, never a choice.
+  Voters: ['voter_id', 'name', 'email', 'type', 'house', 'has_voted', 'voted_at', 'idempotency_key'],
   Candidates: ['candidate_id', 'name', 'position', 'house', 'photo_url', 'active'],
   Ballots: [
     'ballot_id',
@@ -118,7 +122,16 @@ function setup() {
   );
 }
 
-/** One minute-trigger for the results snapshot, never two. */
+/**
+ * One trigger for the results snapshot, never two, and never a fast one.
+ *
+ * It ran every minute. Counting reads every ballot and redraws the whole
+ * Dashboard, and it does that against the spreadsheet people are voting into -
+ * so once the first vote was cast, roughly half of every minute was spent
+ * republishing a count nobody was looking at yet, while a voter waited behind
+ * it. Five minutes is well inside what the desk needs, and `publishResults`
+ * now does nothing at all when the count has not moved.
+ */
 function installTrigger_() {
   var existing = ScriptApp.getProjectTriggers();
   for (var i = 0; i < existing.length; i += 1) {
@@ -126,7 +139,7 @@ function installTrigger_() {
       ScriptApp.deleteTrigger(existing[i]);
     }
   }
-  ScriptApp.newTrigger('scheduledPublish').timeBased().everyMinutes(1).create();
+  ScriptApp.newTrigger('scheduledPublish').timeBased().everyMinutes(5).create();
 }
 
 /**
@@ -199,5 +212,10 @@ function resetElectionDestructively(confirmElectionName) {
     }
   }
   SpreadsheetApp.flush();
+  // Both publish guards key off the ballot count, and a reset takes it to a
+  // number it has held before. Cleared explicitly so the next publish redraws
+  // rather than deciding the empty sheet it is looking at is already current.
+  PropertiesService.getScriptProperties().deleteProperty('RESULTS_AT');
+  PropertiesService.getScriptProperties().deleteProperty('DASHBOARD_AT');
   return 'Cleared. Every cast vote has been destroyed.';
 }

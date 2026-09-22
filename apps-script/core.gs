@@ -205,6 +205,53 @@ function votedSet_() {
   return set;
 }
 
+/** Column H on the Voters tab, added for the durable replay key below. */
+var VOTERS_WIDTH = 8;
+
+/**
+ * Make sure column H exists before anything writes to it.
+ *
+ * A tab created by `insertSheet` has twenty-six columns, so this is normally a
+ * no-op. It is here for a spreadsheet someone has trimmed, where a write to H
+ * would otherwise throw in the middle of recording a vote.
+ */
+function ensureVotersWidth_(tab) {
+  var have = tab.getMaxColumns();
+  if (have < VOTERS_WIDTH) tab.insertColumnsAfter(have, VOTERS_WIDTH - have);
+}
+
+/**
+ * Who has voted, WITH the submission key that recorded them.
+ *
+ * The set above answers "has this person voted". This answers the harder
+ * question `castBallot_` actually needs: "has this person voted, and was it
+ * THIS submission". Without the second half, a vote that was recorded but
+ * whose reply never reached the kiosk is indistinguishable from a second
+ * attempt to vote — so the retry is refused as ALREADY_VOTED and the voter is
+ * told their vote failed, for a vote that is sitting in the sheet.
+ *
+ * The key is the client's random idempotency key. It is stored beside the
+ * participation mark, never beside a ballot, so it links a person to the FACT
+ * that they voted and to nothing they chose.
+ */
+function votedKeys_() {
+  var tab = sheet_(TABS.voters);
+  var last = tab.getLastRow();
+  if (last < 2) return {};
+
+  var width = Math.min(VOTERS_WIDTH, tab.getMaxColumns());
+  var rows = tab.getRange(2, 1, last - 1, width).getValues();
+  var out = {};
+  for (var i = 0; i < rows.length; i += 1) {
+    if (!rows[i][0]) continue;
+    out[String(rows[i][0])] = {
+      key: width >= 8 ? String(rows[i][7] || '') : '',
+      at: width >= 7 ? String(rows[i][6] || '') : '',
+    };
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- sessions ---
 
 function sign_(payload) {
@@ -463,6 +510,30 @@ function named_(code, message) {
 }
 
 /**
+ * The receipt shown to the voter, derived from their SUBMISSION, not their ballot.
+ *
+ * It used to be the first eight characters of the ballot's UUID. That was fine
+ * while it was only ever shown on screen, but the replay path above has to
+ * reproduce it from the Voters tab — and storing a piece of the ballot id
+ * beside a voter's name would put a link between a person and their anonymous
+ * ballot row into the spreadsheet. Ballot secrecy here is a property of the
+ * shape of the data; this keeps that shape.
+ *
+ * Hashing the client's idempotency key gives a receipt that is stable across
+ * every retry of the same submission and says nothing about the ballot.
+ */
+function receiptFor_(key, ballotId) {
+  if (!key) return String(ballotId).slice(0, 8);
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, key);
+  var out = '';
+  for (var i = 0; i < 4; i += 1) {
+    var byte = digest[i] < 0 ? digest[i] + 256 : digest[i];
+    out += (byte < 16 ? '0' : '') + byte.toString(16);
+  }
+  return out;
+}
+
+/**
  * Record one ballot.
  *
  * Everything that matters happens inside the lock: re-read who has voted, check
@@ -490,7 +561,8 @@ function castBallot_(token, selections, idempotencyKey) {
     polling day. A cache miss is still SAFE, just unhelpful: the duplicate is
     refused by the check under the lock, exactly as before.
   */
-  var replayKey = idempotencyKey ? 'idem:' + String(idempotencyKey) : null;
+  var key = idempotencyKey ? String(idempotencyKey) : '';
+  var replayKey = key ? 'idem:' + key : null;
   if (replayKey) {
     var prior = CacheService.getScriptCache().get(replayKey);
     if (prior) return JSON.parse(prior);
@@ -511,13 +583,50 @@ function castBallot_(token, selections, idempotencyKey) {
   }
 
   try {
+    /*
+      Asked AGAIN, now that the lock is held.
+
+      The read at the top of this function happens before the wait for the
+      lock, so it is a read from before whatever we were waiting for finished.
+      When a kiosk retries a submission whose first attempt is still committing,
+      that first read misses and this one hits — which is precisely the case
+      this exists to answer.
+    */
+    if (replayKey) {
+      var again = CacheService.getScriptCache().get(replayKey);
+      if (again) return JSON.parse(again);
+    }
+
     var row = roll_()[voterId];
     if (!row) throw named_('NOT_ON_ROLL', 'That name is not on the roll for this election.');
     var voter = voterOf_(row);
 
     // Re-checked under the lock, against the sheet, not against anything the
     // client sent or an earlier read believed.
-    if (Object.prototype.hasOwnProperty.call(votedSet_(), voter.id)) {
+    var recorded = votedKeys_();
+    if (Object.prototype.hasOwnProperty.call(recorded, voter.id)) {
+      /*
+        THE SAME SUBMISSION, ARRIVING TWICE, IS NOT A SECOND VOTE.
+
+        The cache above is the fast path and it is allowed to miss: it is
+        evicted under memory pressure and emptied by a redeploy, both of which
+        can happen mid-election. The sheet cannot. So the key that recorded this
+        person is stored next to their participation mark, and a retry carrying
+        that same key is answered with the receipt it earned rather than being
+        told it is a duplicate.
+
+        Without this, the commonest failure on this platform — a reply dropped
+        on the way back — tells a voter whose vote IS recorded that they have
+        already voted, which reads as the machine accusing them of voting twice.
+      */
+      if (key && recorded[voter.id].key === key) {
+        return {
+          status: 'recorded',
+          receiptId: receiptFor_(key, ''),
+          replayed: true,
+          submittedAt: recorded[voter.id].at || new Date().toISOString(),
+        };
+      }
       throw named_('ALREADY_VOTED', 'Our records show you have already voted.');
     }
 
@@ -552,17 +661,20 @@ function castBallot_(token, selections, idempotencyKey) {
       .getRange(sheet_(TABS.ballots).getLastRow() + 1, 1, ballotRows.length, 7)
       .setValues(ballotRows);
 
-    sheet_(TABS.voters)
-      .getRange(sheet_(TABS.voters).getLastRow() + 1, 1, 1, 7)
+    var votersTab = sheet_(TABS.voters);
+    ensureVotersWidth_(votersTab);
+    votersTab
+      .getRange(votersTab.getLastRow() + 1, 1, 1, VOTERS_WIDTH)
       .setValues([
-        [voter.id, voter.name, voter.email, voter.type, row.house, true, now.toISOString()],
+        [voter.id, voter.name, voter.email, voter.type, row.house, true, now.toISOString(), key],
       ]);
 
     SpreadsheetApp.flush();
 
     var result = {
       status: 'recorded',
-      receiptId: ballotId.slice(0, 8),
+      receiptId: receiptFor_(key, ballotId),
+      replayed: false,
       submittedAt: now.toISOString(),
     };
     // Stored INSIDE the lock, after the write, so a retry that arrives while
