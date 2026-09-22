@@ -3,6 +3,8 @@
 // Provenance check for the vendored ThreeUI Woven Cloth, and for the wall
 // derived from its washi variant.
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -110,12 +112,21 @@ describe('the derived speeches wall', () => {
   it('inlines the same three.js the authored document loads', () => {
     // Byte-identical to what jsdelivr serves for three@0.160.0, which is what
     // makes the swap an inlining and not an engine change.
-    const bundle = readFileSync(
-      fileURLToPath(
-        new URL('../../../../../node_modules/three/build/three.min.js', import.meta.url),
-      ),
-      'utf8',
-    );
+    /*
+      Resolved, not path-joined.
+
+      This used to reach for `../../../../../node_modules/three/build/three.min.js`,
+      which is wherever npm happened to hoist three that day. It worked only
+      because an ad-hoc install had left a copy at the repository root — three
+      was not in the lock file at all. Once the lock was written properly npm
+      put it under `apps/web/node_modules` and this went ENOENT, on a test whose
+      whole job is to notice a change in this file.
+    */
+    // `three/build/three.min.js` is not in three's `exports` map, so it cannot
+    // be resolved directly. Resolve the package's own entry point, which is,
+    // and step up to the directory it lives in.
+    const threeDir = dirname(dirname(createRequire(import.meta.url).resolve('three')));
+    const bundle = readFileSync(join(threeDir, 'build', 'three.min.js'), 'utf8');
     expect(sha256(bundle)).toBe('170c6789f43217c96b3170f4b42fafe135de7f7cd48497a4218f9757ee1d49fa');
     expect(derived).toContain(bundle);
   });
