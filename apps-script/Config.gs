@@ -5,14 +5,14 @@
  * and voters.json. Hand-editing this makes the hosted ballot disagree with the
  * repository about who is standing, and the repository is the source of truth.
  *
- * Generated 2026-09-22T04:50:44.223Z
+ * Generated 2026-09-22T04:56:14.392Z
  * 10 contests · 25 candidates · 145 on the roll
  */
 
 var CONFIG = {
   "election": {
     "id": "mesa-forge-c27",
-    "name": "Mesa Student Elections",
+    "name": "Forge Student Elections",
     "status": "open",
     "weights": {
       "student": 0.75,
@@ -75,8 +75,8 @@ var CONFIG = {
     },
     {
       "id": "academic-lead-boy",
-      "title": "Academic Lead — Boy",
-      "shortTitle": "Academic Lead (Boy)",
+      "title": "Boys’ Academic Lead",
+      "shortTitle": "Boys’ Academic Lead",
       "order": 3,
       "kind": "leadership",
       "eligibility": {
@@ -88,8 +88,8 @@ var CONFIG = {
     },
     {
       "id": "academic-lead-girl",
-      "title": "Academic Lead — Girl",
-      "shortTitle": "Academic Lead (Girl)",
+      "title": "Girls’ Academic Lead",
+      "shortTitle": "Girls’ Academic Lead",
       "order": 4,
       "kind": "leadership",
       "eligibility": {
@@ -101,8 +101,8 @@ var CONFIG = {
     },
     {
       "id": "community-lead-boy",
-      "title": "Community Lead — Boy",
-      "shortTitle": "Community Lead (Boy)",
+      "title": "Boys’ Community Lead",
+      "shortTitle": "Boys’ Community Lead",
       "order": 5,
       "kind": "leadership",
       "eligibility": {
@@ -114,8 +114,8 @@ var CONFIG = {
     },
     {
       "id": "community-lead-girl",
-      "title": "Community Lead — Girl",
-      "shortTitle": "Community Lead (Girl)",
+      "title": "Girls’ Community Lead",
+      "shortTitle": "Girls’ Community Lead",
       "order": 6,
       "kind": "leadership",
       "eligibility": {
@@ -127,7 +127,7 @@ var CONFIG = {
     },
     {
       "id": "house-captain-samurai",
-      "title": "House Captain — Samurai",
+      "title": "Samurai House Captain",
       "shortTitle": "Samurai Captain",
       "order": 7,
       "kind": "house-captain",
@@ -141,7 +141,7 @@ var CONFIG = {
     },
     {
       "id": "house-captain-knights",
-      "title": "House Captain — Knights",
+      "title": "Knights House Captain",
       "shortTitle": "Knights Captain",
       "order": 8,
       "kind": "house-captain",
@@ -155,7 +155,7 @@ var CONFIG = {
     },
     {
       "id": "house-captain-gladiators",
-      "title": "House Captain — Gladiators",
+      "title": "Gladiators House Captain",
       "shortTitle": "Gladiators Captain",
       "order": 9,
       "kind": "house-captain",
@@ -169,7 +169,7 @@ var CONFIG = {
     },
     {
       "id": "house-captain-vikings",
-      "title": "House Captain — Vikings",
+      "title": "Vikings House Captain",
       "shortTitle": "Vikings Captain",
       "order": 10,
       "kind": "house-captain",
