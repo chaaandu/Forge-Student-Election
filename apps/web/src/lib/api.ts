@@ -24,7 +24,10 @@ export const usingAppsScript = APPS_SCRIPT !== '';
  * simple request. The body is still JSON; only the declared type differs, and
  * the script parses it as JSON regardless.
  */
-async function callAppsScript<T>(
+/**
+ * One attempt. `callAppsScript` retries this; see why there.
+ */
+async function callAppsScriptOnce<T>(
   payload: Record<string, unknown>,
   init: { method: 'GET' | 'POST'; timeoutMs?: number },
 ): Promise<T> {
@@ -98,6 +101,53 @@ async function callAppsScript<T>(
   }
 
   return body as T;
+}
+
+/**
+ * Retry, because Apps Script drops responses.
+ *
+ * A request to /exec answers with a 302 to script.googleusercontent.com, and
+ * that second hop intermittently returns Google Drive's own "Page not found"
+ * instead of the script's reply. Measured against the live deployment with no
+ * cookies and requests spaced seconds apart: roughly one in three failed, on
+ * every action — including one that touches neither the spreadsheet nor the
+ * cache. It is the delivery layer, not the script, and nothing in this
+ * repository can prevent it.
+ *
+ * What it can do is not surface it. A dropped response is indistinguishable
+ * from one that never happened, so the request is simply made again.
+ *
+ * Only UPSTREAM is retried — a non-JSON reply, which is that failure exactly.
+ * A refusal the script actually issued (already voted, ballot invalid, election
+ * closed) arrives as clean JSON and is returned immediately; retrying those
+ * would be asking a question that has already been answered.
+ *
+ * Casting is safe to repeat because the script now honours the idempotency
+ * key: a repeated submission replays the original receipt rather than being
+ * refused as a duplicate.
+ */
+async function callAppsScript<T>(
+  payload: Record<string, unknown>,
+  init: { method: 'GET' | 'POST'; timeoutMs?: number },
+): Promise<T> {
+  const attempts = 4;
+  let last: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await callAppsScriptOnce<T>(payload, init);
+    } catch (error) {
+      last = error;
+      const retryable = error instanceof ApiError && error.code === 'UPSTREAM';
+      if (!retryable || attempt === attempts) break;
+      // Short and growing. The failure is not congestion we are contributing
+      // to, so there is no reason to back off hard — but spacing them slightly
+      // avoids three identical requests landing in the same bad second.
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+    }
+  }
+
+  throw last;
 }
 
 export interface PublicElection {
