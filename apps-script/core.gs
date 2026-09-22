@@ -205,87 +205,6 @@ function votedSet_() {
   return set;
 }
 
-// ------------------------------------------------------------- kiosk gate ---
-
-/**
- * An optional password on the whole voting URL.
- *
- * The ballot is public by necessity — voters open it on their own phones — but
- * a public URL is also open to anyone who is sent it, and a link travels
- * further than it is meant to. This puts one shared password in front of
- * starting a ballot at all.
- *
- * Checked HERE, not in the browser. A password the SPA compares is a password
- * shipped inside the JavaScript bundle, readable by anyone who opens developer
- * tools — the same mistake as putting the spreadsheet key in the client. The
- * value lives in Script Properties: not in the repository, not in the bundle,
- * and changeable without touching code.
- *
- * Off unless both properties are set, so deploying this changes nothing until
- * somebody decides to turn it on.
- *
- *   Apps Script → Project Settings → Script Properties
- *     KIOSK_EMAIL     chandu@mesaschool.co
- *     KIOSK_PASSWORD  ••••••••
- *
- * What it is NOT: this does not identify the voter, and it is not a second
- * factor. One password shared by everyone in the room is a door, not an
- * identity. Who may vote is still decided by the roll, and one-vote is still
- * enforced under the lock.
- */
-function kioskGate_() {
-  var props = PropertiesService.getScriptProperties();
-  var email = props.getProperty('KIOSK_EMAIL');
-  var password = props.getProperty('KIOSK_PASSWORD');
-  if (!email || !password) return null;
-  return { email: String(email).trim().toLowerCase(), password: String(password) };
-}
-
-/** A signed pass for a device that has been unlocked. Good for a polling day. */
-function issuePass_() {
-  var expires = Date.now() + 18 * 60 * 60 * 1000;
-  var payload = 'kiosk.' + expires;
-  return payload + '.' + sign_(payload);
-}
-
-function passIsValid_(pass) {
-  if (!pass) return false;
-  var parts = String(pass).split('.');
-  if (parts.length !== 3 || parts[0] !== 'kiosk') return false;
-  if (sign_(parts[0] + '.' + parts[1]) !== parts[2]) return false;
-  return Number(parts[1]) >= Date.now();
-}
-
-/**
- * Refuse anything that starts or advances a ballot without a valid pass.
- *
- * Applied to roll search, check-in and casting — the three that touch the roll
- * or the votes. Reading the candidate list is left open: it is public
- * information, and gating it would mean the gate screen could not tell the
- * voter which election they had arrived at.
- */
-function requirePass_(pass) {
-  if (!kioskGate_()) return;
-  if (!passIsValid_(pass)) {
-    throw named_('LOCKED', 'This device has not been unlocked for voting.');
-  }
-}
-
-function unlock_(email, password) {
-  var gate = kioskGate_();
-  if (!gate) return { pass: issuePass_() };
-
-  var suppliedEmail = String(email || '')
-    .trim()
-    .toLowerCase();
-  // Compared whole rather than reported field by field: telling someone the
-  // address was right and only the password wrong hands them half the answer.
-  if (suppliedEmail !== gate.email || String(password || '') !== gate.password) {
-    throw named_('BAD_PASSWORD', 'That email and password were not accepted.');
-  }
-  return { pass: issuePass_() };
-}
-
 // ---------------------------------------------------------------- sessions ---
 
 function sign_(payload) {
@@ -331,7 +250,7 @@ function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'election';
   try {
     if (action === 'election') return json_(electionPayload_());
-    if (action === 'lookup') return json_(lookup_(e.parameter.query, e.parameter.pass));
+    if (action === 'lookup') return json_(lookup_(e.parameter.query));
     if (action === 'session') return json_(sessionPayload_(e.parameter.token));
     if (action === 'turnout') return json_(turnout_());
     return fail_('NOT_FOUND', 'Unknown action.', 404);
@@ -369,10 +288,8 @@ function doPost(e) {
   }
 
   try {
-    if (body.action === 'unlock') return json_(unlock_(body.email, body.password));
-    if (body.action === 'select') return json_(select_(body.voterId, body.pass));
-    if (body.action === 'ballot')
-      return json_(castBallot_(body.token, body.selections, body.pass));
+    if (body.action === 'select') return json_(select_(body.voterId));
+    if (body.action === 'ballot') return json_(castBallot_(body.token, body.selections));
     return fail_('NOT_FOUND', 'Unknown action.', 404);
   } catch (err) {
     var message = String(err && err.message ? err.message : err);
@@ -395,9 +312,6 @@ function electionPayload_() {
     candidates: CONFIG.candidates,
     window: CONFIG.election.status === 'open' ? { open: true } : { open: false, reason: 'CLOSED' },
     auth: { mode: 'supervised', supportsRollSearch: true, requiresSupervision: true },
-    // Absent on an older deployment, which reads as false — so a ballot built
-    // against this never shows a gate the script cannot actually open.
-    requiresUnlock: kioskGate_() !== null,
   };
 }
 
@@ -407,8 +321,7 @@ function electionPayload_() {
  * A minimum query length and a hard cap are what stop this becoming a
  * roll-export endpoint, and the email is masked before it leaves.
  */
-function lookup_(query, pass) {
-  requirePass_(pass);
+function lookup_(query) {
   var q = String(query || '')
     .trim()
     .toLowerCase();
@@ -437,8 +350,7 @@ function lookup_(query, pass) {
   return { results: out.slice(0, 8), truncated: out.length > 8 };
 }
 
-function select_(voterId, pass) {
-  requirePass_(pass);
+function select_(voterId) {
   var all = roll_();
   var row = all[String(voterId)];
   if (!row) throw named_('NOT_ON_ROLL', 'That name is not on the roll for this election.');
@@ -499,8 +411,7 @@ function named_(code, message) {
  * The lock is held for the whole read-check-write, and released in `finally` so
  * a thrown validation error cannot wedge the election.
  */
-function castBallot_(token, selections, pass) {
-  requirePass_(pass);
+function castBallot_(token, selections) {
   var voterId = readToken_(token);
   if (!voterId) throw named_('UNAUTHORIZED', 'Your check-in has expired. Check in again to vote.');
 
