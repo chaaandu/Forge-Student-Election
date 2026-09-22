@@ -53,7 +53,12 @@ const sandbox: Record<string, unknown> = {
     base64EncodeWebSafe: (bytes: number[] | string) =>
       Buffer.from(bytes as number[]).toString('base64url'),
   },
-  SpreadsheetApp: { flush: () => {}, getActiveSpreadsheet: () => ({}) },
+  SpreadsheetApp: {
+    flush: () => {},
+    getActiveSpreadsheet: () => ({}),
+    BorderStyle: { SOLID: 'SOLID' },
+  },
+  Session: { getScriptTimeZone: () => 'UTC' },
   LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
   ContentService: { createTextOutput: (s: string) => ({ setMimeType: () => s }), MimeType: {} },
   ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({}) },
@@ -63,6 +68,7 @@ const context = createContext(sandbox);
 runInContext(read('apps-script/Config.gs'), context);
 runInContext(read('apps-script/core.gs'), context);
 runInContext(read('apps-script/results.gs'), context);
+runInContext(read('apps-script/dashboard.gs'), context);
 
 // The two functions that read the sheet are replaced with fixtures.
 runInContext(
@@ -257,6 +263,90 @@ scenario('an exact tie', [
 ]);
 
 scenario('no votes cast at all', []);
+
+// ------------------------------------------------------------- dashboard ---
+
+/*
+  THE DASHBOARD IS RENDERED, NOT JUST COMPUTED.
+
+  A tied contest wrote "= " in front of each tied candidate's name. Apps Script
+  treats a leading "=" in `setValues` as a formula, and a space between two
+  names is the intersection operator in Sheets — so both names rendered as
+  #REF! on the one tab everybody actually reads, for the one result the whole
+  pipeline is most careful to report honestly. Every test above passed while it
+  was broken: the arithmetic was right, the drawing was not.
+
+  So the tab is drawn here, over a real tie, and every cell it writes is
+  checked. A cell may only begin with "=" if it is genuinely a formula.
+*/
+console.log('\nthe dashboard, drawn');
+
+const written: unknown[][] = [];
+sandbox.__captureRow = (row: unknown[]) => written.push(row);
+
+runInContext(
+  `
+  var __range = {
+    setValues: function (rows) {
+      for (var i = 0; i < rows.length; i += 1) __captureRow(rows[i]);
+      return __range;
+    },
+    setFontColors: function () { return __range; },
+    setFontWeights: function () { return __range; },
+    setFontSizes: function () { return __range; },
+    setVerticalAlignment: function () { return __range; },
+    setHorizontalAlignment: function () { return __range; },
+    setNumberFormat: function () { return __range; },
+    setBorder: function () { return __range; },
+  };
+  var __tab = {
+    clear: function () {}, getRange: function () { return __range; },
+    getLastRow: function () { return BALLOT_ROWS.length + 1; },
+    setColumnWidth: function () {}, setHiddenGridlines: function () {},
+    setFrozenRows: function () {},
+  };
+  sheet_ = function () { return __tab; };
+  book_ = function () {
+    return { getSheetByName: function () { return __tab; }, insertSheet: function () { return __tab; } };
+  };
+  roll_ = function () {
+    return { a: { id: 'a', name: 'A', email: 'a@x', type: 'student', house: '' } };
+  };
+  votedSet_ = function () { return { a: true }; };
+`,
+  context,
+);
+
+// An exact tie, so the tie branch is the one that draws.
+const presidents = config.candidates.filter((c) => c.positionId === 'president');
+BALLOT_ROWS = [];
+for (const candidate of presidents.slice(0, 2)) {
+  for (let i = 0; i < 8; i += 1) {
+    BALLOT_ROWS.push([`b${i}`, config.election.id, 'student', 'h', 'president', candidate.id, 'd']);
+  }
+}
+sandbox.BALLOT_ROWS = BALLOT_ROWS;
+
+runInContext('renderDashboard(true)', context);
+
+const cells = written.flat().filter((v): v is string => typeof v === 'string');
+const formulas = cells.filter((v) => v.charAt(0) === '=' && !v.startsWith('=SPARKLINE('));
+check(
+  formulas.length === 0,
+  'no cell is accidentally a formula',
+  `found: ${formulas.slice(0, 3).join(' | ')}`,
+);
+
+const tiedNames = presidents.slice(0, 2).map((c) => c.name);
+check(
+  tiedNames.every((name) => cells.some((cell) => cell.indexOf(name) !== -1)),
+  'both tied candidates are named on the tab',
+  `looking for: ${tiedNames.join(', ')}`,
+);
+check(
+  cells.some((cell) => cell.indexOf('TIED') === 0),
+  'the contest is reported as a tie, with no winner',
+);
 
 console.log(
   failures === 0

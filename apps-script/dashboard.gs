@@ -42,6 +42,24 @@
 
 var DASHBOARD_TAB = 'Dashboard';
 
+/**
+ * The mark against a name, and why the tie one is not an equals sign.
+ *
+ * It WAS an equals sign, and it turned both tied candidates into #REF!.
+ * `setValues` treats a leading "=" as a formula, so "= Priya Sharma" was
+ * written as one — and a space between two names is the intersection operator
+ * in Sheets, which cannot resolve, so the cell rendered an error where the
+ * name should be. It only ever fired on a tie, which is the one result the
+ * whole pipeline is most careful about reporting honestly, and the one nobody
+ * had produced while testing.
+ *
+ * U+2261 reads as "identical to" and cannot begin a formula. NOTHING WRITTEN
+ * INTO A DASHBOARD CELL MAY START WITH "=" unless it really is a formula; see
+ * `bar_`, which is the only thing here that is.
+ */
+var TIE_MARK = '\u2261 ';
+var LEAD_MARK = '\u25cf ';
+
 var INK = '#141414';
 var MUTED = '#707070';
 var HAIRLINE = '#D8D4CC';
@@ -352,7 +370,7 @@ function renderDashboard(force) {
           // Named once per group. Repeated down every row it becomes noise and
           // hides where one contest ends and the next begins.
           k === 0 ? pos.title : '',
-          (tiedForFirst ? '= ' : leads ? '● ' : '') + cand.candidate,
+          (tiedForFirst ? TIE_MARK : leads ? LEAD_MARK : '') + cand.candidate,
           cand.score,
           bar_(cand.score * 100, leads ? col : HAIRLINE),
           cand.studentVotes + ' (' + Math.round(cand.studentPercentage) + '%)',
