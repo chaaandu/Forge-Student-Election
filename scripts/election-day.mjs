@@ -25,6 +25,7 @@
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -83,6 +84,32 @@ if (!existsSync(SPA_ENTRY)) {
   // Without this the API answers but every voter gets a blank page, which on
   // the day looks like the network rather than a missing build step.
   fail('The ballot is not built.', 'Run: npm run build');
+}
+
+/**
+ * Refuse to start on a port somebody else already holds.
+ *
+ * Without this the failure is silent and actively misleading. A dev server left
+ * running from `npm run dev` owns the port; the real server spawns, dies on
+ * EADDRINUSE, and the health check below — which only asks whether *something*
+ * answers on localhost — finds the dev server, passes, and prints the banner.
+ * The operator is told the election is up, on a process that exited seconds ago
+ * and against a database that may not even be the one configured here.
+ */
+async function portIsTaken(port) {
+  return new Promise((resolve) => {
+    const probe = createServer();
+    probe.once('error', (error) => resolve(error.code === 'EADDRINUSE'));
+    probe.once('listening', () => probe.close(() => resolve(false)));
+    probe.listen(Number(port), '0.0.0.0');
+  });
+}
+
+if (await portIsTaken(PORT)) {
+  fail(
+    `Something is already listening on port ${PORT}.`,
+    'Almost always `npm run dev` in another terminal. Stop it, or set PORT to something else.',
+  );
 }
 
 // ------------------------------------------------------------- the server ---
