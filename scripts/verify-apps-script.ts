@@ -79,6 +79,34 @@ const check = (ok: boolean, label: string, detail = '') => {
   console.log(`${ok ? '  ✓' : '  ✗'} ${label}${ok ? '' : `  ${detail}`}`);
 };
 
+// ------------------------------------------------------- config fidelity ---
+
+/*
+  Nothing may be lost between the config and the generated script.
+
+  `crestUrl` went missing from houses and every house rendered its drawn
+  placeholder instead of its crest — four coloured blocks on the ballot, with
+  nothing logged, because a missing optional field simply takes the fallback
+  path that exists for exactly that case. A shape check catches the whole class
+  rather than that one field.
+*/
+console.log('\nconfig fidelity');
+
+const generated = runInContext('CONFIG', context) as {
+  houses: Record<string, unknown>[];
+  positions: Record<string, unknown>[];
+  candidates: Record<string, unknown>[];
+};
+
+for (const key of ['houses', 'positions', 'candidates'] as const) {
+  const fieldsOf = (rows: Record<string, unknown>[]) =>
+    [...new Set(rows.flatMap((r) => Object.keys(r)))].sort();
+  const source = fieldsOf(config[key] as unknown as Record<string, unknown>[]);
+  const emitted = fieldsOf(generated[key]);
+  const missing = source.filter((f) => !emitted.includes(f));
+  check(missing.length === 0, `${key} keep every field`, `dropped: ${missing.join(', ')}`);
+}
+
 // --------------------------------------------------------- eligibility ---
 
 console.log('\neligibility and step sequences');
@@ -106,10 +134,14 @@ for (const voter of [
 console.log('\nweighting, against the tested core');
 
 /** Build synthetic ballots and the matching tallies for both implementations. */
-function scenario(name: string, votes: { position: string; candidate: string; type: string; n: number }[]) {
+function scenario(
+  name: string,
+  votes: { position: string; candidate: string; type: string; n: number }[],
+) {
   BALLOT_ROWS = [];
   sandbox.BALLOT_ROWS = BALLOT_ROWS;
-  const tallies: { positionId: string; candidateId: string; voterType: string; votes: number }[] = [];
+  const tallies: { positionId: string; candidateId: string; voterType: string; votes: number }[] =
+    [];
 
   for (const v of votes) {
     for (let i = 0; i < v.n; i += 1) {
@@ -161,15 +193,45 @@ function scenario(name: string, votes: { position: string; candidate: string; ty
 }
 
 scenario('a straight two-way contest, both electorates voting', [
-  { position: 'president', candidate: config.candidates.find((c) => c.positionId === 'president')!.id, type: 'student', n: 40 },
-  { position: 'president', candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id, type: 'student', n: 20 },
-  { position: 'president', candidate: config.candidates.find((c) => c.positionId === 'president')!.id, type: 'employee', n: 3 },
-  { position: 'president', candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id, type: 'employee', n: 9 },
+  {
+    position: 'president',
+    candidate: config.candidates.find((c) => c.positionId === 'president')!.id,
+    type: 'student',
+    n: 40,
+  },
+  {
+    position: 'president',
+    candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id,
+    type: 'student',
+    n: 20,
+  },
+  {
+    position: 'president',
+    candidate: config.candidates.find((c) => c.positionId === 'president')!.id,
+    type: 'employee',
+    n: 3,
+  },
+  {
+    position: 'president',
+    candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id,
+    type: 'employee',
+    n: 9,
+  },
 ]);
 
 scenario('employees eligible but casting nothing (renormalise)', [
-  { position: 'president', candidate: config.candidates.find((c) => c.positionId === 'president')!.id, type: 'student', n: 11 },
-  { position: 'president', candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id, type: 'student', n: 4 },
+  {
+    position: 'president',
+    candidate: config.candidates.find((c) => c.positionId === 'president')!.id,
+    type: 'student',
+    n: 11,
+  },
+  {
+    position: 'president',
+    candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id,
+    type: 'student',
+    n: 4,
+  },
 ]);
 
 const captain = config.positions.find((p) => p.kind === 'house-captain')!;
@@ -180,8 +242,18 @@ scenario('a house captain — student-only, uncapped', [
 ]);
 
 scenario('an exact tie', [
-  { position: 'president', candidate: config.candidates.find((c) => c.positionId === 'president')!.id, type: 'student', n: 5 },
-  { position: 'president', candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id, type: 'student', n: 5 },
+  {
+    position: 'president',
+    candidate: config.candidates.find((c) => c.positionId === 'president')!.id,
+    type: 'student',
+    n: 5,
+  },
+  {
+    position: 'president',
+    candidate: config.candidates.filter((c) => c.positionId === 'president')[1]!.id,
+    type: 'student',
+    n: 5,
+  },
 ]);
 
 scenario('no votes cast at all', []);

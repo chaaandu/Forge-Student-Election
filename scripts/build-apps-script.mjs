@@ -50,24 +50,23 @@ const payload = {
     weights: config.election.weights,
     zeroTurnoutPolicy: config.election.zeroTurnoutPolicy ?? 'renormalise',
   },
-  houses: config.houses.map((h) => ({ id: h.id, name: h.name, color: h.color, shape: h.shape })),
-  positions: config.positions.map((p) => ({
-    id: p.id,
-    title: p.title,
-    shortTitle: p.shortTitle,
-    order: p.order,
-    kind: p.kind,
-    ...(p.houseId ? { houseId: p.houseId } : {}),
-    eligibility: p.eligibility,
-  })),
-  candidates: config.candidates.map((c) => ({
-    id: c.id,
-    name: c.name,
-    positionId: c.positionId,
-    ...(c.tagline ? { tagline: c.tagline } : {}),
-    ...(c.photoUrl ? { photoUrl: c.photoUrl } : {}),
-    active: c.active !== false,
-  })),
+  /*
+    Passed through whole, not field by field.
+
+    These were hand-picked lists of properties, and the list silently went out
+    of date: `crestUrl` was missing from houses, so every house fell back to its
+    drawn placeholder and the ballot showed four coloured blocks where the
+    crests belong. Nothing errored — a missing optional field just renders as
+    the fallback, which is the whole point of the fallback.
+
+    Copying the collections verbatim removes the failure mode rather than fixing
+    this instance of it. The config is a few kilobytes; there is nothing to gain
+    by trimming it, and a field added to election.config.json next year now
+    reaches the ballot without anyone remembering to add it here.
+  */
+  houses: config.houses,
+  positions: config.positions,
+  candidates: config.candidates,
   roll: roll.map((v) => ({
     id: v.id,
     name: v.name,
@@ -97,6 +96,7 @@ console.log(`\n  Wrote apps-script/Config.gs`);
 console.log(`    ${payload.positions.length} contests`);
 console.log(`    ${payload.candidates.length} candidates`);
 console.log(
-  `    ${payload.roll.length} on the roll` + (payload.roll.length === 0 ? '  (voters.json absent)' : ''),
+  `    ${payload.roll.length} on the roll` +
+    (payload.roll.length === 0 ? '  (voters.json absent)' : ''),
 );
 console.log(`    weights ${JSON.stringify(payload.election.weights)}\n`);

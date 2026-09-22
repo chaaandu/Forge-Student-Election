@@ -5,7 +5,7 @@
  * and voters.json. Hand-editing this makes the hosted ballot disagree with the
  * repository about who is standing, and the repository is the source of truth.
  *
- * Generated 2026-09-22T04:56:14.392Z
+ * Generated 2026-09-22T05:47:23.334Z
  * 10 contests · 25 candidates · 145 on the roll
  */
 
@@ -25,25 +25,29 @@ var CONFIG = {
       "id": "samurai",
       "name": "Samurai",
       "color": "#2F57A8",
-      "shape": "circle"
+      "shape": "circle",
+      "crestUrl": "/houses/samurai.png"
     },
     {
       "id": "knights",
       "name": "Knights",
       "color": "#B83325",
-      "shape": "square"
+      "shape": "square",
+      "crestUrl": "/houses/knights.png"
     },
     {
       "id": "gladiators",
       "name": "Gladiators",
       "color": "#628838",
-      "shape": "arc"
+      "shape": "arc",
+      "crestUrl": "/houses/gladiators.png"
     },
     {
       "id": "vikings",
       "name": "Vikings",
       "color": "#EEC048",
-      "shape": "triangle"
+      "shape": "triangle",
+      "crestUrl": "/houses/vikings.png"
     }
   ],
   "positions": [
