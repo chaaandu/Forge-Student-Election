@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import type { AppContext } from '../../context.js';
+import { createRateLimiter } from '../rateLimit.js';
+import { checkSignIn, issueSessionToken } from '../../services/adminAuth.js';
 import { requireAdmin } from '../middleware.js';
 
 /**
@@ -12,6 +14,51 @@ import { requireAdmin } from '../middleware.js';
  */
 export function adminRoutes(ctx: AppContext): Router {
   const router = Router();
+
+  /**
+   * Sign in to the election desk.
+   *
+   * Mounted BEFORE requireAdmin — it is how you get a credential, so it cannot
+   * ask for one. Rated far harder than the rest of the API: this is the only
+   * endpoint in the system where guessing repeatedly is worth anything, and
+   * the desk is signed into a handful of times a day, not a handful of times
+   * a minute.
+   */
+  router.post(
+    '/session',
+    createRateLimiter({ limit: 10, windowMs: 15 * 60_000 }),
+    (req, res) => {
+      const { email, password } = (req.body ?? {}) as { email?: string; password?: string };
+      const credentials =
+        ctx.env.MONITOR_EMAIL && ctx.env.MONITOR_PASSWORD_HASH
+          ? { email: ctx.env.MONITOR_EMAIL, passwordHash: ctx.env.MONITOR_PASSWORD_HASH }
+          : undefined;
+
+      if (!checkSignIn(credentials, email ?? '', password ?? '')) {
+        ctx.audit.append({
+          event: 'ADMIN_SIGN_IN',
+          actorType: 'admin',
+          // The address attempted is not recorded: a failed sign-in log that
+          // fills with addresses is a second place the roll leaks from.
+          metadata: { outcome: 'denied' },
+        });
+        // One message for a wrong address and a wrong password alike.
+        res.status(401).json({ error: 'Those details were not accepted.' });
+        return;
+      }
+
+      ctx.audit.append({
+        event: 'ADMIN_SIGN_IN',
+        actorType: 'admin',
+        metadata: { outcome: 'allowed' },
+      });
+      res.json({
+        token: issueSessionToken(ctx.env.ADMIN_API_TOKEN, ctx.env.MONITOR_SESSION_HOURS * 3_600_000),
+        expiresInHours: ctx.env.MONITOR_SESSION_HOURS,
+      });
+    },
+  );
+
   router.use(requireAdmin(ctx));
 
   router.get('/results', (_req, res) => {
@@ -100,6 +147,11 @@ export function adminRoutes(ctx: AppContext): Router {
         isSeedData: ctx.config.election.isSeedData === true,
       },
       authMode: ctx.identity.mode,
+      spreadsheet: {
+        mode: ctx.excel.mode,
+        /** Whether the count publishes itself, or waits to be published. */
+        auto: ctx.env.RESULTS_PUBLISH_ENABLED,
+      },
       generatedAt: new Date().toISOString(),
       turnout: ctx.results.turnout(),
       byHouse,
@@ -113,6 +165,30 @@ export function adminRoutes(ctx: AppContext): Router {
         votedAt: voter.votedAt,
       })),
     });
+  });
+
+  /**
+   * Take the election back to a clean roll. Destroys every ballot.
+   *
+   * Guarded by a phrase, not by a flag: the body must carry the election's own
+   * name, typed out. A stray POST, a replayed request, a curl from history —
+   * none of them wipe an election, because none of them happen to contain it.
+   * The same phrase is what the desk makes somebody type.
+   */
+  router.post('/reset', async (req, res, next) => {
+    const { confirm, clearSpreadsheet } = (req.body ?? {}) as {
+      confirm?: string;
+      clearSpreadsheet?: boolean;
+    };
+    try {
+      const summary = await ctx.reset.run(confirm ?? '', {
+        ...(clearSpreadsheet === undefined ? {} : { clearSpreadsheet }),
+      });
+      ctx.publisher.restart();
+      res.json(summary);
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.get('/audit', (req, res) => {

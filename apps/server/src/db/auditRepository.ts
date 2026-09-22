@@ -15,6 +15,13 @@ export const AUDIT_EVENTS = [
   'ELECTION_CONFIG_LOADED',
   'RESULTS_GENERATED',
   'ADMIN_ACCESS',
+  'ADMIN_SIGN_IN',
+  /**
+   * The election was wiped back to a clean roll. Recorded rather than erased:
+   * the log survives a reset precisely so that a count which vanished is
+   * provably a reset and not a disappearance.
+   */
+  'ELECTION_RESET',
   'SYNC_FAILED',
   'SYNC_DEAD_LETTERED',
 ] as const;

@@ -27,8 +27,20 @@ export function openDatabase(path: string): Db {
   // and a vote that survives the response but not a power cut is not a vote.
   db.pragma('synchronous = FULL');
 
-  db.exec(readFileSync(SCHEMA_PATH, 'utf8'));
+  applySchema(db);
   return db;
+}
+
+/**
+ * Create every table, index and immutability trigger that is missing.
+ *
+ * Idempotent (`CREATE ... IF NOT EXISTS` throughout), which is what lets a
+ * reset drop the vote-bearing tables and rebuild them — triggers included —
+ * from the same file the database was built from, rather than from a second
+ * copy of the schema that could drift from it.
+ */
+export function applySchema(db: Db): void {
+  db.exec(readFileSync(SCHEMA_PATH, 'utf8'));
 }
 
 /**

@@ -172,7 +172,10 @@ export class ExcelGraphRepository implements SpreadsheetRepository {
         name: r.name,
         email: r.email,
         type: r.type,
-        house: r.houseId ?? '',
+        // `houseId` is the fallback for a row queued by an earlier build: an
+        // outbox that survives a deploy should mirror a coarse house rather
+        // than none at all.
+        house: r.house || r.houseId || '',
         has_voted: r.hasVoted,
         voted_at: r.votedAt,
       })),
@@ -234,6 +237,22 @@ export class ExcelGraphRepository implements SpreadsheetRepository {
         tied: r.tied,
         generated_at: r.generatedAt,
       })),
+    );
+  }
+
+  /**
+   * Not implemented for Graph.
+   *
+   * Clearing a workbook table is a different Graph call per table and this
+   * deployment path is the unused one (Mesa runs on Sheets). Refusing loudly
+   * is right: a reset that silently skipped the mirror would leave the
+   * workbook holding a full set of ballots the database no longer has.
+   */
+  async clearElectionData(): Promise<void> {
+    throw new SpreadsheetPermanentError(
+      'Clearing the workbook is not implemented for the Microsoft Graph backend. ' +
+        'Empty the Voters, Ballots and Results tables by hand, then reset again ' +
+        'with the spreadsheet step turned off.',
     );
   }
 

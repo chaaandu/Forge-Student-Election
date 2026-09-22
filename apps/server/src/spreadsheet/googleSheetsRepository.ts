@@ -291,7 +291,10 @@ export class GoogleSheetsRepository implements SpreadsheetRepository {
         name: r.name,
         email: r.email,
         type: r.type,
-        house: r.houseId ?? '',
+        // `houseId` is the fallback for a row queued by an earlier build: an
+        // outbox that survives a deploy should mirror a coarse house rather
+        // than none at all.
+        house: r.house || r.houseId || '',
         has_voted: r.hasVoted,
         voted_at: r.votedAt,
       })),
@@ -353,6 +356,23 @@ export class GoogleSheetsRepository implements SpreadsheetRepository {
         generated_at: r.generatedAt,
       })),
     );
+  }
+
+  /**
+   * Clear the three tabs the election writes to, from row 2 down.
+   *
+   * Row 1 is left standing: the header row is what every append positions its
+   * values by, and clearing it would leave the next vote unable to find its
+   * column.
+   */
+  async clearElectionData(): Promise<void> {
+    for (const tab of [this.config.tabs.voters, this.config.tabs.ballots, this.config.tabs.results]) {
+      const range = encodeURIComponent(`${tab}!A2:Z`);
+      await this.call(`${SHEETS}/${this.config.spreadsheetId}/values/${range}:clear`, {
+        method: 'POST',
+        body: '{}',
+      });
+    }
   }
 
   async health(): Promise<SpreadsheetHealth> {

@@ -14,6 +14,8 @@ import {
 } from './spreadsheet/googleSheetsRepository.js';
 import { LocalSpoolRepository } from './spreadsheet/spoolRepository.js';
 import type { SpreadsheetRepository } from './spreadsheet/types.js';
+import { ElectionReset } from './services/electionReset.js';
+import { ResultsPublisher } from './services/resultsPublisher.js';
 import { ResultsService } from './services/resultsService.js';
 import { SessionService } from './services/sessionService.js';
 import { SyncWorker } from './services/syncWorker.js';
@@ -32,6 +34,8 @@ export interface AppContext {
   readonly sessions: SessionService;
   readonly voting: VotingService;
   readonly results: ResultsService;
+  readonly publisher: ResultsPublisher;
+  readonly reset: ElectionReset;
   readonly excel: SpreadsheetRepository;
   readonly sync: SyncWorker;
   readonly identity: AnyIdentityProvider;
@@ -135,6 +139,7 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
   });
 
   const excel = options.excel ?? createSpreadsheetRepository(env);
+  const results = new ResultsService(repo, audit, outbox, config, voters);
 
   return {
     env,
@@ -149,7 +154,11 @@ export function createContext(options: CreateContextOptions = {}): AppContext {
     excel,
     sessions: new SessionService(db, repo, env.HASH_SALT, env.SESSION_TTL_MINUTES),
     voting: new VotingService(db, repo, audit, idempotency, outbox, config, configVersion),
-    results: new ResultsService(repo, audit, outbox, config, voters),
+    results: results,
+    publisher: new ResultsPublisher(db, repo, results, config.election.id, {
+      intervalMs: env.RESULTS_PUBLISH_INTERVAL_MS,
+    }),
+    reset: new ElectionReset(db, repo, audit, excel, config, voters),
     sync: new SyncWorker(outbox, excel, audit, {
       intervalMs: env.SYNC_INTERVAL_MS,
       batchSize: env.SYNC_BATCH_SIZE,

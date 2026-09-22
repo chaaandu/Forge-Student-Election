@@ -145,9 +145,207 @@ describe('the invigilator monitor', () => {
     expect(page).toMatch(/@media\s*\(min-width:\s*941px\)\s*\{\s*\.side/);
   });
 
+  it('offers the count as a second tab rather than a second page', async () => {
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+    expect(page).toContain('role="tablist"');
+    expect(page).toContain('aria-controls="paneRoom"');
+    expect(page).toContain('aria-controls="paneResults"');
+  });
+
   it('flags a practice run so nobody mistakes it for the real thing', async () => {
     const body = await (await monitor()).json();
     expect(body.election).toHaveProperty('isSeedData');
     expect(body.authMode).toBe('supervised');
+  });
+});
+
+describe('the reset control', () => {
+  it('keeps the destructive button dead until the name is typed out', async () => {
+    const { JSDOM } = await import('jsdom');
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+
+    const dom = new JSDOM(page, {
+      url: `${server.url}/monitor`,
+      runScripts: 'dangerously',
+      beforeParse(window) {
+        window.sessionStorage.setItem('mesa.monitor.token', TEST_ADMIN_TOKEN);
+        (window as unknown as { fetch: typeof fetch }).fetch = ((
+          input: string,
+          init?: RequestInit,
+        ) => fetch(new URL(input, server.url).toString(), init)) as typeof fetch;
+      },
+    });
+
+    const document = dom.window.document;
+    try {
+      // The election's own name is the phrase, so wait for the payload that
+      // carries it rather than for markup that ships with a placeholder.
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        if (document.getElementById('title')?.textContent === 'Test Election') break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(document.getElementById('resetCount')?.textContent).toBe('0 ballots');
+
+      // Folded away until asked for: this destroys every ballot and the page it
+      // lives on is open on a desk all day.
+      expect(document.getElementById('resetForm')?.hasAttribute('hidden')).toBe(true);
+      (document.getElementById('resetOpen') as HTMLElement).click();
+      expect(document.getElementById('resetForm')?.hasAttribute('hidden')).toBe(false);
+
+      const go = document.getElementById('resetGo') as HTMLButtonElement;
+      const phrase = document.getElementById('resetPhrase') as HTMLInputElement;
+      expect(go.disabled).toBe(true);
+
+      const type = (value: string) => {
+        phrase.value = value;
+        phrase.dispatchEvent(new dom.window.Event('input'));
+      };
+
+      type('Test');
+      expect(go.disabled).toBe(true);
+      type('test election'); // right words, wrong case
+      expect(go.disabled).toBe(true);
+      type('Test Election');
+      expect(go.disabled).toBe(false);
+    } finally {
+      dom.window.close();
+    }
+  });
+});
+
+/**
+ * The results tab, driven for real.
+ *
+ * The page is rendered in jsdom with its own script running and `fetch`
+ * pointed at the live test server, so these assert what an invigilator
+ * actually sees rather than what the source looks like.
+ */
+describe('the results tab', () => {
+  async function openResults() {
+    const { JSDOM } = await import('jsdom');
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+
+    const dom = new JSDOM(page, {
+      url: `${server.url}/monitor#results`,
+      runScripts: 'dangerously',
+      beforeParse(window) {
+        window.sessionStorage.setItem('mesa.monitor.token', TEST_ADMIN_TOKEN);
+        // Straight through to the server under test: the dashboard is only
+        // worth asserting against the payloads it will really be given.
+        (window as unknown as { fetch: typeof fetch }).fetch = ((
+          input: string,
+          init?: RequestInit,
+        ) => fetch(new URL(input, server.url).toString(), init)) as typeof fetch;
+      },
+    });
+
+    const document = dom.window.document;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (document.querySelectorAll('#contests .contest').length > 0) return { dom, document };
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    dom.window.close();
+    throw new Error('the results tab never rendered a contest');
+  }
+
+  const rowFor = (document: Document, title: string) =>
+    [...document.querySelectorAll('#contests .contest')].find(
+      (row) => row.querySelector('.contest__pos')?.textContent?.trim() === title,
+    );
+
+  it('is one line per contest, and nothing else', async () => {
+    const token = await checkIn(server, 'stu-1');
+    await submitBallot(server, token, STUDENT_BALLOT);
+
+    const { dom, document } = await openResults();
+    try {
+      // Four in the harness election: two leadership, two house captain. One
+      // line each — the whole answer, with no second rendering of the same ten
+      // facts underneath it.
+      expect(document.querySelectorAll('#contests .contest')).toHaveLength(4);
+      expect(document.getElementById('paneResults')?.hasAttribute('hidden')).toBe(false);
+      expect(document.getElementById('paneRoom')?.hasAttribute('hidden')).toBe(true);
+
+      const president = rowFor(document, 'President');
+      expect(president?.textContent).toContain('Alpha President');
+      expect(president?.textContent).toContain('100%');
+      // Closed by default: the detail is a click away, not on screen.
+      expect(president?.querySelector('.contest__open')).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('opens one contest at a time, and closes the last one', async () => {
+    const token = await checkIn(server, 'stu-1');
+    await submitBallot(server, token, STUDENT_BALLOT);
+
+    const { dom, document } = await openResults();
+    try {
+      (rowFor(document, 'President')?.querySelector('.contest__row') as HTMLElement).click();
+      expect(rowFor(document, 'President')?.querySelector('.contest__open')).not.toBeNull();
+      // Every candidate, and where each one's votes came from, in words.
+      expect(rowFor(document, 'President')?.textContent).toContain('Beta President');
+      expect(rowFor(document, 'President')?.textContent).toContain('1 of 1 student');
+
+      (rowFor(document, 'Vice President')?.querySelector('.contest__row') as HTMLElement).click();
+      expect(document.querySelectorAll('.contest__open')).toHaveLength(1);
+      expect(rowFor(document, 'Vice President')?.querySelector('.contest__open')).not.toBeNull();
+
+      (rowFor(document, 'Vice President')?.querySelector('.contest__row') as HTMLElement).click();
+      expect(document.querySelectorAll('.contest__open')).toHaveLength(0);
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('draws a house contest in its own house colour and every other in ink', async () => {
+    await submitBallot(server, await checkIn(server, 'stu-1'), STUDENT_BALLOT);
+    // stu-2 is in the other house: without a vote there, that contest is
+    // silent and draws no bar at all, which is a different assertion.
+    await submitBallot(server, await checkIn(server, 'stu-2'), {
+      president: 'p1',
+      'vice-president': 'v1',
+      'house-captain-nilgiri': 'n1',
+    });
+
+    const { dom, document } = await openResults();
+    try {
+      const meterOf = (title: string) =>
+        (rowFor(document, title)?.querySelector('.contest__meter i') as HTMLElement | null)?.style
+          .background ?? '';
+
+      // Aravalli's colour in the harness config, as rgb() once jsdom has parsed it.
+      expect(meterOf('Aravalli House Captain')).toBe('rgb(222, 43, 31)');
+      expect(meterOf('Nilgiri House Captain')).toBe('rgb(27, 77, 155)');
+      expect(meterOf('President')).toBe('rgb(20, 20, 20)');
+      expect(meterOf('Vice President')).toBe('rgb(20, 20, 20)');
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('says a contest has no votes rather than showing a winner on nothing', async () => {
+    const { dom, document } = await openResults();
+    try {
+      const president = rowFor(document, 'President');
+      expect(president?.textContent).toContain('No votes yet');
+      expect(president?.querySelector('.contest__pct')).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('never asks the count for the roll: results poll far slower than the room', async () => {
+    // Every calculation is an audited event. A four-second poll on this tab
+    // would bury the audit log under the act of watching it.
+    const page = await (await fetch(`${server.url}/monitor`)).text();
+    const roomInterval = Number(page.match(/setInterval\(load, (\d+)\)/)?.[1]);
+    const resultsInterval = Number(
+      page.match(/setInterval\(function \(\) \{ loadResults\(true\); \}, (\d+)\)/)?.[1],
+    );
+
+    expect(roomInterval).toBeGreaterThan(0);
+    expect(resultsInterval).toBeGreaterThanOrEqual(roomInterval * 4);
   });
 });

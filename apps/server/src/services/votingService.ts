@@ -66,6 +66,12 @@ export class VotingService {
     private readonly configVersion: string,
   ) {}
 
+  /** The house's display name, for the downstream mirror. Never an election rule. */
+  private houseName(houseId: string | null | undefined): string {
+    if (!houseId) return '';
+    return this.config.houses.find((h) => h.id === houseId)?.name ?? houseId;
+  }
+
   submitBallot(request: SubmitBallotRequest, now: Date = new Date()): SubmitBallotResult {
     try {
       return this.attempt(request, now);
@@ -228,6 +234,7 @@ export class VotingService {
           email: current.email,
           type: current.type,
           houseId: current.houseId ?? null,
+          house: this.houseName(current.houseId),
           hasVoted: true,
           votedAt: nowIso,
         },

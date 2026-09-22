@@ -17,6 +17,7 @@ function start(): void {
   });
 
   if (ctx.env.SYNC_ENABLED) ctx.sync.start();
+  if (ctx.env.RESULTS_PUBLISH_ENABLED) ctx.publisher.start();
 
   const server = app.listen(ctx.env.PORT, () => {
     console.log(
@@ -34,6 +35,13 @@ function start(): void {
           ? `  ⚠  DEMO DATA   these are not real candidates or real voters\n`
           : '') +
         `  excel mode    ${ctx.excel.mode}\n` +
+        `  results       ${
+          ctx.env.RESULTS_PUBLISH_ENABLED
+            ? `publish to the sheet automatically, every ${
+                ctx.env.RESULTS_PUBLISH_INTERVAL_MS / 1000
+              }s if the count moved`
+            : 'published by hand — npm run results:publish'
+        }\n` +
         `  voters        ${ctx.voters.length}\n` +
         `  listening     http://localhost:${ctx.env.PORT}\n`,
     );
@@ -42,6 +50,7 @@ function start(): void {
   const shutdown = (signal: string) => {
     console.log(`\n${signal} received — draining.`);
     ctx.sync.stop();
+    ctx.publisher.stop();
     server.close(() => {
       ctx.db.close();
       process.exit(0);

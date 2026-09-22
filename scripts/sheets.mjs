@@ -254,67 +254,235 @@ await writeValues(
 console.log(`  + seeded ${roll.length} voters and ${config.candidates.length} candidates`);
 
 // 4 ── the Dashboard: live formulas over whatever the election has written
-const R = TABS.results;
-const houseRows = config.houses.map((h, i) => {
-  const row = 16 + i;
-  return [
-    h.name,
-    `=COUNTIF('${TABS.voters}'!E:E,$A${row})`,
-    `=COUNTIF('${TABS.roll}'!E:E,$A${row})`,
-    `=IF($C${row}=0,0,$B${row}/$C${row})`,
-    `=IF($C${row}=0,"",REPT("█",ROUND($D${row}*24)))`,
-  ];
+//
+// Built row by row rather than at hand-counted offsets. Every formula refers to
+// rows by the variable that created them, so adding a house, a position or a
+// candidate cannot quietly point a COUNTIF at the wrong cell.
+const R = `'${TABS.results}'`;
+const V = `'${TABS.voters}'`;
+const L = `'${TABS.roll}'`;
+const INK = '#141414';
+
+// Every reference below is a WHOLE column — `M:M`, never `M2:M`.
+//
+// The server appends with `insertDataOption=INSERT_ROWS`, and Google adjusts
+// relative references across the whole spreadsheet when rows are inserted. A
+// formula written as `Results!M2:M` therefore becomes `Results!M27:M` the
+// moment 25 result rows arrive, and the Dashboard quietly reads past its own
+// data and reports "Not published yet" over a full set of results. A
+// whole-column reference has no row part to shift.
+//
+// The cost is that the header row is inside every range. It is text, so it
+// never satisfies a `=$A28` or `=1` condition, and the two places that count
+// rows subtract it explicitly.
+
+const houseById = new Map(config.houses.map((h) => [h.id, h]));
+const inOrder = [...config.positions].sort((a, b) => a.order - b.order);
+
+const rows = [];
+/** Pushes a row and returns its 1-based row number. */
+const line = (...cells) => rows.push(cells);
+const gap = () => rows.push([]);
+/** The row a formula is about to occupy, for the many rows that refer to themselves. */
+const next = () => rows.length + 1;
+
+const paint = [];    // coloured bar glyphs: { row, column, color }
+const numbers = [];  // number formats:      { row, column, type, pattern }
+const titles = [];   // section headings:    row numbers
+const heads = [];    // column header rows:  row numbers
+
+const percent = (row, column) => numbers.push({ row, column, type: 'PERCENT', pattern: '0.0%' });
+// student_percentage and employee_percentage already arrive multiplied by 100,
+// so they take a literal suffix rather than a percent format that would
+// multiply them a second time.
+const outOfHundred = (row, column) => numbers.push({ row, column, type: 'NUMBER', pattern: '0.0"%"' });
+
+line(config.election.name.toUpperCase());
+line('Live. Everything below updates itself as votes arrive.');
+gap();
+
+// ── turnout ──────────────────────────────────────────────────────────────
+titles.push(line('TURNOUT'));
+const rVoted = line('Voted', `=COUNTA(${V}!A:A)-1`);
+const rRoll = line('On the roll', `=COUNTA(${L}!A:A)-1`);
+const rRate = next();
+line(
+  'Turnout',
+  `=IF($B${rRoll}=0,0,$B${rVoted}/$B${rRoll})`,
+  `=IF($B${rRoll}=0,"",REPT("█",ROUND($B${rRate}*40)))`,
+);
+percent(rRate, 1);
+paint.push({ row: rRate, column: 2, color: INK });
+
+gap();
+heads.push(line('', 'Voted', 'On roll', 'Turnout', ''));
+for (const [label, type] of [['Students', 'student'], ['Employees', 'employee']]) {
+  const r = next();
+  line(
+    label,
+    `=COUNTIF(${V}!D:D,"${type}")`,
+    `=COUNTIF(${L}!D:D,"${type}")`,
+    `=IF($C${r}=0,0,$B${r}/$C${r})`,
+    `=IF($C${r}=0,"",REPT("█",ROUND($D${r}*24)))`,
+  );
+  percent(r, 3);
+  paint.push({ row: r, column: 4, color: INK });
+}
+
+// ── by house ─────────────────────────────────────────────────────────────
+gap();
+gap();
+titles.push(line('BY HOUSE'));
+gap();
+heads.push(line('House', 'Voted', 'On roll', 'Turnout', ''));
+for (const house of config.houses) {
+  const r = next();
+  line(
+    house.name,
+    `=COUNTIF(${V}!E:E,$A${r})`,
+    `=COUNTIF(${L}!E:E,$A${r})`,
+    `=IF($C${r}=0,0,$B${r}/$C${r})`,
+    `=IF($C${r}=0,"",REPT("█",ROUND($D${r}*24)))`,
+  );
+  percent(r, 3);
+  // The house's own colour, not a black block. Four lanes in four colours read
+  // as a race; four lanes in black read as a table.
+  paint.push({ row: r, column: 4, color: house.color });
+}
+
+// ── results ──────────────────────────────────────────────────────────────
+gap();
+gap();
+titles.push(line('RESULTS'));
+const rSnap = next();
+line(
+  'Snapshot',
+  // Guarded with a count rather than IFERROR: on an unpublished sheet only
+  // the header is there, and INDEX(range, 0) is a whole-column spill rather
+  // than an error — so IFERROR never sees it and the cell reads #REF!
+  // instead of saying what to do about it.
+  `=IF(COUNTA(${R}!M:M)<2,"Not published yet — run: npm run results:publish",` +
+    `INDEX(${R}!M:M,COUNTA(${R}!M:M)))`,
+);
+// Every formula below is scoped to this one timestamp, so a dashboard read
+// halfway through a publish shows the previous complete count rather than a
+// half-written one.
+const SNAP = `$B$${rSnap}`;
+
+gap();
+titles.push(line('WHO IS WINNING'));
+heads.push(line('Position', 'Winner', 'Weighted score', '', 'Status'));
+for (const position of inOrder) {
+  const r = next();
+  const house = position.houseId ? houseById.get(position.houseId) : null;
+  const top = `(${R}!A:A=$A${r})*(${R}!M:M=${SNAP})*(${R}!K:K=1)`;
+  line(
+    position.title,
+    // Joined rather than picked: a tie has more than one name at rank 1, and
+    // this sheet reports ties instead of quietly choosing between them.
+    `=IFERROR(TEXTJOIN(" · ",TRUE,FILTER(${R}!C:C,${top})),"")`,
+    `=IFERROR(INDEX(FILTER(${R}!J:J,${top}),1),"")`,
+    `=IF($C${r}="","",REPT("█",ROUND($C${r}*30)))`,
+    `=IF($B${r}="","Not published yet",` +
+      `IF($C${r}=0,"No votes yet",` +
+      `IF(COUNTIFS(${R}!A:A,$A${r},${R}!M:M,${SNAP},${R}!K:K,1)>1,"Tied","Leading")))`,
+  );
+  percent(r, 2);
+  paint.push({ row: r, column: 3, color: house ? house.color : INK });
+}
+
+// ── every candidate ──────────────────────────────────────────────────────
+gap();
+gap();
+titles.push(line('EVERY CANDIDATE'));
+heads.push(line(
+  'Position', 'Candidate',
+  'Student votes', 'Student share', 'Employee votes', 'Employee share',
+  'Weighted score', 'Rank', '',
+));
+for (const position of inOrder) {
+  const house = position.houseId ? houseById.get(position.houseId) : null;
+  for (const candidate of config.candidates.filter((c) => c.positionId === position.id)) {
+    const r = next();
+    // Position AND candidate: one person can stand in two contests — a house
+    // captain is also eligible to stand for a leadership post — so the name
+    // alone does not identify a row.
+    const where = `(${R}!A:A=$A${r})*(${R}!C:C=$B${r})*(${R}!M:M=${SNAP})`;
+    const pick = (column) => `=IFERROR(INDEX(FILTER(${R}!${column}:${column},${where}),1),"")`;
+    line(
+      position.title, candidate.name,
+      pick('D'), pick('E'), pick('G'), pick('H'), pick('J'), pick('K'),
+      `=IF($G${r}="","",REPT("█",ROUND($G${r}*30)))`,
+    );
+    outOfHundred(r, 3);
+    outOfHundred(r, 5);
+    percent(r, 6);
+    paint.push({ row: r, column: 8, color: house ? house.color : INK });
+  }
+}
+
+const dashboardId = existing.get(TABS.dashboard);
+
+// Written whole each time, so a dashboard that grew shorter — a position
+// removed, a candidate withdrawn — leaves nothing stale below it. Only the
+// Dashboard is ever cleared; it holds formulas, never election data.
+await api(`/values/${encodeURIComponent(`${TABS.dashboard}!A1:Z2000`)}:clear`, {
+  method: 'POST',
+  body: '{}',
+});
+await writeValues(`${TABS.dashboard}!A1`, rows);
+console.log(`  + dashboard: ${inOrder.length} contests, ${config.candidates.length} candidates`);
+
+// 5 ── formatting
+const rgb = (hex) => {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  return { red: ((n >> 16) & 255) / 255, green: ((n >> 8) & 255) / 255, blue: (n & 255) / 255 };
+};
+const cell = (row, column) => ({
+  sheetId: dashboardId,
+  startRowIndex: row - 1,
+  endRowIndex: row,
+  startColumnIndex: column,
+  endColumnIndex: column + 1,
+});
+const band = (row, columns) => ({
+  sheetId: dashboardId,
+  startRowIndex: row - 1,
+  endRowIndex: row,
+  startColumnIndex: 0,
+  endColumnIndex: columns,
 });
 
-await writeValues(`${TABS.dashboard}!A1`, [
-  [config.election.name.toUpperCase()],
-  ['Live. Everything below updates itself as votes arrive.'],
-  [],
-  ['TURNOUT'],
-  ['Voted', `=COUNTA('${TABS.voters}'!A2:A)`],
-  ['On the roll', `=COUNTA('${TABS.roll}'!A2:A)`],
-  ['Turnout', '=IF($B6=0,0,$B5/$B6)'],
-  [],
-  ['Students', `=COUNTIF('${TABS.voters}'!D:D,"student")`, `=COUNTIF('${TABS.roll}'!D:D,"student")`, '=IF($C9=0,0,$B9/$C9)'],
-  ['Employees', `=COUNTIF('${TABS.voters}'!D:D,"employee")`, `=COUNTIF('${TABS.roll}'!D:D,"employee")`, '=IF($C10=0,0,$B10/$C10)'],
-  [],
-  [],
-  ['BY HOUSE'],
-  [],
-  ['House', 'Voted', 'On roll', 'Turnout', ''],
-  ...houseRows,
-]);
-
-const firstResultRow = 16 + config.houses.length + 3;
-await writeValues(`${TABS.dashboard}!A${firstResultRow - 2}`, [
-  ['RESULTS'],
-  [
-    'Snapshot',
-    `=IFERROR(INDEX('${R}'!M2:M,COUNTA('${R}'!M2:M)),"Not published yet — run the publish step")`,
-  ],
-  [],
-  ['WHO IS WINNING'],
-  ['Position', 'Winner', 'Weighted score', ''],
-  [
-    `=IFERROR(SORT(FILTER({'${R}'!A2:A,'${R}'!C2:C,'${R}'!J2:J},('${R}'!M2:M=$B${firstResultRow - 1})*('${R}'!K2:K=1)),1,TRUE),"")`,
-  ],
-]);
-
-const everyRow = firstResultRow + 4 + config.positions.length + 3;
-await writeValues(`${TABS.dashboard}!A${everyRow - 2}`, [
-  ['EVERY CANDIDATE'],
-  ['Position', 'Candidate', 'Student votes', 'Employee votes', 'Weighted score', 'Rank'],
-  [
-    `=IFERROR(SORT(FILTER({'${R}'!A2:A,'${R}'!C2:C,'${R}'!D2:D,'${R}'!G2:G,'${R}'!J2:J,'${R}'!K2:K},'${R}'!M2:M=$B${firstResultRow - 1}),1,TRUE,6,TRUE),"")`,
-  ],
-]);
-console.log('  + dashboard formulas written');
-
-// 5 ── formatting: frozen headers, bold, sensible widths, percent columns
 const formatting = [];
+
+/**
+ * Left-align a whole tab.
+ *
+ * Sheets right-aligns numbers by default, which puts every count and
+ * percentage hard against the next column and a long way from the label it
+ * belongs to. Applied to the columns rather than to a block of rows, so rows
+ * the election appends later are aligned too — there is nobody to re-run
+ * setup mid-count.
+ */
+const alignLeft = (sheetId, columns) => ({
+  repeatCell: {
+    range: { sheetId, startColumnIndex: 0, endColumnIndex: columns },
+    cell: { userEnteredFormat: { horizontalAlignment: 'LEFT' } },
+    fields: 'userEnteredFormat.horizontalAlignment',
+  },
+});
+
+// The data tabs: a frozen, bold header row and columns wide enough to read.
 for (const [title, id] of existing) {
+  if (title === TABS.dashboard) continue;
   formatting.push(
-    { updateSheetProperties: { properties: { sheetId: id, gridProperties: { frozenRowCount: 1 } }, fields: 'gridProperties.frozenRowCount' } },
+    alignLeft(id, 13),
+    {
+      updateSheetProperties: {
+        properties: { sheetId: id, gridProperties: { frozenRowCount: 1 } },
+        fields: 'gridProperties.frozenRowCount',
+      },
+    },
     {
       repeatCell: {
         range: { sheetId: id, startRowIndex: 0, endRowIndex: 1 },
@@ -327,14 +495,119 @@ for (const [title, id] of existing) {
         fields: 'userEnteredFormat(textFormat,backgroundColor)',
       },
     },
-    { autoResizeDimensions: { dimensions: { sheetId: id, dimension: 'COLUMNS', startIndex: 0, endIndex: 13 } } },
+    {
+      autoResizeDimensions: {
+        dimensions: { sheetId: id, dimension: 'COLUMNS', startIndex: 0, endIndex: 13 },
+      },
+    },
   );
-  if (title === TABS.dashboard) {
-    // The Dashboard has its own headings, not a header row.
-    formatting.pop();
-    formatting.splice(formatting.length - 2, 1);
-  }
 }
+
+// The Dashboard has its own typography: a masthead, section rules, and one
+// coloured bar per row.
+formatting.push(
+  alignLeft(dashboardId, 9),
+  {
+    repeatCell: {
+      range: band(1, 9),
+      cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 16 } } },
+      fields: 'userEnteredFormat.textFormat',
+    },
+  },
+  {
+    repeatCell: {
+      range: band(2, 9),
+      cell: {
+        userEnteredFormat: {
+          textFormat: { italic: true, foregroundColor: rgb('#7D766C') },
+        },
+      },
+      fields: 'userEnteredFormat.textFormat',
+    },
+  },
+);
+
+for (const row of titles) {
+  formatting.push({
+    repeatCell: {
+      range: band(row, 9),
+      cell: {
+        userEnteredFormat: {
+          textFormat: { bold: true },
+          backgroundColor: rgb('#141414'),
+        },
+      },
+      fields: 'userEnteredFormat(textFormat,backgroundColor)',
+    },
+  });
+  formatting.push({
+    repeatCell: {
+      range: cell(row, 0),
+      cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: rgb('#FFC20E') } } },
+      fields: 'userEnteredFormat.textFormat',
+    },
+  });
+}
+
+for (const row of heads) {
+  formatting.push({
+    repeatCell: {
+      range: band(row, 9),
+      cell: {
+        userEnteredFormat: {
+          textFormat: { bold: true, foregroundColor: rgb('#514D48') },
+          backgroundColor: rgb('#F2EDE1'),
+        },
+      },
+      fields: 'userEnteredFormat(textFormat,backgroundColor)',
+    },
+  });
+}
+
+for (const { row, column, color } of paint) {
+  formatting.push({
+    repeatCell: {
+      range: cell(row, column),
+      cell: { userEnteredFormat: { textFormat: { foregroundColor: rgb(color) } } },
+      fields: 'userEnteredFormat.textFormat.foregroundColor',
+    },
+  });
+}
+
+for (const { row, column, type, pattern } of numbers) {
+  formatting.push({
+    repeatCell: {
+      range: cell(row, column),
+      cell: { userEnteredFormat: { numberFormat: { type, pattern } } },
+      fields: 'userEnteredFormat.numberFormat',
+    },
+  });
+}
+
+formatting.push(
+  {
+    updateDimensionProperties: {
+      range: { sheetId: dashboardId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+      properties: { pixelSize: 210 },
+      fields: 'pixelSize',
+    },
+  },
+  {
+    updateDimensionProperties: {
+      range: { sheetId: dashboardId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+      properties: { pixelSize: 210 },
+      fields: 'pixelSize',
+    },
+  },
+  {
+    updateDimensionProperties: {
+      range: { sheetId: dashboardId, dimension: 'COLUMNS', startIndex: 2, endIndex: 9 },
+      properties: { pixelSize: 130 },
+      fields: 'pixelSize',
+    },
+  },
+);
+
 await batch(formatting);
 console.log('  + formatting applied');
 
@@ -344,4 +617,5 @@ console.log('    1. Set SPREADSHEET_MODE=sheets in apps/server/.env and restart 
 console.log('    2. Votes appear in Voters and Ballots as they are cast.');
 console.log('    3. Publish results whenever you want a fresh snapshot:');
 console.log('         npm run results:publish');
-console.log('    4. Add charts from the Dashboard ranges — see docs/google-sheets-setup.md §5.\n');
+console.log('    4. The Dashboard reads on its own; for Google charts over the same');
+console.log('       ranges see docs/google-sheets-setup.md §6.\n');

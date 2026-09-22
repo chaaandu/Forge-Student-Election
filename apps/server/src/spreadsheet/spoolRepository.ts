@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { appendFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type {
   BallotSelectionRow,
@@ -43,6 +43,12 @@ export class LocalSpoolRepository implements SpreadsheetRepository {
 
   async appendResults(rows: readonly ResultRow[]): Promise<void> {
     this.write('results.jsonl', rows);
+  }
+
+  async clearElectionData(): Promise<void> {
+    for (const file of ['voters.jsonl', 'ballots.jsonl', 'results.jsonl']) {
+      rmSync(join(resolve(this.dir), file), { force: true });
+    }
   }
 
   async health(): Promise<SpreadsheetHealth> {
