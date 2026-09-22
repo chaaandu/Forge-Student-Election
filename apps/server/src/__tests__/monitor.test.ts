@@ -315,9 +315,15 @@ describe('the results tab', () => {
         (rowFor(document, title)?.querySelector('.contest__meter i') as HTMLElement | null)?.style
           .background ?? '';
 
+      // The titles are the harness config's own, verbatim. They were written
+      // here as "Aravalli House Captain", which matches no row, so `rowFor`
+      // returned nothing and the assertion compared '' against a colour — a
+      // test that could only ever fail, and which said "wrong colour" while
+      // meaning "no such contest".
+      //
       // Aravalli's colour in the harness config, as rgb() once jsdom has parsed it.
-      expect(meterOf('Aravalli House Captain')).toBe('rgb(222, 43, 31)');
-      expect(meterOf('Nilgiri House Captain')).toBe('rgb(27, 77, 155)');
+      expect(meterOf('House Captain — Aravalli')).toBe('rgb(222, 43, 31)');
+      expect(meterOf('House Captain — Nilgiri')).toBe('rgb(27, 77, 155)');
       expect(meterOf('President')).toBe('rgb(20, 20, 20)');
       expect(meterOf('Vice President')).toBe('rgb(20, 20, 20)');
     } finally {

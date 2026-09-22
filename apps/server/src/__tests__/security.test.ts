@@ -172,7 +172,16 @@ describe('the voter roll is not a directory', () => {
   });
 
   it('masks an email without revealing the local part', () => {
-    expect(maskEmail('chandu@mesa.edu')).toBe('ch••••@mesa.edu');
+    /*
+      A FIXED three dots, not one per hidden character.
+
+      The mask used to be `'\u2022'.repeat(max(3, local.length - 2))`, which
+      published the exact length of every local part on a public-facing search
+      — the one thing this test is named for not doing. `maskEmail` was
+      tightened and this was left asserting the old, leakier output.
+    */
+    expect(maskEmail('chandu@mesa.edu')).toBe('ch•••@mesa.edu');
+    expect(maskEmail('chan@mesa.edu')).toBe('ch•••@mesa.edu');
     expect(maskEmail('a@mesa.edu')).toBe('a•••@mesa.edu');
   });
 
