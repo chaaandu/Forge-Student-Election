@@ -336,7 +336,20 @@ function doGet(e) {
     if (action === 'turnout') return json_(turnout_());
     return fail_('NOT_FOUND', 'Unknown action.', 404);
   } catch (err) {
-    return fail_('SERVER_ERROR', String(err && err.message ? err.message : err), 500);
+    /*
+      Keep the code the thrower chose.
+
+      This flattened everything to SERVER_ERROR/500, which loses the one thing
+      the client branches on. A locked device asking for a roll search came back
+      as a 500 rather than LOCKED, so the ballot showed a generic failure
+      instead of returning to the unlock screen — the recovery path existed and
+      could never fire. doPost had this right; doGet did not.
+    */
+    return fail_(
+      err && err.code ? err.code : 'SERVER_ERROR',
+      String(err && err.message ? err.message : err),
+      err && err.code ? 400 : 500,
+    );
   }
 }
 
