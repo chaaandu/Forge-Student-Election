@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { House } from '@mesa/election-core';
+import { houseCrestUrl } from '@/lib/houseCrest';
 import { Shape } from './Shape';
 
 export interface HouseCrestProps {
@@ -40,11 +41,14 @@ export function HouseCrest({
   onField = false,
 }: HouseCrestProps) {
   const [failed, setFailed] = useState(false);
-  const showImage = Boolean(house.crestUrl) && !failed;
+  // Resolved from the house id rather than read off the API response, so the
+  // artwork in this repository shows whether or not anything supplies a URL.
+  const crest = houseCrestUrl(house);
+  const showImage = !failed;
 
   const artwork = showImage ? (
     <img
-      src={house.crestUrl}
+      src={crest}
       alt=""
       aria-hidden="true"
       width={size}

@@ -102,6 +102,11 @@ function setup() {
   installTrigger_();
   SpreadsheetApp.flush();
 
+  // The roll is cached for half an hour, so a re-seed would otherwise not be
+  // visible to the ballot until that expired — and `setup` is exactly what
+  // someone runs when the roll looks wrong.
+  CacheService.getScriptCache().remove('roll');
+
   return (
     'Ready. ' +
     (CONFIG.roll ? CONFIG.roll.length : 0) +

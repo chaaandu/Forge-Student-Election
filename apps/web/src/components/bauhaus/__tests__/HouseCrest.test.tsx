@@ -29,10 +29,17 @@ describe('HouseCrest', () => {
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
-  it('falls back to the elementary form when no crest is configured', () => {
+  it('finds its own artwork when nothing configures a crest', () => {
+    // The shields ship with the web app; the election data does not have to
+    // point at them. It used to, and when a generator stopped copying
+    // `crestUrl` every house silently rendered its drawn shape instead —
+    // four coloured blocks on the ballot, with nothing logged, because
+    // falling back is what the fallback is for.
+    //
+    // The guarantee that a broken image degrades to the drawn form is still
+    // covered, by the test above this one.
     const { container } = render(<HouseCrest house={{ ...samurai, crestUrl: undefined }} />);
-    expect(container.querySelector('img')).toBeNull();
-    expect(container.querySelector('svg')).toBeInTheDocument();
+    expect(container.querySelector('img')).toHaveAttribute('src', '/houses/samurai.png');
   });
 
   it('renders the house name when asked', () => {
