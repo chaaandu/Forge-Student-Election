@@ -81,6 +81,18 @@ function wallRoute(): Plugin {
 }
 
 export default defineConfig({
+  /*
+    Read .env from the repository root, alongside the server's.
+
+    Vite defaults `envDir` to its own root — `apps/web` — where no .env has ever
+    existed, so every VITE_ variable in the root .env was silently ignored and
+    the build fell back to its in-code defaults. That is invisible until it is
+    deployed: the SPA ships `dev-kiosk-token`, the server is configured with the
+    real one, and every roll search comes back 401 with nothing in any log
+    explaining why. The root .env.example documents these variables, so the root
+    is where they are expected to work.
+  */
+  envDir: fileURLToPath(new URL('../..', import.meta.url)),
   plugins: [react(), tailwindcss(), candidatePhotos(), wallRoute()],
   resolve: {
     alias: {

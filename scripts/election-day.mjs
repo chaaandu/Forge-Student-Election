@@ -147,7 +147,17 @@ function startTunnel() {
       // Said once, plainly, because it is the thing that goes wrong: the URL is
       // regenerated on every restart, so anything printed or pinned dies with
       // this process.
-      console.log('  This URL lasts only as long as this command. Restarting changes it.\n');
+      console.log('  This URL lasts only as long as this command. Restarting changes it.');
+      /*
+        Wait before opening it. The hostname is registered the moment this line
+        is printed, but it is not resolvable everywhere yet, and a lookup that
+        arrives too early is answered NXDOMAIN — which a home or venue router
+        then negative-caches for a minute or more. Measured here: queried
+        immediately, it failed for 65 seconds straight and then resolved;
+        queried once after a 35 second wait, it answered first time. So the
+        impatient check is what causes the outage it appears to be reporting.
+      */
+      console.log('  Give it ~30 seconds before opening it. Too early and it caches as broken.\n');
     }
   };
   tunnel.stdout.on('data', watch);
