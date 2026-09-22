@@ -45,7 +45,9 @@
     "photos:import": "node scripts/import-candidate-photos.mjs",
     "predev": "npm run photos:import --silent",
     "election:serve": "node scripts/election-day.mjs",
-    "election:tunnel": "node scripts/election-day.mjs --tunnel"
+    "election:tunnel": "node scripts/election-day.mjs --tunnel",
+    "appsscript:build": "node scripts/build-apps-script.mjs",
+    "appsscript:verify": "tsx scripts/verify-apps-script.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
