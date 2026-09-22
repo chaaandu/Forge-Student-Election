@@ -153,7 +153,26 @@ function installTrigger_() {
  * to click through.
  */
 function clearAllVotesFromMenu() {
-  var ui = SpreadsheetApp.getUi();
+  /*
+    Say which button this is, when it is pressed from the wrong place.
+
+    There is no UI to put a dialog in when this is run from the script editor,
+    and Google's own words for that are "Cannot call SpreadsheetApp.getUi()
+    from this context" — which names a method nobody clicked and gives no hint
+    that the same action is two menu items away. The typed-name guard lives in
+    those dialogs, so this deliberately does not fall back to clearing without
+    them.
+  */
+  var ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (noUi) {
+    throw new Error(
+      'Run this from the spreadsheet, not the script editor: reload the Sheet, then ' +
+        'Election \u2192 Clear all votes\u2026 . It has to ask you to type the election name ' +
+        'before it destroys anything, and there is nowhere to ask from here.',
+    );
+  }
 
   var ballots = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
   var voters = Math.max(0, sheet_(TABS.voters).getLastRow() - 1);
