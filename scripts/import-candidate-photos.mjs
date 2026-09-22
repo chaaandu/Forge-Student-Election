@@ -37,6 +37,41 @@ const DROP = 'assets/candidate-photos';
  */
 const OUT = 'apps/web/src/assets/candidates';
 const CONFIG = 'apps/server/config/election.config.json';
+
+/**
+ * Candidates whose crop needs nudging, by id.
+ *
+ * Normally empty, and normally should be. `optimise-photo.py` finds the face
+ * and places the crop around it, so a person who sat tall in the chair gets
+ * the same headroom as everyone else without being named here — which is
+ * exactly what the fixed crop this replaced could not do.
+ *
+ * An entry here OVERRIDES that and falls back to a blind crop, positioned by
+ * the number: 0 keeps the very top of the source photograph, 1 the very
+ * bottom. It is for the photo a detector reads wrongly — two faces in frame,
+ * or none it can find. Tune by eye: run the import and look at the card.
+ */
+const CROP_ANCHOR = {};
+
+/**
+ * Candidates whose crop needs widening, by id. The default is 6 face widths.
+ *
+ * A face detector measures a FACE, not a person, and two of them came back
+ * smaller than the head they belong to: hair falling either side of Rishika's
+ * cheeks narrows her box, and Sairaj's rises well above the eyebrow line the
+ * box stops at. Six of those narrower widths is a tighter crop than everyone
+ * else got — closer in, and less room above the head — which is exactly what
+ * these two looked like on the ballot next to Akash Ghorpade.
+ *
+ * Raising the number pulls the camera back for that one photograph: more room
+ * above the head, more of the room around them. Tune by eye — run the import
+ * and look at the card beside a photo that already looks right.
+ */
+const CROP_FACES = {
+  'president--sairaj-g': 7.2,
+  'community-lead-girl--rishika-choudhary': 7.6,
+};
+
 const ACCEPTED = ['.jpg', '.jpeg', '.png', '.webp'];
 
 mkdirSync(OUT, { recursive: true });
@@ -82,7 +117,15 @@ for (const candidate of config.candidates) {
 
   const source = join(DROP, file);
   const dest = join(OUT, `${candidate.id}.jpg`);
-  execFileSync('python3', ['scripts/optimise-photo.py', source, dest]);
+  const anchor = CROP_ANCHOR[candidate.id];
+  const faces = CROP_FACES[candidate.id];
+  execFileSync('python3', [
+    'scripts/optimise-photo.py',
+    source,
+    dest,
+    ...(anchor === undefined ? [] : ['--anchor', String(anchor)]),
+    ...(faces === undefined ? [] : ['--faces', String(faces)]),
+  ]);
 
   matched.push({
     name: candidate.name,

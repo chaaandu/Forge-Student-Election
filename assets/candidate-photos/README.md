@@ -34,10 +34,13 @@ shows up immediately rather than silently leaving someone blank.
 
 ## What makes a good photo
 
-- **Portrait or square.** The card crops to a wide box, biased upward — faces
-  sit high in a portrait, and a centre crop cuts foreheads.
+- **Any framing.** The import finds the face and crops around it, so a
+  full-length photo and a head-and-shoulders one both come out at the same
+  size with the same clear space above the head. You do not need to crop
+  anything yourself.
+- **One person in the photo.** With two faces in frame the crop goes to the
+  larger one, which may not be the candidate.
 - **At least 600px wide.** Bigger is fine; everything is resized down.
-- **Head and shoulders, face roughly centred left to right.**
 - JPG, PNG or WebP. Photos straight off a phone are fine — sideways ones are
   rotated automatically.
 
