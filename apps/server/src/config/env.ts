@@ -2,7 +2,18 @@ import { z } from 'zod';
 import { config as loadDotenv } from 'dotenv';
 import { fileURLToPath } from 'node:url';
 
-loadDotenv();
+/*
+  One .env, at the repository root, whatever the working directory is.
+
+  `loadDotenv()` reads `${cwd}/.env`, so the file that won depended on where the
+  command was launched from: `apps/server/.env` for `npm run dev -w @mesa/server`,
+  the root one for anything run from the root. Two files existed, and dotenv does
+  not overwrite a variable that is already set, so which KIOSK_TOKEN the server
+  ended up with was decided by cwd. The failure that produces is not an error
+  message — the server simply rejects every roll search from a kiosk built
+  against the other file's token.
+*/
+loadDotenv({ path: fileURLToPath(new URL('../../../../.env', import.meta.url)) });
 
 /**
  * Environment parsing with production guards.

@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Connect, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
@@ -55,8 +55,45 @@ function candidatePhotos(): Plugin {
   };
 }
 
+/**
+ * Serve the speeches wall at `/wall`, not `/wall.html`.
+ *
+ * It is a URL somebody types into a projector-room browser, or reads off a
+ * printed run sheet, so it should not carry a file extension. Vite's dev and
+ * preview servers both map a bare path to `index.html`, which would quietly
+ * hand the projector the ballot; this rewrites the path before that happens.
+ *
+ * The production server does the same thing in `apps/server/src/http/app.ts`,
+ * where the SPA catch-all would otherwise do exactly the same thing.
+ */
+function wallRoute(): Plugin {
+  const rewrite: Connect.NextHandleFunction = (req, _res, next) => {
+    const [path] = (req.url ?? '').split('?');
+    if (path === '/wall' || path === '/wall/') req.url = '/wall.html';
+    next();
+  };
+
+  return {
+    name: 'mesa:wall-route',
+    configureServer: (server) => () => server.middlewares.use(rewrite),
+    configurePreviewServer: (server) => () => server.middlewares.use(rewrite),
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), candidatePhotos()],
+  /*
+    Read .env from the repository root, alongside the server's.
+
+    Vite defaults `envDir` to its own root — `apps/web` — where no .env has ever
+    existed, so every VITE_ variable in the root .env was silently ignored and
+    the build fell back to its in-code defaults. That is invisible until it is
+    deployed: the SPA ships `dev-kiosk-token`, the server is configured with the
+    real one, and every roll search comes back 401 with nothing in any log
+    explaining why. The root .env.example documents these variables, so the root
+    is where they are expected to work.
+  */
+  envDir: fileURLToPath(new URL('../..', import.meta.url)),
+  plugins: [react(), tailwindcss(), candidatePhotos(), wallRoute()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -75,6 +112,18 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
+    rollupOptions: {
+      /**
+       * Two pages, not one. `index.html` is the ballot a voter touches;
+       * `wall.html` is the noren projected in the hall while candidates speak.
+       * Listing both keeps the 3D scene out of the voting bundle and the voting
+       * machine out of the projector's.
+       */
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        wall: fileURLToPath(new URL('./wall.html', import.meta.url)),
+      },
+    },
     /**
      * Three.js is ~747 KB, and that is fine — it is dynamically imported by the
      * welcome screen's decorative sheet only, so Rollup emits it as a separate
