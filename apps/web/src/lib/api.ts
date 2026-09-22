@@ -30,7 +30,20 @@ async function callAppsScript<T>(
   init: { method: 'GET' | 'POST'; timeoutMs?: number },
 ): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), init.timeoutMs ?? 20_000);
+  /*
+    Forty-five seconds by default, not twenty.
+
+    Apps Script runs the handler in about a second; Google's content layer in
+    front of it was measured between 0.5s and 30s for the same request. A
+    twenty-second abort on a platform that routinely takes longer does not
+    protect anyone — it just converts a slow success into "The request took too
+    long. It may or may not have reached the server", which is the most
+    alarming message this client can produce and, on the unlock screen, one the
+    voter cannot act on.
+
+    Casting a ballot overrides this upward again; see `submitBallot`.
+  */
+  const timeout = setTimeout(() => controller.abort(), init.timeoutMs ?? 45_000);
 
   let response: Response;
   try {

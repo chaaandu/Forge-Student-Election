@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { api, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
+import { api, usingAppsScript, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
 import { Panel } from '@/components/bauhaus/Panel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -49,22 +49,33 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
     }
 
     if (debounce.current) clearTimeout(debounce.current);
-    debounce.current = setTimeout(async () => {
-      setSearching(true);
-      setError(null);
-      try {
-        const response = await api.lookup(query.trim());
-        setResults(response.results);
-      } catch (searchError) {
-        setError(
-          searchError instanceof ApiError && searchError.isNetwork
-            ? COPY.error.network
-            : "We couldn't search the roll. Try again, or ask the person running the election.",
-        );
-      } finally {
-        setSearching(false);
-      }
-    }, 220);
+    debounce.current = setTimeout(
+      async () => {
+        setSearching(true);
+        setError(null);
+        try {
+          const response = await api.lookup(query.trim());
+          setResults(response.results);
+        } catch (searchError) {
+          setError(
+            searchError instanceof ApiError && searchError.isNetwork
+              ? COPY.error.network
+              : "We couldn't search the roll. Try again, or ask the person running the election.",
+          );
+        } finally {
+          setSearching(false);
+        }
+        /*
+        220ms suits a server that answers in ten. It does not suit one that
+        answers in seconds: every extra keystroke started another multi-second
+        request, several were in flight at once for a single name, and their
+        replies landed out of order — so the list flickered between answers to
+        queries the voter had already finished typing. It also made a handful
+        of people look like a flood to Google, which throttles.
+      */
+      },
+      usingAppsScript ? 650 : 220,
+    );
 
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
@@ -99,7 +110,6 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-2xl">
-
       <Panel raised className="overflow-hidden">
         <div
           className="px-6 py-6 sm:px-9"
@@ -121,8 +131,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           {mode === 'entra' ? (
             <>
               <p style={{ color: 'var(--color-ink-soft)' }}>
-                You'll sign in with Microsoft and come straight back. We only check that
-                you're on the roll and haven't voted yet.
+                You'll sign in with Microsoft and come straight back. We only check that you're on
+                the roll and haven't voted yet.
               </p>
               <a
                 href="/api/auth/entra/start"
@@ -218,7 +228,9 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                             className="roll-match flex w-full items-center gap-4 text-left"
                             style={
                               house
-                                ? ({ ['--row-house-brand']: roleFor(house.color).text } as CSSProperties)
+                                ? ({
+                                    ['--row-house-brand']: roleFor(house.color).text,
+                                  } as CSSProperties)
                                 : undefined
                             }
                           >
