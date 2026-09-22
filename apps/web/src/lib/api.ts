@@ -37,8 +37,7 @@ async function callAppsScript<T>(
     twenty-second abort on a platform that routinely takes longer does not
     protect anyone — it just converts a slow success into "The request took too
     long. It may or may not have reached the server", which is the most
-    alarming message this client can produce and, on the unlock screen, one the
-    voter cannot act on.
+    alarming message this client can produce and one a voter cannot act on.
 
     Casting a ballot overrides this upward again; see `submitBallot`.
   */
