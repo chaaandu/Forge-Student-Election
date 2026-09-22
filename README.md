@@ -210,15 +210,37 @@ http://<host>/monitor
 ```
 
 A self-contained page served by the API — deliberately **not** part of the voting SPA, so it
-can't be reached from a booth by navigating the voter flow. Enter the admin token once; it
-stays in that tab only.
+can't be reached from a booth by navigating the voter flow.
 
-Shows live, refreshing every 3 seconds: turnout overall, by voter type and by house; and the
-full roll with who has voted and when. Search by name, or filter to **Not yet voted** to
-chase the stragglers near closing.
+**Signing in.** An address and a password, set with `npm run monitor:password -- <email>
+<password>`, which prints the two lines to paste into `apps/server/.env`. The password is
+never stored — only a scrypt hash with a per-install salt — so a leaked `.env` does not
+hand anybody the password. Signing in mints a session token that expires after
+`MONITOR_SESSION_HOURS` (12 by default); it is **not** `ADMIN_API_TOKEN`, so a machine left
+open in a hall is not holding the master credential. Leave `MONITOR_EMAIL` unset and the
+desk falls back to asking for the admin token, which is still how a script authenticates.
+
+Two tabs, one per job.
+
+**The room** — live, refreshing every 4 seconds: turnout overall, by voter type and by
+house; and the full roll with who has voted and when. Search by name, or filter to **Still
+to vote** to chase the stragglers near closing.
 
 It reports **participation only**. No query in this system can reveal how a person voted, and
 this endpoint is not an exception.
+
+**Results** (`/monitor#results`) — one line per contest, and nothing else: who is leading,
+their weighted score, how far ahead, and a bar drawn in that house's colour for a house
+captain's contest or in ink for every other. Open a line and it expands in place to the
+full field — every candidate ranked, with where their votes came from written out
+(`7 of 9 students · 3 of 4 employees`) rather than laid out as a table to decode. One
+contest is open at a time, so the list stays a list. Ties are shown as ties and never
+broken; a contest with no votes says so instead of showing a winner on nothing. At the
+foot, a CSV of the full numbers.
+
+It refreshes on a slower beat than the roll, and only while that tab is open: every
+calculation is an audited event, and a four-second poll would bury the audit log under the
+act of watching it.
 
 ## Google Sheets integration
 
@@ -259,15 +281,23 @@ is [`docs/google-sheets-setup.md`](docs/google-sheets-setup.md). In short:
 
 | Tab | Contents | When |
 | --- | --- | --- |
-| `Dashboard` | turnout, turnout by house, who is winning, every candidate | live formulas |
+| `Dashboard` | turnout · turnout by house · who is winning, one row per contest · every candidate | live formulas |
 | `Roll` | everyone eligible | seeded at setup |
 | `Voters` | one row per person as they vote | live |
 | `Ballots` | one row per selection — **anonymous, no voter reference** | live |
 | `Candidates` | the candidate list | seeded at setup |
 | `Results` | a timestamped snapshot per publish | `npm run results:publish` |
 
-Votes reach the sheet within seconds. **Results are published deliberately, not
-automatically** — a count is something you release when you mean to.
+Votes reach the sheet within seconds, and so does the count: the server publishes a
+results snapshot whenever the ballot total moves (`RESULTS_PUBLISH_INTERVAL_MS`, 60s by
+default). Never on an unchanged count, and remembered in the database rather than in
+memory, so a restart does not append a second copy of a count that has not moved.
+
+> **This puts a running count in the spreadsheet while voting is open.** Anyone the sheet
+> is shared with can watch it move. Set `RESULTS_PUBLISH_ENABLED=false` if that is not
+> acceptable for your election; publishing then goes back to a deliberate act
+> (`npm run results:publish`, or `POST /api/admin/results/publish`), which is the older
+> behaviour.
 
 `SPREADSHEET_MODE=spool` (the default in development) runs the identical sync path but writes
 JSONL to `.excel-spool/`, so the first time this runs against a real sheet is not the first
@@ -281,6 +311,7 @@ mistake is everything appearing to work while nothing reaches the spreadsheet.
 Results are never exposed to voters and require the admin token.
 
 ```
+POST /api/admin/session           exchange an address and password for a session token
 GET  /api/admin/results           full weighted results, per position
 GET  /api/admin/results.csv       the same, flattened
 POST /api/admin/results/publish   queue a snapshot to the workbook
@@ -289,7 +320,33 @@ GET  /api/admin/audit/verify      walk the audit hash chain
 GET  /api/admin/sync/status       outbox depth and spreadsheet health
 GET  /api/admin/monitor           who has voted (participation only, never choices)
 GET  /monitor                     the invigilator page that renders it
+POST /api/admin/reset             destroy every ballot (see below)
 ```
+
+### Resetting between the rehearsal and the real thing
+
+The practice ballots have to go before the real election, and a vote cannot be deleted —
+the schema's triggers forbid it. **Before the real election** at the foot of the monitor's
+room tab is the documented administrative act those triggers refer to: it drops the
+vote-bearing tables and rebuilds them, triggers included, from the same schema file the
+database was built from.
+
+It asks you to type the election's own name, and the server requires the same phrase in the
+request body — so a stray POST, a replayed request or a command out of shell history cannot
+wipe an election, because none of them happen to contain it.
+
+What it does, in order:
+
+1. Clears the spreadsheet's `Voters`, `Ballots` and `Results` tabs back to their headers.
+   **First**, on purpose: if Google is unreachable, nothing local is touched. The other
+   ordering leaves a mirror holding ballots the database no longer has.
+2. Drops and rebuilds every vote-bearing table, and re-seeds the roll from configuration —
+   which also means a roll edited since the server booted is picked up.
+
+**The audit log survives**, and gains an `ELECTION_RESET` entry recording when and how many
+ballots were destroyed. Wiping it would make a reset indistinguishable from ballots going
+missing; kept, the hash chain still verifies across the reset and a count that vanished is
+provably a reset.
 
 For each position, each eligible voter type is normalised **independently** and
 then weighted:
@@ -408,6 +465,7 @@ that should never be a reflex.
 
 | Document | What is in it |
 | --- | --- |
+| [`CLAUDE.md`](CLAUDE.md) | the whole project in one file — orientation for a new developer or an AI assistant |
 | [`docs/architecture.md`](docs/architecture.md) | layering, the critical path step by step, concurrency, failure modes, seven ADRs |
 | [`docs/product-spec.md`](docs/product-spec.md) | the journey screen by screen, functional requirements mapped to tests, fixed copy |
 | [`docs/voting-logic.md`](docs/voting-logic.md) | eligibility, step sequences, validation, the weighting model, the zero-turnout decision |
