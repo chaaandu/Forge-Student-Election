@@ -50,21 +50,29 @@ describe('house identity matches the crests', () => {
     expect(byId['vikings']?.shape).toBe('triangle');
   });
 
-  it('keeps every house readable as a field and as text', () => {
+  it('keeps every house readable as a field and as text, on BOTH grounds', () => {
+    // Named grounds, not the default: this asserts a property of the houses,
+    // not of whichever theme happens to be shipping this week.
     for (const house of config.houses) {
-      const role = roleFor(house.color);
+      const role = roleFor(house.color, '#F2EDE1');
       // The field may be adjusted from the crest colour; what matters is that
       // whatever block ships can carry its ink.
       expect(contrastRatio(role.onField, role.field), `${house.name} ink on field`)
         .toBeGreaterThanOrEqual(AA_BODY);
       expect(contrastRatio(role.text, '#F2EDE1'), `${house.name} text on paper`)
         .toBeGreaterThanOrEqual(AA_BODY);
+
+      const night = roleFor(house.color, '#1A1A1E');
+      expect(contrastRatio(night.onField, night.field), `${house.name} ink on field at night`)
+        .toBeGreaterThanOrEqual(AA_BODY);
+      expect(contrastRatio(night.text, '#1A1A1E'), `${house.name} text at night`)
+        .toBeGreaterThanOrEqual(AA_BODY);
     }
   });
 
   it('keeps the crest colour itself untouched for shapes and bars', () => {
     for (const house of config.houses) {
-      expect(roleFor(house.color).brand).toBe(house.color);
+      expect(roleFor(house.color, '#F2EDE1').brand).toBe(house.color);
     }
   });
 

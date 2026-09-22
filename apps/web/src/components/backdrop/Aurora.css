@@ -1,0 +1,16 @@
+/**
+ * React Bits' Aurora container.
+ *
+ * `pointer-events: none` is the addition, and it is not optional: this sits
+ * over the whole check-in screen, including the field a voter types their name
+ * into. Without it every tap aimed at that field would land on a decoration.
+ */
+.aurora-container {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.aurora-container canvas {
+  display: block;
+}

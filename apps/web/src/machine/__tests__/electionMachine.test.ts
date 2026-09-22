@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { HEADLINE } from '@/lib/copy';
 import {
   currentStep,
   deriveSteps,
@@ -273,7 +274,7 @@ describe('submission guards', () => {
       { type: 'SUBMIT_START', idempotencyKey: 'k' },
       {
         type: 'SUBMIT_FAILED',
-        error: { code: 'ALREADY_VOTED', headline: 'ALREADY DEPARTED', message: 'x', retryable: false },
+        error: { code: 'ALREADY_VOTED', headline: HEADLINE.alreadyVoted, message: 'x', retryable: false },
       },
     );
     expect(state.phase).toBe('BLOCKED');
@@ -288,7 +289,7 @@ describe('already-voted and closed elections', () => {
       { type: 'IDENTIFIED', voter: { ...student, hasVoted: true }, token: 'tok' },
     );
     expect(state.phase).toBe('BLOCKED');
-    expect(state.error?.headline).toBe('You have already voted');
+    expect(state.error?.headline).toBe(HEADLINE.alreadyVoted);
     expect(state.error?.message).toMatch(/person running the election/);
   });
 
@@ -298,7 +299,7 @@ describe('already-voted and closed elections', () => {
       election: { ...election, window: { open: false, reason: 'NOT_STARTED', at: '2099-01-01T09:00:00Z' } },
     });
     expect(state.phase).toBe('BLOCKED');
-    expect(state.error?.headline).toBe('Voting has not opened yet');
+    expect(state.error?.headline).toBe(HEADLINE.notOpen);
   });
 
   it('blocks when the election is closed', () => {

@@ -161,14 +161,36 @@ self-service profiles · live public results · email notifications · multi-ele
 
 ## 7. Copy reference
 
-Strings that carry legal or integrity weight are fixed and live in `apps/web/src/copy.ts`:
+Strings that carry legal or integrity weight are fixed and live in
+`apps/web/src/lib/copy.ts`. The server's equivalents are in
+`apps/server/src/services/errors.ts` and are checked by
+`apps/server/src/__tests__/voice.test.ts`.
+
+**This table used to specify the departure-board copy**, and that is where it
+came from: `ALREADY DEPARTED`, `BOARDING NOT OPEN`, `GATE CLOSED`. That
+direction was rejected — partly *because* its errors arrived in costume a voter
+had to decode (design-direction.md §0, and §8's guardrail "Themed language never
+replaces plain language") — but this table was never updated, so the server kept
+implementing it. The client passes the election-window messages straight
+through, so a voter arriving after close was told `GATE CLOSED`.
+
+### Voice
+
+Contracted and human, with three exceptions: the lines that state a vote cannot
+be changed, or that nothing was recorded, stay flat and uncontracted. The change
+of register is the signal. No em dashes in anything a voter reads, and no job
+titles — "the person running the election", never "the returning officer".
 
 | Key | Text |
 | --- | --- |
 | `review.warning` | Please check your selections carefully. Once you submit your vote, you cannot change it. |
-| `finalCall.body` | Final call. Once your vote departs, it can't be changed. |
-| `error.alreadyVoted` | ALREADY DEPARTED — our records show you've already voted. If you believe this is a mistake, please speak to the returning officer before you leave. |
-| `error.notOpen` | BOARDING NOT OPEN — voting opens at {time}. |
-| `error.closed` | GATE CLOSED — voting closed at {time}. Your vote can no longer be accepted. |
-| `error.network` | DELAYED — your selections are safe on this screen. We're retrying. |
-| `error.submitFailed` | Your vote was NOT recorded. Nothing has been saved. Try again, and tell the returning officer if it keeps failing. |
+| `finalCall.body` | Once you submit, you cannot change your vote. |
+| `error.alreadyVoted` | Our records show you've already voted. If that doesn't sound right, speak to the person running the election before you leave. |
+| `error.notOpen` | Voting hasn't opened yet. It opens at {time}. |
+| `error.closed` | Voting closed at {time}, so we can't accept any more votes. |
+| `error.network` | Nothing is lost. Your choices are still on this screen and we're trying again. If this keeps happening, tell the person running the election. |
+| `error.submitFailed` | Your vote was not recorded and nothing was saved. Try again. If it fails a second time, tell the person running the election. |
+
+`review.warning` is the one line still required **verbatim**, and is asserted by
+test. It is also the only remaining sentence in the interface that reads as
+formally as it does; if that is to change, change it here first.

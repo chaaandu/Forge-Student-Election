@@ -1,10 +1,6 @@
-import { useState } from 'react';
 import type { PublicElection } from '@/lib/api';
-import { PaperBackdrop, supportsWebGL } from '@/components/paper/PaperBackdrop';
-import { CompositionSVG } from '@/components/bauhaus/CompositionSVG';
-import { Shape } from '@/components/bauhaus/Shape';
+import { PaperBackdrop } from '@/components/paper/PaperBackdrop';
 import { Button } from '@/components/ui/Button';
-import { useReducedMotion } from '@/lib/useReducedMotion';
 
 export interface WelcomeScreenProps {
   election: PublicElection;
@@ -23,76 +19,58 @@ export interface WelcomeScreenProps {
  * The backdrop is decoration and carries no meaning: it is `aria-hidden`, never
  * loaded under reduced motion, and the panel below works identically without
  * it. "Begin voting" is interactive from first paint.
+ *
+ * Nothing is drawn under the sheet. A static Bauhaus composition used to hold
+ * the ground until the frame reported in, but the forms flashing up and then
+ * dissolving a moment later read as a glitch, not as a poster — so the ground
+ * is now just the dark room, and the sheet arrives into it.
  */
 export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
-  const [backdropReady, setBackdropReady] = useState(false);
-  const reducedMotion = useReducedMotion();
   const leadership = election.positions.filter((p) => p.kind === 'leadership');
   const hasHouseContests = election.positions.some((p) => p.kind === 'house-captain');
-
-  // When no 3D sheet is coming — reduced motion, or a machine without WebGL —
-  // the composition is not a ghost waiting behind something else, it IS the
-  // screen, and it is drawn at full strength. At 40% on #08080a it was a barely
-  // visible smudge, which is what made the no-WebGL case look like a black void
-  // rather than a poster.
-  const artworkAlone = reducedMotion || !supportsWebGL();
 
   return (
     // `flex-1`, not a viewport calc: the page is a flex column with equal
     // padding, so the panel simply fills what is left. Nothing to keep in sync.
     <div className="welcome relative flex w-full flex-1 flex-col overflow-hidden">
-      {/* Static artwork first, so the screen is never empty or white. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: '#08080a',
-          opacity: backdropReady ? 0 : 1,
-          transition: 'opacity 600ms ease-out',
-        }}
-        aria-hidden="true"
-      >
-        <CompositionSVG
-          tone="dark"
-          className={`h-full w-full ${artworkAlone ? '' : 'opacity-40'}`}
-        />
-      </div>
+      {/*
+        The dark room, and nothing else.
 
-      <PaperBackdrop className="absolute inset-0" onReady={() => setBackdropReady(true)} />
+        It stays put rather than fading, because it is what the panel is drawn
+        against: a slow frame, a hidden tab, reduced motion or a machine with no
+        WebGL all leave this showing, and all of them should look deliberate
+        rather than white or empty.
+      */}
+      <div className="absolute inset-0" style={{ background: '#08080a' }} aria-hidden="true" />
+
+      <PaperBackdrop className="absolute inset-0" />
 
       {/* Everything below is the real, readable screen. */}
-      <div className="relative flex flex-1 flex-col justify-between gap-8 p-4 sm:p-8">
-        <div className="flex items-center justify-between gap-4">
-          <span className="inline-flex items-end gap-1.5">
-            <Shape form="square" size={14} color="var(--bh-red)" />
-            <Shape form="circle" size={14} color="var(--bh-blue)" />
-            <Shape form="triangle" size={14} color="var(--bh-yellow)" />
-          </span>
-          {/*
-            On its own ink chip, not floating on the scene.
+      <div className="relative flex flex-1 flex-col justify-end gap-8 p-4 sm:p-8">
+        {/*
+          No header row.
 
-            Behind this sits either a turning sheet or the composition, and both
-            move light and dark under it — with the composition it landed on a
-            cream square and read "OOL OF BUSINESS". A field with type on it is
-            the house rule for exactly this reason, and it is cheaper than
-            making the artwork dodge the label.
-          */}
-          <span
-            className="label px-3 py-1.5"
-            style={{
-              color: 'rgba(242,237,225,.72)',
-              fontSize: 'var(--text-2xs)',
-              background: 'var(--color-ink)',
-            }}
-          >
-            Mesa School of Business
-          </span>
-        </div>
+          It carried the three elementary forms and a "Mesa School of Business"
+          chip. Both were removed: the sheet turning behind this panel already
+          says whose election it is, in type a metre tall, and the panel below
+          carries the election's own name. Two more marks in the corners were
+          competing with the one thing this screen asks a voter to do.
+        */}
 
         <div className="max-w-xl lg:max-w-[46%]">
           <div className="panel panel--raised overflow-hidden">
+            {/*
+              A FIXED dark field, not the page's ink.
+
+              This strip carries yellow type, and yellow only works on something
+              dark. Following --color-ink meant that on the night ground the
+              strip turned cream and the label became yellow-on-cream at 1.4:1.
+              The welcome panel is the dark-room poster on either ground, so its
+              header is stated rather than derived.
+            */}
             <div
               className="px-6 py-3 sm:px-8"
-              style={{ background: 'var(--color-ink)', color: 'var(--color-paper)' }}
+              style={{ background: 'var(--color-ink-fixed)', color: '#F2EDE1' }}
             >
               <span className="label" style={{ color: 'var(--bh-yellow)' }}>
                 Voting open
@@ -106,10 +84,35 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
 
               <div className="bar mt-5" style={{ maxWidth: 180 }} />
 
-              <p className="mt-5" style={{ fontSize: 'var(--text-md)', maxWidth: '38ch' }}>
-                {leadership.length} leadership positions
-                {hasHouseContests ? ', plus your house captain' : ''}. Two minutes, give or
-                take — and you can change your mind right up until you submit.
+              {/*
+                What is on the ballot, set as a plate label rather than a
+                sentence. It is the same device as the strip above and as the
+                sheet's own "ONE VOTER · ONE BALLOT", and it lets the sentence
+                below carry one idea instead of three.
+              */}
+              <p
+                className="label mt-5"
+                style={{ color: 'var(--color-ink)', fontSize: 'var(--text-xs)' }}
+              >
+                {leadership.length} seats
+                {hasHouseContests ? ' · your house captain' : ''} · 2 minutes
+              </p>
+
+              {/*
+                Tighter than body leading on purpose: two short lines under a
+                poster headline are a stanza, and 1.55 pulled them apart far
+                enough to read as separate paragraphs.
+              */}
+              <p
+                className="mt-4"
+                style={{
+                  fontSize: 'var(--text-md)',
+                  lineHeight: 1.35,
+                  maxWidth: '38ch',
+                  textWrap: 'balance',
+                }}
+              >
+                Pick the people who'll run your year. Nothing counts until you submit.
               </p>
 
               <div className="mt-7">
@@ -151,13 +154,13 @@ export function SeedDataBanner() {
       role="status"
       className="label px-5 py-3 text-center"
       style={{
-        color: 'var(--color-ink)',
+        color: 'var(--color-ink-fixed)',
         background: 'var(--bh-yellow)',
         border: 'var(--rule-weight) solid var(--color-ink)',
         fontSize: 'var(--text-xs)',
       }}
     >
-      Practice run — these are not the real candidates, and nothing here counts
+      Practice run. These aren't the real candidates and nothing here counts.
     </p>
   );
 }

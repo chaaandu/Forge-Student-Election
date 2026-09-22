@@ -83,48 +83,75 @@ You will get six tabs:
 
 | Tab | What lands in it | When |
 | --- | --- | --- |
-| **Dashboard** | Live formulas: turnout, turnout by house, who is winning, every candidate's count | updates itself |
+| **Dashboard** | Live formulas: turnout, turnout by house, who is winning (one row per contest), every candidate's count | updates itself |
 | **Roll** | Everyone eligible — 145 rows | seeded once at setup |
 | **Voters** | One row per person **as they vote** — this is your "who has voted" log | live |
 | **Ballots** | One row per selection. **Anonymous** — there is no voter reference, ever | live |
 | **Candidates** | The 25 candidates | seeded once at setup |
 | **Results** | A full timestamped snapshot each time you publish | when you publish |
 
-## 6. Add the charts
+## 6. What the Dashboard shows
 
-The Dashboard has the numbers; charts take two clicks each. Open the Dashboard
-tab and:
+The Dashboard is built by `sheets:setup` and then looks after itself. Four
+blocks, top to bottom:
+
+| Block | What it is |
+| --- | --- |
+| **TURNOUT** | Voted, on the roll, the share, and the same split by students and employees |
+| **BY HOUSE** | One row per house — voted, on roll, share, and a bar **drawn in that house's own colour** |
+| **WHO IS WINNING** | **One row per contest**, in ballot order: the leader, their weighted score, a bar, and a status of `Leading`, `Tied`, `No votes yet` or `Not published yet`. A house captain's bar is that house's colour; every other is black |
+| **EVERY CANDIDATE** | One row per candidate, grouped by contest: student votes and share, employee votes and share, weighted score, rank, and a bar |
+
+Everything under **RESULTS** is scoped to the newest snapshot in the `Results`
+tab, so a dashboard read halfway through a publish shows the previous complete
+count rather than a half-written one. Ties are reported as ties — the winner
+cell lists every name at rank 1 rather than choosing between them.
+
+Setup rewrites the whole Dashboard each time, so adding a candidate or a house
+to `election.config.json` and re-running `npm run sheets:setup` is all that is
+needed to pick them up. It is the only tab that is ever cleared; it holds
+formulas, never election data.
+
+### Adding real charts
+
+The text bars mean the Dashboard reads without any chart at all. If you want
+Google's own:
 
 **Turnout by house** — select the `House / Voted / On roll` block (the four
-house rows plus their header) → **Insert → Chart** → choose **Bar chart** → in
-the editor remove the "On roll" series if you want share rather than raw counts.
+house rows plus their header) → **Insert → Chart** → **Bar chart** → in the
+editor remove the "On roll" series if you want share rather than raw counts.
 
-**Result for a position** — select the `Position / Candidate / … / Weighted
+**Result for a contest** — select the `Position / Candidate / … / Weighted
 score` block under **EVERY CANDIDATE** → **Insert → Chart** → **Bar chart** →
 set X axis to *Candidate* and the series to *Weighted score*. Add a filter for
 one position if you want a chart per contest.
 
-There is already a text bar (`█████`) beside each house, so you have a readable
-picture even before you insert a single chart.
-
----
+The same picture, live and without a spreadsheet, is at `/monitor#results` on
+the election server.
 
 ## Running it on the day
 
 Votes reach **Voters** and **Ballots** within a few seconds of being cast —
 nothing to do.
 
-Results are **not** automatic, on purpose: a result is something you publish
-when you mean to, not something that leaks out mid-vote. When you want a fresh
-count:
+The count follows on its own. The server checks every minute
+(`RESULTS_PUBLISH_INTERVAL_MS`) and, **if the ballot total has moved**, appends a
+fresh timestamped snapshot to **Results**; the Dashboard reads whichever snapshot
+is newest. An unchanged count publishes nothing, so the tab does not fill with
+thousands of identical rows over a polling day, and the marker lives in the
+database, so restarting the server does not repeat a count either.
+
+You can still force one at any moment:
 
 ```bash
 npm run results:publish
 ```
 
-That recalculates from the ballots, appends a timestamped snapshot to
-**Results**, and the Dashboard follows. Run it as often as you like — each run
-appends rather than overwrites, so earlier counts stay auditable.
+Each publish appends rather than overwrites, so earlier counts stay auditable.
+
+> **A running count is visible in the spreadsheet while voting is open** to
+> anyone it is shared with. If that is not acceptable, set
+> `RESULTS_PUBLISH_ENABLED=false` in `apps/server/.env` and publish by hand.
 
 ## If something goes wrong
 

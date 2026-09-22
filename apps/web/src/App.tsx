@@ -12,6 +12,9 @@ import { Panel } from '@/components/bauhaus/Panel';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { useReducedMotion } from '@/lib/useReducedMotion';
+import { GROUND } from '@/lib/ground';
+import { AuroraBackdrop } from '@/components/backdrop/AuroraBackdrop';
 import { WelcomeScreen, SeedDataBanner } from '@/screens/WelcomeScreen';
 import { CheckInScreen } from '@/screens/CheckInScreen';
 import { IdentityConfirmScreen } from '@/screens/IdentityConfirmScreen';
@@ -115,7 +118,7 @@ export function App() {
               message:
                 checkinError === 'NOT_ON_ROLL'
                   ? COPY.error.notOnRoll
-                  : 'Sign-in did not complete. Please try checking in again.',
+                  : "Sign-in didn't finish. Try checking in again.",
               retryable: true,
             },
           });
@@ -137,8 +140,7 @@ export function App() {
               code: 'ELECTION_UNAVAILABLE',
               headline: HEADLINE.unavailable,
               message:
-                'This is a problem on our side, not yours. Please tell the person running the ' +
-                'election.',
+                "This is on us, not you. Tell the person running the election.",
               retryable: true,
             },
           });
@@ -278,6 +280,43 @@ export function App() {
   // transition. Everything else keeps the frame.
   const isWelcome = state.phase === 'WELCOME';
 
+  /*
+    The handoff out of the dark room.
+
+    Welcome is a dark full-bleed scene and the ballot is cream paper, and the
+    change between them was a CUT — one frame black, the next frame cream. The
+    two worlds are deliberate (see docs/design-direction.md §5) but a hard cut
+    makes them read as two different applications rather than as one moving from
+    the room onto the page.
+
+    So the dark ground stays for a beat and lifts. It is a fixed overlay with no
+    pointer events, mounted only on the way out of welcome and unmounted by its
+    own animationend — nothing about the ballot depends on it, and it cannot
+    swallow a tap on the screen underneath.
+  */
+  const [liftingGround, setLiftingGround] = useState(false);
+  const cameFromWelcome = useRef(false);
+  const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (state.phase === 'WELCOME') {
+      cameFromWelcome.current = true;
+      return;
+    }
+    if (!cameFromWelcome.current) return;
+    cameFromWelcome.current = false;
+    /*
+      Only on paper, and only with motion.
+
+      The lift exists to soften a hard cut from the dark welcome scene to a
+      cream ballot. On the night ground there is no cut to soften — the ballot
+      is already the same world the welcome screen is in — so holding a dark
+      overlay over a dark screen would be half a second of nothing, on the one
+      screen that should be immediately usable.
+    */
+    if (!reducedMotion && GROUND === 'paper') setLiftingGround(true);
+  }, [state.phase, reducedMotion]);
+
   // ------------------------------------------------------------ render ---
   return (
     /*
@@ -289,6 +328,25 @@ export function App() {
       Letting the child grow with `flex-1` removes the magic number entirely.
     */
     <div className={`flex min-h-screen flex-col ${isWelcome ? '' : 'p-4 sm:p-6'}`}>
+      {/*
+        The aurora runs on every screen EXCEPT the welcome one.
+
+        Welcome already has a world: a turning sheet in a dark room, its own
+        WebGL scene. Two shaders on one screen is two light sources arguing, and
+        it would double the cost of the only screen that has to be interactive
+        from first paint. Everything after it is a plate on an empty page, which
+        is exactly what this was for.
+      */}
+      {!isWelcome && <AuroraBackdrop />}
+
+      {liftingGround && (
+        <div
+          className="ground-lift"
+          aria-hidden="true"
+          onAnimationEnd={() => setLiftingGround(false)}
+        />
+      )}
+
       <a href="#main" className="skip-link">
         Skip to main content
       </a>
@@ -300,7 +358,7 @@ export function App() {
         as whitespace. It centres SAFELY — a plate taller than the window still
         starts at the top, so nothing is ever scrolled off above the viewport.
       */}
-      <main id="main" tabIndex={-1} className="page-main flex flex-1 flex-col outline-none">
+      <main id="main" tabIndex={-1} className="page-main relative z-10 flex flex-1 flex-col outline-none">
         {state.phase === 'LOADING' && (
           <div className="mx-auto w-full max-w-lg">
             <Panel>
@@ -345,8 +403,6 @@ export function App() {
           <IdentityConfirmScreen
             voter={state.voter}
             {...(voterHouse ? { house: voterHouse } : {})}
-            gateCount={state.steps.length}
-            steps={state.steps}
             onConfirm={() => dispatch({ type: 'CONFIRM_IDENTITY' })}
             onStartOver={handleReset}
           />
@@ -422,7 +478,7 @@ export function App() {
               size="lg"
               onClick={() => void submit()}
               disabled={!isComplete(state)}
-              disabledReason="Every position needs a selection before you can submit."
+              disabledReason="Pick someone for every position first."
             >
               {COPY.finalCall.cast}
             </Button>
@@ -431,7 +487,7 @@ export function App() {
       >
         <p style={{ fontSize: 'var(--text-md)' }}>{COPY.finalCall.body}</p>
         <p className="mt-3" style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-          Your {state.steps.length} selections will be submitted together.
+          All {state.steps.length} choices go in together.
         </p>
       </Dialog>
     </div>

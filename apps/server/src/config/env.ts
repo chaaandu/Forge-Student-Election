@@ -114,7 +114,25 @@ const schema = z.object({
   SYNC_BATCH_SIZE: int(25),
   SYNC_MAX_ATTEMPTS: int(8),
 
+  // The results snapshot publishes itself whenever the ballot total moves.
+  // Set RESULTS_PUBLISH_ENABLED=false to go back to publishing by hand, which
+  // is the right setting if a running count must not be visible to anyone
+  // holding the spreadsheet while voting is open.
+  RESULTS_PUBLISH_ENABLED: bool.default(true),
+  RESULTS_PUBLISH_INTERVAL_MS: int(60_000),
+
   ADMIN_API_TOKEN: z.string().default('dev-admin-token'),
+
+  // The election desk signs in with an address and a password. The password
+  // itself is never stored — MONITOR_PASSWORD_HASH holds `scrypt$salt$hash`,
+  // which `npm run monitor:password` prints for you.
+  //
+  // Leave both unset and the desk falls back to pasting ADMIN_API_TOKEN, which
+  // is how it worked before and still how a script authenticates.
+  MONITOR_EMAIL: z.string().optional(),
+  MONITOR_PASSWORD_HASH: z.string().optional(),
+  /** A polling day, so nobody is signed out mid-count. */
+  MONITOR_SESSION_HOURS: int(12),
 });
 
 export type Env = z.infer<typeof schema>;

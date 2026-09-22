@@ -58,7 +58,8 @@ access-codes-*.txt
 
 # Original candidate photographs. These are real students' photos, often many
 # megabytes each. `npm run photos:import` writes the cropped, compressed
-# versions to apps/web/public/candidates/ — those are what ship.
+# versions to apps/web/src/assets/candidates/ — those are committed, and are
+# what ship. Deleting an original here does not remove the imported photo.
 assets/candidate-photos/*
 !assets/candidate-photos/README.md
 

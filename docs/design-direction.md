@@ -264,13 +264,64 @@ vendored unmodified so the original integration remains available.
    parent document, its storage, or the session token.
 4. **Zero external requests.** Asserted by test.
 
-### Not verified
+### Verified in a browser, including the failure
 
-The rendered result has **not** been checked in a browser — this environment has
-no display and no headless browser, and WebGL cannot run here. What *is* verified:
-the document serves, both script blocks parse, the engine block is byte-identical
-to the authored source, the content is correct, and nothing reaches the network.
-Someone must open it on the kiosk hardware before election day.
+This section previously read "not verified — this environment has no display and
+no headless browser". It has since been driven in headless Chrome, and the
+verification found a real fault.
+
+**The frame's `onLoad` fires when the DOCUMENT loads, not when the scene
+renders.** On a machine with no usable WebGL the document loaded perfectly
+happily, reported itself ready, and the welcome screen faded out its own static
+artwork in response — leaving a flat `#08080a` void with the panel sitting in
+the corner of it. That is the first thing a voter would have seen on any managed
+Windows fleet, remote desktop session or blocklisted integrated driver, which is
+to say on a school hall's machines.
+
+`PaperBackdrop` now asks `supportsWebGL()` in the **parent** before mounting the
+frame at all. Asking in the parent rather than patching the vendored document
+keeps the hash-verified source byte-for-byte what was published. With WebGL
+disabled: the iframe is never mounted, `onReady` never fires, and
+`CompositionSVG` stays — at full strength rather than the 40% it was drawn at
+while waiting behind a sheet that is no longer coming. The fallback is a poster,
+not a void.
+
+Confirmed rendering correctly with WebGL available, too: the sheet turns, the
+four crests and house colours are drawn onto it, and nothing reaches the network.
+
+Still worth opening on the actual kiosk hardware before election day — headless
+Chrome on a Mac is not a school PC — but the screen is no longer unseen.
+
+## 5c. The check-in aurora — React Bits
+
+The check-in desk carries React Bits' `Aurora`: a WebGL shader drawing a slow
+band of colour across the page behind the plate.
+
+**It breaks §8's first guardrail and it does so on purpose.** An aurora is a
+glowing gradient; the guardrail says no glowing gradients. It was asked for
+explicitly, so the rule now carries a named exception rather than the code
+quietly disagreeing with the documentation.
+
+What keeps it honest:
+
+- **It is behind the plate, never behind type.** The check-in panel is opaque,
+  so the aurora only ever shows in the margins. The rendered-contrast sweep
+  runs on this screen with the aurora live and every text node still clears AA
+  at its real size.
+- **It cannot take a tap.** `pointer-events: none`, verified by hit-testing the
+  centre of the name field in a browser and confirming the input is what is
+  returned. That field is the first thing a voter touches.
+- **It does not exist on the paper ground.** It is a light source designed for
+  a dark page; over cream it would be a coloured haze on the screen where a
+  voter picks between 145 near-identical names.
+- **Three gates, all verified in Chrome rather than assumed:** no WebGL, no
+  aurora; `prefers-reduced-motion`, no aurora; tab hidden, the frame loop stops.
+  In every case check-in renders and works.
+- **It is not in the bundle that gets a voter to the name field.** `ogl` and the
+  shader sit behind a `lazy()` boundary: a 50 KB chunk (15 KB gzipped) that
+  loads after paint, against a 0.7 KB increase to the main bundle.
+
+Licence: MIT **+ Commons Clause** — not plain MIT. See THIRD_PARTY_NOTICES.md.
 
 ## 5b. `Composition3D` — removed
 
@@ -423,19 +474,164 @@ see. Nothing rewards picking one person over another, and nothing implies a
 
 ## 6b. Every position is the same size
 
-The candidate grid uses a **fixed card width**, centred — not a stretching one.
+The candidate grid takes its **column count from the field**, not from the space
+available. `columnsFor()` in `CandidateGrid.tsx`; the height is fixed by the
+photo rather than by an aspect ratio, so a card that widens does not also grow
+taller.
 
-It used `repeat(auto-fit, minmax(214px, 1fr))`, which shares the row out between
-however many candidates stand. Four gave sensible cards; two gave two very wide
-ones — and since the portrait is 4:5, a wider card is a **taller** card. So the
-positions with the fewest candidates produced the tallest pages, and the layout
-resized under the voter at every step.
+Three attempts got this wrong, each in a different way, and the reasons are
+worth keeping because they are not obvious.
 
-One width (`clamp(158px, 19vw, 200px)`) makes a card identical on every
-position, so every plate is the same height and the page stops jumping. Two
-candidates sit centred with air either side, which reads as deliberate rather
-than stretched. The upper bound keeps four across inside the plate; the lower
-keeps a card usable on a narrow screen.
+1. **`minmax(214px, 1fr)`** shared the row out between however many candidates
+   stood. Four gave sensible cards; two gave two very wide ones — and since the
+   portrait was 4:5, a wider card was a **taller** card. The positions with the
+   fewest candidates produced the tallest pages.
+2. **A pinned width** fixed the height but left a two-candidate position looking
+   sparse, with most of the plate empty.
+3. **`minmax(158px, 300px)`** was meant to do both. In a 1024px plate it fitted
+   *three* cards across and orphaned the fourth onto a row of its own: a block
+   of empty plate beside one lonely candidate, and a President page (4 standing)
+   ~1000px tall against ~690px for a House Captain page (2 standing). The page
+   was still resizing under the voter at every step — the exact fault this
+   section claimed to have fixed, reintroduced by the fix.
+
+**`auto-fit` cannot do this job at all**, which is the part worth writing down.
+Its repetition count is computed from the track's *maximum* wherever that
+maximum is definite — so `minmax(158px, 300px)` fits by the 300, and a 768px
+tablet got exactly **one** card with the rest of the plate empty. Making the
+maximum flexible (`1fr`) fixes the count but hands the decision back to the
+space, which is what orphaned the fourth card to begin with. Neither option was
+ever available.
+
+So the count is chosen explicitly, at three tiers:
+
+| Width | Columns | Why |
+| --- | --- | --- |
+| < 480px | 1 | Two 144px cards wrap most of these names onto three lines. |
+| 480–939px | `columnsForNarrow` — up to 3, else 2 | Four across falls under 190px a card. |
+| ≥ 940px | `columnsFor` — up to 4 | 940 is where a four-card row still clears 190px each. |
+
+This election runs fields of 2, 3 and 4, so on a laptop every position is a
+single row and every plate is genuinely the same height. Beyond four the count
+balances the rows rather than leaving a remainder.
+
+The breakpoints are measured, not guessed: at 768px — an iPad in portrait — the
+940 tier would hand out four 148px cards carrying a 232px portrait each.
+
+## 6d. The action bar is sticky, and that is not decoration
+
+`.action-bar` in `global.css`. Measured in Chrome at the sizes this runs on:
+
+| | Review plate | Submit button |
+| --- | --- | --- |
+| 1440 x 900 | 1035px | 11px below the fold |
+| 1366 x 768 | 1035px | **143px below the fold** |
+| 390 x 844 | 1715px (position) | ~860px below the fold |
+
+1366x768 is the ordinary lab laptop. A voter reached the end of their ballot,
+saw a white plate that simply *stopped* — no scrollbar hint, no fade, no cut-off
+row to imply more — and had no way to finish voting except to guess at scrolling
+or call the invigilator. A ballot that cannot be cast is the worst failure this
+interface has.
+
+Two consequences worth knowing before touching those screens:
+
+- **The plate cannot use `overflow: hidden`.** It would become the sticky
+  element's scroll container, and the bar would stick to the panel instead of to
+  the window — which is to say, not at all.
+- **Only the buttons stick on the review screen**, not the warning above them.
+  Pinning the warning would cost a quarter of a 768px screen permanently, and it
+  is restated in the confirmation dialog, which nothing gets past.
+
+## 6e. One rule per signal
+
+Four places had grown a treatment *per use* rather than a rule. A voter cannot
+learn what a signal means if it means something different each time it appears.
+
+**Colour means house. Nothing else.** The identity pass carried `STUDENT` as a
+black field, `KNIGHTS` as a house field and `7 POSITIONS` as a yellow one, side
+by side in one row — three treatments, chosen a tag at a time. `Tag` now takes
+an ink field, a paper one when it sits on ink, or a house colour; `color` is for
+house identity only. The third tag is gone: how many positions are on a ballot
+is a fact, not an identity, and the sentence beneath it already said so.
+
+The same rule fixed two colour bugs it exposed. `Avatar` defaulted to
+`--bh-blue`, which is *also* the Samurai field — so on the check-in desk, where
+every student's avatar carries their real house, the one voter with **no** house
+was the one being coloured as if she had one. The default is neutral now. And on
+the identity pass the avatar took the house colour while sitting **on** the house
+field, so it had nothing to stand against and read as an empty outline.
+
+**A crest on a colour field sits on paper.** The crests are black shields, and a
+black shield on the Knights field (`#BE3A2B`) all but disappeared — the one
+house whose own plate failed to show its own crest. `HouseCrest` takes
+`onField`, which mounts it on a paper block. Fixing it in the component rather
+than in the artwork matters: the shields are shared with the printed ballot.
+
+**A heavy keyline bounds a plate, not every row of a list.** Check-in gave each
+of eight results its own 3px keyline, so a search produced eight heavy black
+boxes stacked up the first screen past the landing page. One bounded block with
+hairlines inside it now. The right-hand slot carries the voter's **house**, with
+its crest, instead of the word `STUDENT` eight times — eight identical tags told
+a voter nothing, while a house is the thing that actually separates two people
+with similar names. It is the real case here: *Adithya Rajagopalan* and *Adnaan
+R* are both "AR" and both mask to `ad•••@forge27.mesaschool.co`. Anyone with no
+house keeps the type tag, which is then the exception it was meant to be.
+
+**A control must look like one.** The `quiet` variant was transparent,
+borderless and set at label weight, so the seven `CHANGE` controls on review,
+`Not you? Start again` and check-in's `Back` all read as static text. On a touch
+kiosk there is no hover to discover them with. They are underlined now — enough
+to say "this is a control" without giving it the weight of a block, which is the
+whole point of the variant.
+
+### The masking, while we were there
+
+`maskEmail` repeated one dot per hidden character, which published the exact
+length of every local part on a roll that is already searchable by prefix. These
+addresses are `firstname_lastname@`, so that was routinely twelve or more dots
+above a domain identical on every row — most of the visual weight of the row,
+carrying almost none of its information. The run is fixed at three now: better
+on both counts, and asserted by test.
+
+## 6f. The handoff out of the dark room
+
+Welcome is a dark full-bleed scene and the ballot is cream paper. The two worlds
+are deliberate (§5), but the change between them was a **cut** — one frame
+black, the next cream — which made them read as two different applications
+rather than as one moving from the room onto the page.
+
+Two things were wrong and both are fixed. The dark screen was being rendered
+*inside* the page's cream padding, so a turning sheet in a dark room sat in a
+cream picture frame; the welcome screen is full-bleed now and everything else
+keeps the frame. And the ground no longer cuts: `.ground-lift` holds the dark
+for a beat and lifts it. It is a fixed overlay with `pointer-events: none`,
+mounted only on the way out of welcome and unmounted by its own `animationend`,
+so nothing in the ballot depends on it and it cannot swallow a tap on the
+check-in field underneath. Never mounted under reduced motion.
+
+**The ballot stays light, and that is not a preference.** `PAPER` is the default
+argument to `readableOn()` and `roleFor()` in `lib/color.ts` — every text colour
+in the system is derived against it, and `contrast.test.ts` asserts all of them
+against it. On `#08080a` every one of them fails AA:
+
+| token | on paper | on `#08080a` |
+| --- | --- | --- |
+| `--bh-red-text` | 4.56 | 3.76 |
+| `--bh-blue-text` | 6.96 | 2.46 |
+| `--bh-yellow-text` | 4.52 | 3.79 |
+| `--bh-green-text` | 4.56 | 3.76 |
+| `--color-ink` | 15.77 | 1.09 |
+| `--color-ink-soft` | 7.18 | 2.39 |
+
+`--bh-yellow-text` (`#876707`) exists *only* because yellow has to be darkened
+that far to survive on cream; on dark it is worse than useless. Two of the four
+house colours also fail as text there (Samurai 3.31, Knights 3.65). Add to that
+a white plate at 20:1 to stare at in a bright hall, 145 portraits lit for print,
+and §8's ban on the glow and blur that normally make dark interfaces cohere.
+
+Matching the ballot to the backdrop would mean rebuilding the palette. Matching
+the *handoff* costs an overlay.
 
 ## 6c. Voice
 
@@ -469,7 +665,12 @@ by test.
 
 ## 8. Guardrails
 
-- No gradient that reads as a gradient, no glow, no glassmorphism, no blur.
+- No gradient that reads as a gradient, no glow, no glassmorphism, no blur —
+  **with one stated exception: the check-in aurora.** See §5c. The exception is
+  written here rather than left as a silent contradiction between this list and
+  the code, because this project has already been bitten once by exactly that:
+  §7 of product-spec.md went on specifying `GATE CLOSED` long after §0 here
+  recorded that direction as rejected, and the server kept implementing it.
 - No rounded corners beyond the 2 px needed to stop a control looking broken.
 - Colour is never the only carrier of meaning — not for selection, not for
   house identity, not for errors.

@@ -22,7 +22,7 @@ const FIELDS = ['var(--bh-red)', 'var(--bh-blue)', 'var(--bh-yellow)', 'var(--bh
  * Under reduced motion the same pieces render in their final positions, so the
  * composition is still there; it simply does not fly.
  */
-export function Burst({ pieces = 18 }: { pieces?: number }) {
+export function Burst({ pieces = 26 }: { pieces?: number }) {
   const reduced = useReducedMotion();
 
   // Deterministic per mount, so the composition is stable while it animates.
@@ -30,15 +30,22 @@ export function Burst({ pieces = 18 }: { pieces?: number }) {
     () =>
       Array.from({ length: pieces }, (_, i) => {
         const angle = (i / pieces) * Math.PI * 2 + (i % 3) * 0.24;
-        const distance = 96 + ((i * 37) % 120);
+        // Two rings rather than one band, so the composition has depth instead
+        // of a single even halo. The near pieces are larger and land sooner.
+        const ring = i % 3 === 0 ? 1 : 0;
+        const distance = (ring ? 190 : 110) + ((i * 37) % 90);
         return {
           form: FORMS[i % FORMS.length]!,
           color: FIELDS[(i * 3) % FIELDS.length]!,
-          size: 12 + ((i * 13) % 22),
+          size: (ring ? 10 : 16) + ((i * 13) % 20),
           x: Math.cos(angle) * distance,
-          y: Math.sin(angle) * distance * 0.78,
-          rotate: ((i * 47) % 90) - 45,
-          delay: (i % 6) * 45,
+          y: Math.sin(angle) * distance * 0.74,
+          // A whole turn or more, so the pieces tumble rather than tilt.
+          rotate: ((i * 47) % 270) - 135,
+          // Staggered across a longer window: they leave in a ragged burst
+          // instead of all at once, which is what made it read as one thump.
+          delay: (i % 7) * 38,
+          duration: 700 + ((i * 53) % 320),
         };
       }),
     [pieces],
@@ -54,6 +61,7 @@ export function Burst({ pieces = 18 }: { pieces?: number }) {
             ['--x' as string]: `${shard.x}px`,
             ['--y' as string]: `${shard.y}px`,
             ['--r' as string]: `${shard.rotate}deg`,
+            ['--dur' as string]: `${shard.duration}ms`,
             animationDelay: `${shard.delay}ms`,
             ...(reduced
               ? { transform: `translate(${shard.x}px, ${shard.y}px) rotate(${shard.rotate}deg)`, opacity: 0.9 }
@@ -65,29 +73,55 @@ export function Burst({ pieces = 18 }: { pieces?: number }) {
       ))}
 
       <style>{`
+        /*
+          THREE PHASES, because two of them were doing one job badly.
+
+          The old version threw the pieces out and then drifted them away over
+          five seconds. It read as a single soft puff: everything left at once,
+          at the same speed, and the long drift meant most of the animation was
+          shapes slowly disappearing rather than anything arriving.
+
+          Now they are FIRED, they OVERSHOOT and settle back, and only then do
+          they fade. The settle is the part that makes it feel like objects
+          rather than a particle effect — a thrown block stops, it does not
+          coast. Per-piece durations mean they do not land in unison.
+        */
         .burst-piece {
           animation:
-            burst 820ms var(--ease-snap) both,
-            drift 5s 820ms cubic-bezier(.33,0,.4,1) both;
+            burst var(--dur) var(--ease-snap) both,
+            fade 1.6s calc(var(--dur) + 900ms) ease-out both;
           will-change: transform, opacity;
         }
         @keyframes burst {
-          0%   { transform: translate(0,0) scale(.2) rotate(0deg); opacity: 0 }
-          35%  { opacity: 1 }
-          100% { transform: translate(var(--x), var(--y)) scale(1) rotate(var(--r)); opacity: .92 }
+          0% {
+            transform: translate(0, 0) scale(.15) rotate(0deg);
+            opacity: 0;
+          }
+          18% { opacity: 1 }
+          /* Past the mark, then back to it: the overshoot is the whole feel,
+             and it is the same curve the cards and buttons land on. */
+          70% {
+            transform:
+              translate(calc(var(--x) * 1.12), calc(var(--y) * 1.12))
+              scale(1.1) rotate(calc(var(--r) * 1.15));
+            opacity: 1;
+          }
+          100% {
+            transform: translate(var(--x), var(--y)) scale(1) rotate(var(--r));
+            opacity: 1;
+          }
         }
         /*
-          The second phase is the point. The burst alone ended on its last
-          keyframe and simply stopped, so the shapes read as frozen mid-air —
-          the screen looked broken rather than finished. They now keep drifting
-          outward and fade out, so the composition clears instead of hanging.
+          The clear. Straight down and out — the pieces fall off the plate
+          rather than evaporating where they hang, so the screen empties for the
+          next voter instead of dimming.
         */
-        @keyframes drift {
-          0%   { transform: translate(var(--x), var(--y)) scale(1) rotate(var(--r)); opacity: .92 }
+        @keyframes fade {
+          0%   { opacity: 1 }
           100% {
             transform:
-              translate(calc(var(--x) * 1.45), calc(var(--y) * 1.45 - 26px))
-              scale(1.06) rotate(calc(var(--r) * 1.6));
+              translate(var(--x), calc(var(--y) + 46px))
+              scale(.92) rotate(calc(var(--r) * 1.3));
             opacity: 0;
           }
         }

@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { election, employee, student } from '@/machine/__tests__/fixtures';
-import { COPY } from '@/lib/copy';
+import { COPY, HEADLINE } from '@/lib/copy';
 import type * as ApiModule from '@/lib/api';
 
 /** A controllable API. Every test decides what the server says and when. */
@@ -126,11 +126,20 @@ describe('the student journey', () => {
 
     await screen.findByRole('button', { name: /confirm & submit vote/i });
     expect(screen.getAllByRole('button', { name: /^change your pick/i })).toHaveLength(7);
-    expect(screen.getByText(/House Captain — Aravalli/i)).toBeInTheDocument();
-    expect(screen.queryByText(/House Captain — Nilgiri/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Aravalli House Captain/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Nilgiri House Captain/i)).not.toBeInTheDocument();
   });
 
-  it('is told how many gates they have before starting', async () => {
+  /**
+   * The identity pass confirms WHO, and nothing else.
+   *
+   * It used to pre-explain the ballot — "7 choices, ending with your house
+   * captain", or for an employee "House captains are voted on by students",
+   * which answered a question nobody had asked about a screen they would never
+   * see. The count belongs on the first position, where the progress row shows
+   * it at the moment it becomes useful; that is asserted just below.
+   */
+  it('confirms who is voting, without explaining the ballot first', async () => {
     const user = userEvent.setup();
     mockRollFor(student);
     mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: student });
@@ -140,8 +149,16 @@ describe('the student journey', () => {
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
     await user.click(await screen.findByRole('button', { name: /continue/i }));
 
-    expect(await screen.findByText(/ending with your house captain/i)).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /that.s me/i })).toBeInTheDocument();
+    expect(await screen.findByText(student.name)).toBeInTheDocument();
+    expect(screen.queryByText(/choices/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/house captains are voted on by students/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the count on the first position instead, where it is useful', async () => {
+    const user = await checkInAs(student);
+    expect(await screen.findByText(`1 of ${student.eligiblePositionIds.length}`)).toBeInTheDocument();
+    await user.click(screen.getAllByRole('radio')[0]!);
   });
 });
 
@@ -167,7 +184,14 @@ describe('navigation and editing', () => {
     const button = screen.getByRole('button', { name: /continue/i });
 
     expect(button).toBeDisabled();
-    expect(screen.getByText(/pick one to continue/i)).toBeInTheDocument();
+    expect(screen.getByText('Pick one.')).toBeInTheDocument();
+
+    // The reason is attached to the button as a description, not folded into
+    // its name — so it is announced on focus without becoming "Continue, pick
+    // a candidate for President to continue" every time.
+    const describedBy = button.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)).toHaveTextContent(/pick a candidate/i);
 
     await user.click(button);
     // Still on gate 1.
@@ -296,7 +320,10 @@ describe('submission', () => {
     await user.click(await screen.findByRole('button', { name: /cast my vote/i }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/NOT recorded/i);
+    expect(alert).toHaveTextContent(COPY.error.submitFailed);
+    // The point of that sentence, pinned independently of its wording.
+    expect(COPY.error.submitFailed).toMatch(/not recorded/i);
+    expect(COPY.error.submitFailed).toMatch(/nothing was saved/i);
     // Back on the boarding pass with all seven choices still there.
     expect(screen.getAllByRole('button', { name: /^change your pick/i })).toHaveLength(7);
   });
@@ -313,7 +340,7 @@ describe('submission', () => {
     await user.click(await screen.findByRole('button', { name: /confirm & submit vote/i }));
     await user.click(await screen.findByRole('button', { name: /cast my vote/i }));
 
-    expect(await screen.findByText('You have already voted')).toBeInTheDocument();
+    expect(await screen.findByText(HEADLINE.alreadyVoted)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/person running the election/i);
   });
 });
@@ -334,7 +361,7 @@ describe('blocked states', () => {
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
     await user.click(await screen.findByRole('button', { name: /continue/i }));
 
-    expect(await screen.findByText('You have already voted')).toBeInTheDocument();
+    expect(await screen.findByText(HEADLINE.alreadyVoted)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(COPY.error.alreadyVoted);
   });
 
@@ -345,15 +372,15 @@ describe('blocked states', () => {
     });
 
     render(<App />);
-    expect(await screen.findByText('Voting has not opened yet')).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent(/has not opened yet/i);
+    expect(await screen.findByText(HEADLINE.notOpen)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(COPY.error.notOpen);
     expect(screen.queryByRole('button', { name: /start voting/i })).not.toBeInTheDocument();
   });
 
   it('explains a closed election rather than offering a broken CTA', async () => {
     mocks.election.mockResolvedValue({ ...election, window: { open: false, reason: 'CLOSED' } });
     render(<App />);
-    expect(await screen.findByText('Voting has closed')).toBeInTheDocument();
+    expect(await screen.findByText(HEADLINE.closed)).toBeInTheDocument();
   });
 
   it('never shows a bare "something went wrong" when the election will not load', async () => {

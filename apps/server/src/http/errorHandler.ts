@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { ConfigValidationError } from '@mesa/election-core';
+import { ResetNotConfirmedError } from '../services/electionReset.js';
 import { AppError, BallotInvalidError, RateLimitedError } from '../services/errors.js';
 
 export interface ErrorBody {
@@ -98,6 +99,13 @@ export function errorHandler(
     return;
   }
 
+  if (error instanceof ResetNotConfirmedError) {
+    res.status(400).json({
+      error: { code: 'RESET_NOT_CONFIRMED', message: error.message },
+    } satisfies ErrorBody);
+    return;
+  }
+
   if (error instanceof AppError) {
     res.status(error.httpStatus).json({
       error: { code: error.code, message: error.userMessage },
@@ -110,8 +118,8 @@ export function errorHandler(
       error: {
         code: 'ELECTION_DATA_UNAVAILABLE',
         message:
-          'The election configuration on this server is not valid, so voting cannot proceed. ' +
-          'Please tell the returning officer — this needs fixing before anyone can vote.',
+          "The election setup on this server isn't valid, so voting can't go ahead. Tell the " +
+          'person running the election. This needs fixing before anyone can vote.',
       },
     } satisfies ErrorBody);
     return;
@@ -124,8 +132,8 @@ export function errorHandler(
     error: {
       code: 'SERVER_ERROR',
       message:
-        'Something failed on our side and your request was not completed. Nothing has been ' +
-        'recorded. Please try again — and tell the returning officer if it keeps happening.',
+        'Something failed on our side and your request was not completed. Nothing was ' +
+        'recorded. Try again, and tell the person running the election if it keeps happening.',
     },
   } satisfies ErrorBody);
 }

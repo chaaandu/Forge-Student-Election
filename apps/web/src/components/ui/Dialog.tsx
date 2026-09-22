@@ -83,7 +83,7 @@ export function Dialog({ open, title, onClose, children, actions }: DialogProps)
           style={{
             fontSize: 'var(--text-xl)',
             background: 'var(--bh-yellow)',
-            color: 'var(--color-ink)',
+            color: 'var(--color-ink-fixed)',
             borderBottom: 'var(--rule-weight) solid var(--color-ink)',
           }}
         >

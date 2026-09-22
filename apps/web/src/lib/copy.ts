@@ -5,45 +5,57 @@
  * voter reads before an irreversible act. Tests assert the exact text.
  *
  * VOICE
- * Warm and precise. Short sentences, second person, no jargon, no exclamation
+ * Talk like a person. Short sentences, second person, no jargon, no exclamation
  * marks, no filler. Say what happened, then what to do about it. Never be cute
- * about the vote itself — the warmth belongs to the person, the precision to
- * the act.
+ * about the vote itself: the warmth belongs to the person, the precision to the
+ * act.
  *
- * Two rules that decide most wording:
- *   • Errors lead with what it means for the voter, not with what failed.
- *   • Nothing implies the voter chose well. We celebrate turning up, never the
- *     choice.
+ * Three rules decide most wording.
+ *
+ * 1. Errors lead with what it means for the voter, not with what failed.
+ * 2. Nothing implies the voter chose well. We celebrate turning up, never the
+ *    choice.
+ * 3. CONTRACT EVERYTHING EXCEPT THE THREE SERIOUS LINES. "isn't", "you've" and
+ *    "we couldn't" are how people speak, and formal negation everywhere made
+ *    the whole interface sound like a form. The exceptions are the two lines
+ *    that state a vote cannot be changed and the one that states nothing was
+ *    saved. Those read flat and deliberate, and the change of register is the
+ *    point: when the tone stops being chatty, the sentence matters.
+ *
+ * No em dashes in anything a voter reads. They invite a second clause, and a
+ * second clause is usually the one to cut.
  */
 export const COPY = {
   review: {
-    // Required verbatim. Do not soften.
+    // Required verbatim by docs/product-spec.md §3.6. Do not soften.
     warning:
       'Please check your selections carefully. Once you submit your vote, you cannot change it.',
   },
   finalCall: {
     title: 'Ready to cast your vote?',
-    body: 'Once submitted, your vote cannot be changed.',
+    // Serious line. Active, and deliberately not contracted.
+    body: 'Once you submit, you cannot change your vote.',
     goBack: 'Go back',
     cast: 'Cast my vote',
   },
   error: {
     alreadyVoted:
-      'Our records show you have already voted. If that does not sound right, have a word with ' +
-      'the person running the election before you leave.',
-    notOpen: 'Voting has not opened yet.',
-    closed: 'Voting has closed, so we can no longer accept a vote.',
+      "Our records show you've already voted. If that doesn't sound right, speak to the person " +
+      'running the election before you leave.',
+    notOpen: "Voting hasn't opened yet.",
+    closed: "Voting has closed, so we can't accept any more votes.",
     network:
-      'Your choices are safe on this screen — nothing has been lost. We are trying again. If ' +
-      'this keeps happening, tell the person running the election.',
+      "Nothing is lost. Your choices are still on this screen and we're trying again. If this " +
+      'keeps happening, tell the person running the election.',
+    // Serious line. Not contracted.
     submitFailed:
-      'Your vote was not recorded, and nothing has been saved. Try again — and if it fails a ' +
-      'second time, tell the person running the election.',
+      'Your vote was not recorded and nothing was saved. Try again. If it fails a second time, ' +
+      'tell the person running the election.',
     sessionExpired:
-      'Your check-in timed out, so nothing was submitted. Check in again — your choices will be ' +
-      'quick to make a second time.',
+      'Your check-in timed out, so nothing was submitted. Check in again, it will be quick the ' +
+      'second time.',
     notOnRoll:
-      'That account is not on the roll for this election. The person running it can sort this out.',
+      "That account isn't on the roll for this election. The person running it can sort this out.",
     noMatch: 'No match yet. Try a different spelling, or ask the person running the election.',
   },
   /**
@@ -52,18 +64,22 @@ export const COPY = {
    * These celebrate turning up, never a choice. Nothing here may imply the
    * voter picked well, or nudge an outcome.
    */
-  done: ['Your ballot is in the box.', 'One voter, one ballot. Yours is counted.', 'Thanks for turning up.'],
+  done: [
+    'Your ballot is in the box.',
+    'One voter, one ballot. Yours is counted.',
+    'Thanks for turning up.',
+  ],
 } as const;
 
 /** Headlines for failure states. Plain language; nothing to decode. */
 export const HEADLINE = {
-  alreadyVoted: 'You have already voted',
-  notOpen: 'Voting has not opened yet',
+  alreadyVoted: "You've already voted",
+  notOpen: "Voting hasn't opened yet",
   closed: 'Voting has closed',
   delayed: 'Still sending',
-  notRecorded: 'That did not go through',
-  checkBallot: 'Something is missing',
+  notRecorded: "That didn't go through",
+  checkBallot: "Something's missing",
   checkInExpired: 'Your check-in timed out',
-  checkInFailed: 'Sign-in did not finish',
-  unavailable: 'We could not load the election',
+  checkInFailed: "Sign-in didn't finish",
+  unavailable: "We couldn't load the election",
 } as const;

@@ -80,7 +80,7 @@ export function PositionScreen({
             {String(gateIndex + 1).padStart(2, '0')}
           </span>
 
-          {house && <HouseCrest house={house} size={52} />}
+          {house && <HouseCrest house={house} size={52} onField />}
 
           <h1 className="poster min-w-0 flex-1" style={{ fontSize: 'clamp(1.6rem, 4.6vw, 2.75rem)' }}>
             {step.title}
@@ -106,7 +106,7 @@ export function PositionScreen({
 
         <div className="px-6 py-8 sm:px-8">
           <h2 id="position-heading" className="sr-only">
-            {step.title} — pick one candidate
+            {step.title}. Pick one candidate.
           </h2>
           <CandidateGrid
             candidates={candidates}
@@ -133,12 +133,15 @@ export function PositionScreen({
             <span aria-hidden="true">→</span>
           </Button>
 
-          {/* The disabled reason, visible as well as announced. */}
-          {!selected && (
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
-              Pick one to continue.
-            </p>
-          )}
+          {/*
+            No second "Pick one to continue." here.
+
+            The plate already says "Pick one." at the top, beside the progress
+            row, and the Continue button is visibly disabled. Three statements of
+            one rule is two too many, and the reason is still ANNOUNCED through
+            the button's aria-describedby for anyone who never sees the top of
+            the plate.
+          */}
         </div>
       </div>
 

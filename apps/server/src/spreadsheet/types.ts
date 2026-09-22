@@ -17,6 +17,13 @@ export interface VoterParticipationRow {
   readonly email: string;
   readonly type: string;
   readonly houseId: string | null;
+  /**
+   * The house as a reader of the sheet sees it — "Gladiators", not
+   * "gladiators". The roll is seeded with names, and a mirror that spelled the
+   * same house two ways in two tabs is one anybody sorting, filtering or
+   * writing their own formula over it has to know a trick to use.
+   */
+  readonly house: string;
   readonly hasVoted: boolean;
   readonly votedAt: string;
 }
@@ -69,6 +76,13 @@ export interface SpreadsheetRepository {
   appendBallotSelections(rows: readonly BallotSelectionRow[]): Promise<void>;
   upsertCandidates(rows: readonly CandidateRow[]): Promise<void>;
   appendResults(rows: readonly ResultRow[]): Promise<void>;
+  /**
+   * Empty the tabs the election writes to, back to their header rows.
+   *
+   * Only ever called by a confirmed reset. The candidate list and the roll are
+   * configuration and are left alone.
+   */
+  clearElectionData(): Promise<void>;
   health(): Promise<SpreadsheetHealth>;
 }
 

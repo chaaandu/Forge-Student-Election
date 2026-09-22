@@ -27,6 +27,7 @@
     "db:reset": "npm run db:reset -w @mesa/server",
     "verify": "npm run lint && npm run check:branching && npm run check:client-secrets && npm run check:css-vars && npm run typecheck && npm run test && npm run build",
     "gen:secrets": "npm run gen:secrets -w @mesa/server",
+    "monitor:password": "npm run monitor:password -w @mesa/server --",
     "check:branching": "node scripts/check-no-type-branching.mjs",
     "check:client-secrets": "node scripts/check-client-secrets.mjs",
     "check:css-vars": "node scripts/check-css-vars.mjs",
@@ -44,7 +45,9 @@
     "photos:import": "node scripts/import-candidate-photos.mjs",
     "predev": "npm run photos:import --silent",
     "election:serve": "node scripts/election-day.mjs",
-    "election:tunnel": "node scripts/election-day.mjs --tunnel"
+    "election:tunnel": "node scripts/election-day.mjs --tunnel",
+    "appsscript:build": "node scripts/build-apps-script.mjs",
+    "appsscript:verify": "tsx scripts/verify-apps-script.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

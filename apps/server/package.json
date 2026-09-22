@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "tsx src/scripts/seed.ts",
     "db:reset": "tsx src/scripts/reset.ts",
-    "gen:secrets": "tsx src/scripts/genSecrets.ts"
+    "gen:secrets": "tsx src/scripts/genSecrets.ts",
+    "monitor:password": "tsx src/scripts/monitorPassword.ts"
   },
   "dependencies": {
     "@mesa/election-core": "*",

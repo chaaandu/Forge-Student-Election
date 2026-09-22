@@ -1,15 +1,34 @@
 # Third-party notices
 
-## React Bits — `SplitFlapText` (no longer used)
+## React Bits — `Aurora`
 
-An earlier design direction ("Mesa Departures") adapted the flip mechanic from
-React Bits' `SplitFlapText`. That direction was dropped in favour of the paper
-and ink design in `docs/design-direction.md`, and the derived component and
-stylesheet were removed with it. No React Bits code remains in this repository.
-
-Recorded here because the attribution existed in earlier commits:
-React Bits — MIT + Commons Clause License Condition v1.0, © David Haz,
+React Bits — **MIT + Commons Clause License Condition v1.0**, © David Haz,
 https://github.com/DavidHDev/react-bits
+
+**This is not plain MIT.** The Commons Clause withholds the right to *sell* the
+software, or to sell a product whose value derives entirely from it. Mesa runs
+this election system for itself and does not sell it, so the condition is not
+engaged. It is called out because the distinction matters if this is ever
+licensed to another school, and because a reader skimming a licence table would
+otherwise see "MIT" and stop.
+
+- Component: `Aurora` — https://reactbits.dev/backgrounds/aurora
+- Vendored at `apps/web/src/components/backdrop/Aurora.tsx` + `Aurora.css`
+- The vertex and fragment shaders, including the simplex noise and the colour
+  ramp, are the published source unchanged. What was changed is recorded in the
+  file header: TypeScript, the unused `lightMode` path removed, and three kiosk
+  gates added (WebGL, reduced motion, tab visibility).
+
+### An earlier React Bits component, since removed
+
+The first design direction ("Mesa Departures") adapted the flip mechanic from
+React Bits' `SplitFlapText`. That direction was dropped in favour of the design
+in `docs/design-direction.md` and the derived component was removed with it.
+
+This section previously claimed that no React Bits code remained in the
+repository. That claim is out of date and has been replaced rather than left to
+rot: a notices file that is confidently wrong is worse than one that is missing,
+and a test now fails if the old sentence reappears.
 
 ## Runtime dependencies
 
@@ -21,6 +40,7 @@ https://github.com/DavidHDev/react-bits
 | better-sqlite3 | MIT | authoritative store |
 | dotenv | BSD-2-Clause | environment loading |
 | tailwindcss | MIT | styling utilities |
+| ogl | Unlicense (public domain) | WebGL for the check-in aurora; lazy-loaded, ~15 KB gzipped, never in the first chunk |
 | vite | MIT | build tooling |
 | @fontsource/staatliches | OFL-1.1 | poster headlines — Google's digitisation of Herbert Bayer's title lettering for the 1923 Bauhaus exhibition catalogue |
 | @fontsource-variable/jost | OFL-1.1 (Jost* by indestructible type*) | labels, numerals, controls — an open Futura |

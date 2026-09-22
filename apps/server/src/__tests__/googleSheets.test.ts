@@ -80,6 +80,7 @@ describe('writing to Google Sheets', () => {
         email: 's@x.invalid',
         type: 'student',
         houseId: 'aravalli',
+        house: 'Aravalli',
         hasVoted: true,
         votedAt: '2026-03-04T10:00:00Z',
       },

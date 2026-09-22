@@ -10,8 +10,14 @@ to run and no code to touch.
 - To convert what is in the folder right now without starting anything:
   `npm run photos:import`
 
-Removing a photo works the same way in reverse: delete the file and that
-candidate goes back to their initials.
+Once a photo has been imported it stays imported. These originals are large
+and are of real students, so clearing them out of this folder afterwards is
+fine — the converted photo is what ships, and re-running the import will not
+undo it.
+
+To take a photo back off the ballot, delete the converted file in
+`apps/web/src/assets/candidates/` instead. That candidate goes back to their
+initials.
 
 ## Naming
 
@@ -28,17 +34,20 @@ shows up immediately rather than silently leaving someone blank.
 
 ## What makes a good photo
 
-- **Portrait or square.** The card crops to a wide box, biased upward — faces
-  sit high in a portrait, and a centre crop cuts foreheads.
+- **Any framing.** The import finds the face and crops around it, so a
+  full-length photo and a head-and-shoulders one both come out at the same
+  size with the same clear space above the head. You do not need to crop
+  anything yourself.
+- **One person in the photo.** With two faces in frame the crop goes to the
+  larger one, which may not be the candidate.
 - **At least 600px wide.** Bigger is fine; everything is resized down.
-- **Head and shoulders, face roughly centred left to right.**
 - JPG, PNG or WebP. Photos straight off a phone are fine — sideways ones are
   rotated automatically.
 
 Do not resize or compress them yourself. The import cover-crops every photo to
 the same size and compresses it, so a 4 MB phone picture lands at roughly
-50 KB and every card on the ballot looks consistent. Your originals stay
-untouched in this folder.
+50 KB and every card on the ballot looks consistent. Your originals are read,
+never modified.
 
 ## A partial set is fine
 

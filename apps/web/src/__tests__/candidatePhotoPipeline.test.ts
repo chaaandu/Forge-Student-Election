@@ -42,3 +42,27 @@ describe('the candidate photo import', () => {
     expect(script).toMatch(/readFileSync\(CONFIG/);
   });
 });
+
+// An imported photograph must survive the originals being cleared out.
+//
+// The originals are hundreds of megabytes of real students' photographs and
+// get deleted once imported. An earlier version of the prune removed any
+// output whose SOURCE file was absent, so emptying the drop folder deleted
+// every imported photo — and since `predev` and `build` both run the import,
+// it happened on the next `npm run dev` rather than when anyone asked. The
+// imported files are committed; a routine dev command must not delete them.
+describe('pruning an imported photograph', () => {
+  const prune = script.slice(script.indexOf('for (const stale'));
+
+  it('is decided by the ballot, not by what is in the drop folder', () => {
+    const condition = prune.slice(prune.indexOf('if ('), prune.indexOf('rmSync'));
+    expect(condition).toMatch(/config\.candidates\.some/);
+    expect(condition, 'the prune must not consult the source files').not.toMatch(
+      /missing|files|byKey/,
+    );
+  });
+
+  it('reports an already-imported candidate as done rather than as a gap', () => {
+    expect(script).toMatch(/existsSync\(join\(OUT/);
+  });
+});

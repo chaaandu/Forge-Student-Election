@@ -70,6 +70,9 @@ export function createApp(ctx: AppContext, options: AppOptions = {}): Express {
       election: ctx.config.election.id,
       configVersion: ctx.configVersion,
       authMode: ctx.identity.mode,
+      /** Which credential the election desk should ask for. */
+      adminSignIn:
+        ctx.env.MONITOR_EMAIL && ctx.env.MONITOR_PASSWORD_HASH ? 'password' : 'token',
     });
   });
 

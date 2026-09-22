@@ -40,18 +40,35 @@ body {
 h1,
 h2,
 h3 {
-  margin: 0;
   font-family: var(--font-geometric);
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.1;
 }
 
-p,
-figure,
-ul,
-ol {
-  margin: 0;
+/*
+ * In @layer base, not unlayered.
+ *
+ * Tailwind's utilities live in a cascade layer, and an unlayered rule beats a
+ * layered one whatever the specificity. Reset outside the layer and `mt-5` on
+ * a <p> silently does nothing — which is exactly what happened to the copy on
+ * the welcome panel, where the rule above it sat 8 px from the type instead of
+ * 20. Every element reset that a utility might legitimately override belongs
+ * in the layer.
+ */
+@layer base {
+  p,
+  figure,
+  ul,
+  ol {
+    margin: 0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+  }
 }
 
 button,
@@ -67,7 +84,7 @@ input {
 
 ::selection {
   background: var(--bh-yellow);
-  color: var(--color-ink);
+  color: var(--color-ink-fixed);
 }
 
 .sr-only {
@@ -89,7 +106,7 @@ input {
   z-index: 100;
   transform: translateY(-200%);
   background: var(--bh-yellow);
-  color: var(--color-ink);
+  color: var(--color-ink-fixed);
   padding: var(--space-3) var(--space-5);
   border: var(--rule-weight) solid var(--color-ink);
   font-family: var(--font-geometric);
@@ -148,6 +165,39 @@ input {
   box-shadow: var(--shadow-block);
 }
 
+/* --------------------------------------------------------- ground lift --- */
+
+/**
+ * The dark room lifting off the paper.
+ *
+ * Welcome is a full-bleed dark scene; everything past it is cream. The change
+ * used to be a cut — one frame black, the next cream — which made two
+ * deliberate worlds read as two different applications. Holding the dark ground
+ * for a beat and lifting it turns the cut into the thing it was always meant to
+ * be: stepping out of the room and onto the page.
+ *
+ * `pointer-events: none` is not optional. This sits over the check-in desk for
+ * half a second, and a voter reaching straight for the name field must not have
+ * that tap land on a decoration.
+ */
+.ground-lift {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: #08080a;
+  animation: ground-lift 460ms var(--ease-out) forwards;
+}
+
+@keyframes ground-lift {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 /* ---------------------------------------------------------- action bar --- */
 
 /**
@@ -202,14 +252,22 @@ input {
   line-height: 0.86;
 }
 
-/** Small structural label, as set on a Bauhaus plate. */
+/**
+ * Small structural label, as set on a Bauhaus plate.
+ *
+ * SOFT INK, NOT FAINT. --color-ink-faint is documented "large text only, never
+ * body" and this is 12px — it measured 4.49:1 on paper and 3.87:1 at night, so
+ * every position label on the review screen, "YOUR NAME" on the check-in desk
+ * and "CHECK IN" itself were all under AA. The token was right and the class
+ * using it was wrong; a letterspaced 12px cap is small text, not large.
+ */
 .label {
   font-family: var(--font-geometric);
   font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-ink-faint);
+  color: var(--color-ink-soft);
 }
 
 /** A big numeral. The Bauhaus set numbers large and unapologetically. */

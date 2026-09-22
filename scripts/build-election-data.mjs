@@ -68,13 +68,26 @@ const CANDIDATES = {
   'house-captain-gladiators': ['Aarav Shrivastava', 'Bhavya Tandon'],
 };
 
+/**
+ * Position titles read as ONE THING, not a label with a qualifier bolted on.
+ *
+ * They were `Academic Lead — Boy`. The em dash made the qualifier an
+ * afterthought, and on the review screen a column of them read as a list of
+ * dashes. The possessive says the same thing in the order someone would say it
+ * out loud, and needs no punctuation to hold it together.
+ *
+ * The ids are the first column and are NOT derived from the title, so renaming
+ * a position here does not renumber a ballot or orphan a cast vote. It does
+ * change `configVersion`, which is the hash of this file stamped onto every
+ * ballot: safe before voting opens, never after.
+ */
 const LEADERSHIP = [
   ['president', 'President', 'President'],
   ['vice-president', 'Vice President', 'Vice President'],
-  ['academic-lead-boy', 'Academic Lead — Boy', 'Academic Lead (Boy)'],
-  ['academic-lead-girl', 'Academic Lead — Girl', 'Academic Lead (Girl)'],
-  ['community-lead-boy', 'Community Lead — Boy', 'Community Lead (Boy)'],
-  ['community-lead-girl', 'Community Lead — Girl', 'Community Lead (Girl)'],
+  ['academic-lead-boy', 'Boys’ Academic Lead', 'Boys’ Academic Lead'],
+  ['academic-lead-girl', 'Girls’ Academic Lead', 'Girls’ Academic Lead'],
+  ['community-lead-boy', 'Boys’ Community Lead', 'Boys’ Community Lead'],
+  ['community-lead-girl', 'Girls’ Community Lead', 'Girls’ Community Lead'],
 ];
 
 const slug = (value) =>
@@ -99,7 +112,7 @@ const positions = LEADERSHIP.map(([id, title, shortTitle], index) => ({
 HOUSES.forEach((house, index) => {
   positions.push({
     id: `house-captain-${house.id}`,
-    title: `House Captain — ${house.name}`,
+    title: `${house.name} House Captain`,
     shortTitle: `${house.name} Captain`,
     order: 7 + index,
     kind: 'house-captain',
@@ -126,7 +139,7 @@ for (const [positionId, names] of Object.entries(CANDIDATES)) {
 const config = {
   election: {
     id: 'mesa-forge-c27',
-    name: 'Mesa Student Elections',
+    name: 'Forge Student Elections',
     status: 'open',
     weights: { student: 0.75, employee: 0.25 },
     zeroTurnoutPolicy: 'renormalise',

@@ -29,20 +29,34 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SRC = join(ROOT, 'apps/web/src');
 
 /**
- * Properties set at runtime by a component, on the element or an ancestor,
- * rather than declared in a stylesheet. Each needs the component that writes
- * it, so an entry cannot outlive its author unnoticed.
+ * Properties one file sets and ANOTHER file reads. These are the only ones that
+ * need declaring here, because a same-file definition is found automatically —
+ * see `definedIn` below.
  */
 const RUNTIME_DEFINED = new Map([
-  ['--field', 'CandidateCard / .field — set with inkOn()'],
-  ['--on-field', 'CandidateCard / .field — set with inkOn()'],
-  ['--from', 'PositionScreen — step-in direction'],
-  ['--x', 'Burst — scatter offset'],
-  ['--y', 'Burst — scatter offset'],
-  ['--r', 'Burst — scatter rotation'],
-  ['--cols', 'CandidateGrid — column count for this field size'],
-  ['--cols-narrow', 'CandidateGrid — the same count below 940px'],
+  ['--field', 'CandidateCard sets it; global.css .field reads it'],
+  ['--on-field', 'CandidateCard sets it; global.css .field reads it'],
 ]);
+
+/**
+ * Custom properties a file defines for itself.
+ *
+ * Two forms count, and both are ordinary practice here rather than loopholes:
+ *
+ *   `--x: value`            a rule inside the component's own <style> block
+ *   `['--x' as string]: v`  an inline style on the element
+ *
+ * Without this the checker only believed the shared stylesheets, so a component
+ * that set a variable on itself and read it two lines later was reported as
+ * broken. That is a false positive, and a checker that cries wolf is one people
+ * start passing an allowlist to — which is how the real ones get waved through.
+ */
+function definedIn(source) {
+  const local = new Set();
+  for (const m of source.matchAll(/(--[\w-]+)\s*:/g)) local.add(m[1]);
+  for (const m of source.matchAll(/\[\s*'(--[\w-]+)'/g)) local.add(m[1]);
+  return local;
+}
 
 const walk = (dir) =>
   readdirSync(dir).flatMap((entry) => {
@@ -68,13 +82,14 @@ for (const sheet of stylesheets) {
 const problems = [];
 for (const file of files) {
   const source = readFileSync(file, 'utf8');
+  const local = definedIn(source);
   source.split('\n').forEach((line, index) => {
     for (const match of line.matchAll(/var\(\s*(--[\w-]+)/g)) {
       const name = match[1];
       // A fallback — var(--x, something) — is a deliberate optional read.
       const rest = line.slice(match.index + match[0].length);
       if (/^\s*,/.test(rest)) continue;
-      if (defined.has(name) || RUNTIME_DEFINED.has(name)) continue;
+      if (defined.has(name) || local.has(name) || RUNTIME_DEFINED.has(name)) continue;
       problems.push({ file: relative(ROOT, file), line: index + 1, name });
     }
   });
@@ -87,8 +102,10 @@ if (problems.length > 0) {
   }
   console.error(
     '\n  Each of these silently drops the whole declaration that uses it.\n' +
-      '  Define it in src/styles/tokens.css, or add it to RUNTIME_DEFINED in\n' +
-      '  scripts/check-css-vars.mjs if a component sets it at runtime.\n',
+      '  Define it in src/styles/tokens.css, in the component\'s own <style>\n' +
+      '  block, or as an inline style on the element. Add it to RUNTIME_DEFINED\n' +
+      '  in scripts/check-css-vars.mjs only when one file sets it and another\n' +
+      '  reads it.\n',
   );
   process.exit(1);
 }
