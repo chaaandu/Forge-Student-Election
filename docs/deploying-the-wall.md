@@ -12,12 +12,38 @@ there is no `/api` to answer it. Point a projector at it, not a booth.
 
 ## Vercel
 
-`vercel.json` at the repository root pins the three things Vercel would
-otherwise guess at.
+`vercel.json` at the repository root pins the four things Vercel would otherwise
+guess at. Two project settings have to agree with it, and if either does not,
+the file is bypassed and the failure looks like something else entirely.
 
-Set the project's **Root Directory to the repository root**, not `apps/web`.
-`apps/web` depends on the `@mesa/election-core` workspace, which is not
-published to npm, so it cannot be installed on its own.
+### Project Settings, in the dashboard
+
+**Root Directory must be the repository root** — blank, or `.`. Not `apps/web`.
+
+Two reasons. Vercel reads `vercel.json` *from the Root Directory*, so pointing
+it at `apps/web` means this file is never read at all. And `apps/web` cannot
+build on its own regardless: it depends on the `@mesa/election-core` workspace,
+which is not published to npm, and both `tsconfig.app.json` and `vite.config.ts`
+reach up into `../../packages/election-core/src`.
+
+**Build & Output Settings must have no overrides.** Leave Build Command,
+Output Directory and Install Command switched off, so the values here are the
+ones used.
+
+### `No Output Directory named "dist" found`
+
+```
+Error: No Output Directory named "dist" found after the Build completed.
+```
+
+The name in that message is the one Vercel actually used. This file sets
+`apps/web/dist`, so a message naming plain `dist` means the file was not read,
+or was overridden — the two settings above. `dist` is the Vite preset's default,
+which is the giveaway: something fell back to framework detection.
+
+`"framework": null` is set here for that reason. The build is driven explicitly
+by `buildCommand` and `outputDirectory`; a detected preset has nothing to add
+and can only override them.
 
 ### Why the build failed with `tsc: command not found`
 
