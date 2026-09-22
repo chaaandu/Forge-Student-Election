@@ -251,6 +251,7 @@ function doGet(e) {
   try {
     if (action === 'election') return json_(electionPayload_());
     if (action === 'lookup') return json_(lookup_(e.parameter.query));
+    if (action === 'roll') return json_(rollPayload_());
     if (action === 'session') return json_(sessionPayload_(e.parameter.token));
     if (action === 'turnout') return json_(turnout_());
     return fail_('NOT_FOUND', 'Unknown action.', 404);
@@ -315,11 +316,72 @@ function electionPayload_() {
   };
 }
 
+/** An address with only enough of it left to tell two similar names apart. */
+function mask_(email) {
+  var at = String(email || '').indexOf('@');
+  if (at < 1) return '';
+  return email.slice(0, 2) + '\u2022\u2022\u2022' + email.slice(at);
+}
+
+function byName_(a, b) {
+  if (a.name === b.name) return 0;
+  return a.name < b.name ? -1 : 1;
+}
+
+function rollEntry_(v, voted) {
+  return {
+    id: v.id,
+    name: v.name,
+    maskedEmail: mask_(v.email),
+    type: v.type,
+    houseId: houseIdFromName_(v.house),
+    hasVoted: Object.prototype.hasOwnProperty.call(voted, v.id),
+  };
+}
+
+/**
+ * The whole roll, masked, in one request.
+ *
+ * Type-ahead over 145 people does not need a round trip per keystroke, and on
+ * this deployment it cannot afford one. The script answers in about a second,
+ * but Google's content layer in front of it was measured between 0.5s and 30s
+ * for the same request and drops roughly one reply in three — so every letter
+ * typed cost seconds, sometimes twice, and replies landed out of order. No
+ * amount of debouncing fixes a transport like that; the only fix is to stop
+ * asking it a question per keystroke.
+ *
+ * So the client fetches this once at check-in and searches it in the browser,
+ * which costs nothing and cannot arrive out of order.
+ *
+ * This is the same disclosure per name as `lookup_` — the same fields, the same
+ * masking — delivered in one request instead of many. The minimum query length
+ * and the cap of eight never made the roll private on a public URL; they only
+ * made enumerating it tedious.
+ *
+ * `hasVoted` travels with it because it is the one part that changes, and it is
+ * what marks a name as already used in the list. It is advisory and may be
+ * seconds stale: the binding check is made in `select_`, and again under the
+ * lock in `castBallot_`, against the sheet.
+ */
+function rollPayload_() {
+  var all = roll_();
+  var voted = votedSet_();
+  var out = [];
+  for (var id in all) {
+    if (!Object.prototype.hasOwnProperty.call(all, id)) continue;
+    out.push(rollEntry_(all[id], voted));
+  }
+  out.sort(byName_);
+  return { voters: out };
+}
+
 /**
  * Type-ahead over the roll.
  *
- * A minimum query length and a hard cap are what stop this becoming a
- * roll-export endpoint, and the email is masked before it leaves.
+ * Still here, and still correct: it is what the client falls back to when the
+ * roll above cannot be fetched, and a search box that does nothing is worse
+ * than a slow one. A minimum query length and a hard cap are what stop this
+ * becoming a roll-export endpoint, and the email is masked before it leaves.
  */
 function lookup_(query) {
   var q = String(query || '')
@@ -334,19 +396,19 @@ function lookup_(query) {
     if (!Object.prototype.hasOwnProperty.call(all, id)) continue;
     var v = all[id];
     if (v.name.toLowerCase().indexOf(q) === -1 && v.email.toLowerCase().indexOf(q) === -1) continue;
-    out.push({
-      id: v.id,
-      name: v.name,
-      maskedEmail: v.email.slice(0, 2) + '•••' + v.email.slice(v.email.indexOf('@')),
-      type: v.type,
-      houseId: houseIdFromName_(v.house),
-      hasVoted: Object.prototype.hasOwnProperty.call(voted, v.id),
-    });
-    if (out.length >= 9) break;
+    out.push(rollEntry_(v, voted));
   }
-  out.sort(function (a, b) {
-    return a.name < b.name ? -1 : 1;
-  });
+
+  /*
+    Sort, THEN cap.
+
+    This used to stop collecting at nine matches and sort those nine, so the
+    eight names shown were whichever the roll happened to be keyed in first,
+    alphabetised after the fact. A voter whose name matched could be missing
+    from a list that was not even full — on the one screen where failing to
+    find yourself stops you voting.
+  */
+  out.sort(byName_);
   return { results: out.slice(0, 8), truncated: out.length > 8 };
 }
 

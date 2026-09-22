@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   submitBallot: vi.fn(),
   endSession: vi.fn(),
   lookup: vi.fn(),
+  primeRoll: vi.fn(),
   verifyCode: vi.fn(),
   exchangeHandoff: vi.fn(),
 }));
@@ -28,6 +29,7 @@ beforeEach(() => {
   // the next and silently change what the "server" does.
   vi.resetAllMocks();
   mocks.election.mockResolvedValue(election);
+  mocks.primeRoll.mockResolvedValue(undefined);
   mocks.endSession.mockResolvedValue({ ended: true });
 });
 

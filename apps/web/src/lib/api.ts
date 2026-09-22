@@ -305,23 +305,199 @@ async function request<T>(
   return body as T;
 }
 
+/**
+ * True when the roll is searched in the browser rather than over the network.
+ *
+ * Apps Script only. See `fetchRoll` for why.
+ */
+export const rollSearchIsLocal = usingAppsScript;
+
+/** How many names the list shows. Mirrors the cap the server applies. */
+const ROLL_RESULTS = 8;
+
+let cachedRoll: RollMatch[] | null = null;
+let rollInFlight: Promise<RollMatch[]> | null = null;
+
+/**
+ * The roll, fetched once.
+ *
+ * Searching 145 names does not need a request per keystroke, and against Apps
+ * Script it cannot have one: the script answers in about a second, but the
+ * content layer in front of it runs between 0.5s and 30s and drops roughly one
+ * reply in three, so it retries. Typing a name meant several multi-second
+ * requests in flight at once, answering queries the voter had already finished
+ * typing, and a list that flickered between them. Debouncing only chose how
+ * long to wait before paying that cost.
+ *
+ * The roll is small and static while voting is open, so it is fetched once and
+ * matched here. Typing then costs nothing and cannot race itself.
+ */
+function fetchRoll(): Promise<RollMatch[]> {
+  if (!rollInFlight) {
+    rollInFlight = callAppsScript<{ voters: RollMatch[] }>(
+      { action: 'roll' },
+      { method: 'GET' },
+    ).then((payload) => {
+      cachedRoll = payload.voters ?? [];
+      return cachedRoll;
+    });
+    // Cleared whether it resolved or threw, so a failed prime can be retried
+    // rather than being remembered as a permanently rejected promise.
+    void rollInFlight.catch(() => {}).finally(() => {
+      rollInFlight = null;
+    });
+  }
+  return rollInFlight;
+}
+
+/** Lowercase, accents off. The half both foldings below share. */
+function normalise(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Punctuation REMOVED, not turned into a space.
+ *
+ * So "D'Souza" is reached by typing "dsouza" and "Jean-Luc" by "jeanluc",
+ * which is how people type a name they are not looking at. Spacing the
+ * apostrophe instead loses exactly that spelling.
+ */
+function tighten(value: string): string {
+  return normalise(value)
+    .replace(/[^a-z0-9@. ]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Every word a row can be matched on the front of.
+ *
+ * Both foldings, because each loses a spelling the other keeps: "Maria
+ * D'Souza" is findable as maria, dsouza, d or souza, and a voter hunting for
+ * their own name under a queue should not have to guess which of those the
+ * roll was typed with.
+ */
+function wordsOf(value: string): string[] {
+  const split = normalise(value)
+    .replace(/[^a-z0-9@.]+/g, ' ')
+    .trim()
+    .split(' ');
+  return [...new Set([...tighten(value).split(' '), ...split])].filter(Boolean);
+}
+
+/**
+ * Match a query against the roll, best first.
+ *
+ * Every whitespace-separated term must match somewhere, so "bhati abeer" finds
+ * the same person as "abeer bhati" — people type their own name in whichever
+ * order, and a surname-first search returning nothing looks like being missing
+ * from the roll.
+ *
+ * Ranked by the WORST-placed term, so a row where both terms begin words sorts
+ * above one where a term only appears inside the address.
+ *
+ * SORTED BEFORE IT IS CAPPED. The eight shown are the eight best matches, not
+ * the first eight encountered — which is the one thing a list like this must
+ * get right, because a voter who cannot find their name cannot vote.
+ */
+export function matchRoll(
+  roll: RollMatch[],
+  query: string,
+): { results: RollMatch[]; truncated: boolean } {
+  const terms = tighten(query).split(' ').filter(Boolean);
+  if (terms.length === 0) return { results: [], truncated: false };
+
+  const scored: { match: RollMatch; rank: number }[] = [];
+
+  for (const match of roll) {
+    const name = tighten(match.name);
+    const words = wordsOf(match.name);
+    const email = tighten(match.maskedEmail);
+
+    let worst = 0;
+    let all = true;
+
+    for (const term of terms) {
+      let rank: number;
+      if (name.startsWith(term)) rank = 0;
+      else if (words.some((word) => word.startsWith(term))) rank = 1;
+      else if (name.includes(term)) rank = 2;
+      else if (email.includes(term)) rank = 3;
+      else {
+        all = false;
+        break;
+      }
+      if (rank > worst) worst = rank;
+    }
+
+    if (all) scored.push({ match, rank: worst });
+  }
+
+  scored.sort((a, b) => a.rank - b.rank || a.match.name.localeCompare(b.match.name));
+
+  return {
+    results: scored.slice(0, ROLL_RESULTS).map((entry) => entry.match),
+    truncated: scored.length > ROLL_RESULTS,
+  };
+}
+
 export const api = {
   election: () =>
     usingAppsScript
       ? callAppsScript<PublicElection>({ action: 'election' }, { method: 'GET' })
       : request<PublicElection>('/api/election'),
 
-  lookup: (query: string) =>
-    usingAppsScript
-      ? callAppsScript<{ results: RollMatch[]; truncated: boolean }>(
-          { action: 'lookup', query },
+  /**
+   * Warm the roll so the first keystroke is already answered.
+   *
+   * Called when the check-in screen opens, which buys the seconds a voter
+   * spends reaching for the keyboard. Failure is not raised: `lookup` falls
+   * back to asking the server per query, and a slow search is better than a
+   * screen that refuses to open.
+   */
+  primeRoll: async (): Promise<void> => {
+    if (!usingAppsScript) return;
+    try {
+      await fetchRoll();
+    } catch {
+      // Deliberately swallowed; see above.
+    }
+  },
+
+  lookup: async (query: string) => {
+    const trimmed = query.trim();
+
+    if (!usingAppsScript) {
+      return request<{ results: RollMatch[]; truncated: boolean }>('/api/auth/lookup', {
+        method: 'POST',
+        headers: { 'x-kiosk-token': KIOSK_TOKEN },
+        body: JSON.stringify({ query: trimmed }),
+      });
+    }
+
+    // The same floor the server applies, so the two agree about what is too
+    // short to search on whichever path answers.
+    if (trimmed.length < 2) return { results: [], truncated: false };
+
+    let roll = cachedRoll;
+    if (!roll) {
+      try {
+        roll = await fetchRoll();
+      } catch {
+        // The roll could not be fetched. Ask the server this one query rather
+        // than leaving the voter with a search box that does nothing.
+        return callAppsScript<{ results: RollMatch[]; truncated: boolean }>(
+          { action: 'lookup', query: trimmed },
           { method: 'GET' },
-        )
-      : request<{ results: RollMatch[]; truncated: boolean }>('/api/auth/lookup', {
-          method: 'POST',
-          headers: { 'x-kiosk-token': KIOSK_TOKEN },
-          body: JSON.stringify({ query }),
-        }),
+        );
+      }
+    }
+
+    return matchRoll(roll, trimmed);
+  },
 
   verifyCode: (voterId: string, code: string) =>
     request<CheckInResult>('/api/auth/verify', {

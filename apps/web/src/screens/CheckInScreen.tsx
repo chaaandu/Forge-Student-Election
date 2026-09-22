@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { api, usingAppsScript, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
+import { api, rollSearchIsLocal, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
 import { Panel } from '@/components/bauhaus/Panel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +33,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchId = useRef(0);
 
   const mode = election.auth.mode;
   // The roll payload already carries houseId and nothing was reading it.
@@ -41,40 +42,73 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
     [election.houses],
   );
 
+  /*
+    Fetch the roll while the voter is still reaching for the keyboard.
+
+    Against Apps Script this is the whole of the search cost, paid once, in the
+    seconds between the screen appearing and the first letter. Express does not
+    need it and this is a no-op there. Failure is not surfaced: `api.lookup`
+    falls back to asking the server per query.
+  */
   useEffect(() => {
+    if (mode === 'entra') return;
+    void api.primeRoll();
+  }, [mode]);
+
+  useEffect(() => {
+    /*
+      Bumped FIRST, on every run, so anything still in flight is already stale
+      by the time it answers — including when the voter deletes back below two
+      characters or picks a name. Bumping it only for searches we start left
+      the reply to "ab" free to repopulate a list the voter had just cleared.
+    */
+    const search = (searchId.current += 1);
+
     if (mode === 'entra' || chosen) return;
     if (query.trim().length < 2) {
       setResults(null);
+      setSearching(false);
       return;
     }
 
     if (debounce.current) clearTimeout(debounce.current);
+
+    /*
+      A debounce paces a SERVER, and the roll is no longer on one.
+
+      This was 650ms, because against Apps Script every keystroke started a
+      multi-second request: several were in flight at once for a single name,
+      their replies landed out of order, and the list flickered between answers
+      to queries the voter had already finished typing. Waiting longer before
+      paying that cost was the only lever available at the time.
+
+      The cost itself is gone — the roll is fetched once above and matched in
+      the browser, so a keystroke is now a filter over 145 names. What is left
+      to pace is React, not Google. See `fetchRoll` in lib/api.
+    */
     debounce.current = setTimeout(
       async () => {
         setSearching(true);
         setError(null);
         try {
           const response = await api.lookup(query.trim());
+          // An older search must never overwrite a newer one. The debounce made
+          // that unlikely; it never made it impossible, and a reply delayed
+          // behind a retry can still land after the answer to a longer query.
+          if (search !== searchId.current) return;
           setResults(response.results);
         } catch (searchError) {
+          if (search !== searchId.current) return;
           setError(
             searchError instanceof ApiError && searchError.isNetwork
               ? COPY.error.network
               : "We couldn't search the roll. Try again, or ask the person running the election.",
           );
         } finally {
-          setSearching(false);
+          if (search === searchId.current) setSearching(false);
         }
-        /*
-        220ms suits a server that answers in ten. It does not suit one that
-        answers in seconds: every extra keystroke started another multi-second
-        request, several were in flight at once for a single name, and their
-        replies landed out of order — so the list flickered between answers to
-        queries the voter had already finished typing. It also made a handful
-        of people look like a flood to Google, which throttles.
-      */
       },
-      usingAppsScript ? 650 : 220,
+      rollSearchIsLocal ? 60 : 220,
     );
 
     return () => {
@@ -243,6 +277,24 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                               <span className="block truncate" style={{ fontWeight: 550 }}>
                                 {match.name}
                               </span>
+                              {/*
+                                A name that has already been used is MARKED, not
+                                blocked.
+
+                                This is one of the three affordances supervised
+                                mode rests on, and it was being fetched on every
+                                search and then never drawn. It sits in the
+                                sentence rather than in a block of its own,
+                                because it is a fact about a row and not a
+                                second identity competing with the house beside
+                                it.
+
+                                It stays clickable on purpose. The mark can be
+                                seconds stale, and the binding refusal comes
+                                from the server — so a row that is wrong about
+                                this fails safe either way, where disabling it
+                                would silently strand a voter who has not voted.
+                              */}
                               <span
                                 className="block truncate"
                                 style={{
@@ -250,6 +302,19 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                                   color: 'var(--row-ink-soft)',
                                 }}
                               >
+                                {match.hasVoted ? (
+                                  <>
+                                    <span
+                                      style={{
+                                        color: 'var(--row-voted-ink)',
+                                        fontWeight: 650,
+                                      }}
+                                    >
+                                      Already voted
+                                    </span>
+                                    {' \u00b7 '}
+                                  </>
+                                ) : null}
                                 {match.maskedEmail}
                               </span>
                             </span>
@@ -317,6 +382,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           --row-ink: var(--color-ink);
           --row-ink-soft: var(--color-ink-soft);
           --row-house-ink: var(--row-house-brand, var(--color-ink-soft));
+          --row-voted-ink: var(--color-alert);
           color: var(--row-ink);
         }
         .roll-match:hover {
@@ -324,6 +390,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           --row-ink: var(--color-ink-fixed);
           --row-ink-soft: var(--color-ink-fixed);
           --row-house-ink: var(--color-ink-fixed);
+          --row-voted-ink: var(--color-ink-fixed);
         }
         /* Inside a bounded list there is nothing for a row to lift away from,
            so the hover is the field alone — no offset, no shadow. */

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, api } from '../api';
+import { ApiError, api, matchRoll } from '../api';
 
 /** Vercel's own 404 body — the one that produced `Unexpected token 'T'`. */
 const VERCEL_404 = '<!DOCTYPE html><html><body>The page could not be found</body></html>';
@@ -69,5 +69,69 @@ describe('api request envelope', () => {
     );
 
     await expect(api.endSession('token')).resolves.toBeNull();
+  });
+});
+
+/**
+ * The roll search that runs in the browser.
+ *
+ * This replaced a request per keystroke against Apps Script, which is the slow
+ * transport described in `fetchRoll`. The ranking matters more than it looks:
+ * a voter who cannot find their own name on this screen cannot vote at all.
+ */
+describe('matchRoll', () => {
+  const roll = [
+    row('v1', 'Abeer Bhati', 'ab\u2022\u2022\u2022@forge27.mesaschool.co'),
+    row('v2', 'Bhavna Rao', 'bh\u2022\u2022\u2022@forge27.mesaschool.co'),
+    row('v3', 'Chandra Bhat', 'ch\u2022\u2022\u2022@forge27.mesaschool.co'),
+    row('v4', "Maria D'Souza", 'ma\u2022\u2022\u2022@forge27.mesaschool.co'),
+    row('v5', 'Zo\u00eb Fernandes', 'zo\u2022\u2022\u2022@forge27.mesaschool.co'),
+  ];
+
+  function row(id: string, name: string, maskedEmail: string) {
+    return { id, name, maskedEmail, type: 'student' as const, houseId: null, hasVoted: false };
+  }
+
+  it('puts a name that starts with the query above one that merely contains it', () => {
+    const { results } = matchRoll(roll, 'bh');
+
+    expect(results.map((r) => r.name)).toEqual(['Bhavna Rao', 'Abeer Bhati', 'Chandra Bhat']);
+  });
+
+  it('finds a person whose name is typed surname first', () => {
+    expect(matchRoll(roll, 'bhati abeer').results.map((r) => r.name)).toEqual(['Abeer Bhati']);
+  });
+
+  it('ignores the punctuation and accents nobody types at a kiosk', () => {
+    expect(matchRoll(roll, 'dsouza').results.map((r) => r.name)).toEqual(["Maria D'Souza"]);
+    expect(matchRoll(roll, 'zoe').results.map((r) => r.name)).toEqual(['Zo\u00eb Fernandes']);
+  });
+
+  it('requires every term to match, so a wrong second word narrows to nothing', () => {
+    expect(matchRoll(roll, 'abeer rao').results).toEqual([]);
+  });
+
+  /*
+    The cap is applied to SORTED matches. The Apps Script version stopped
+    collecting at nine in whatever order the roll was keyed and alphabetised
+    those, so a matching voter could be absent from a list that was not full.
+  */
+  it('shows the eight best matches, not the first eight found', () => {
+    const many = Array.from({ length: 20 }, (_, i) =>
+      row(`x${i}`, `${String.fromCharCode(122 - i)}an Sharma`, 'xx\u2022\u2022\u2022@x.co'),
+    );
+    const { results, truncated } = matchRoll([...many], 'an');
+
+    expect(results).toHaveLength(8);
+    expect(truncated).toBe(true);
+    // Every one of them ranks equally, so the eight shown are the alphabetical
+    // first eight of all twenty rather than the first eight in array order.
+    expect(results.map((r) => r.name)).toEqual(
+      [...many].map((r) => r.name).sort().slice(0, 8),
+    );
+  });
+
+  it('treats a query of only punctuation as no query at all', () => {
+    expect(matchRoll(roll, "  '  ").results).toEqual([]);
   });
 });
