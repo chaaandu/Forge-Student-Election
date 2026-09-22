@@ -1,40 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-
-export type PaperVariant = 'mesa-elections' | 'site-of-the-year';
+import { supportsWebGL } from '@/lib/webgl';
 
 /**
- * Does this machine have WebGL at all?
- *
- * WHY THE FRAME CANNOT ANSWER THIS FOR US. `onLoad` fires when the iframe's
- * DOCUMENT loads, not when the scene renders. So on a machine with no usable
- * WebGL the document loaded perfectly happily, reported itself ready, and the
- * caller faded out its own static artwork in response — leaving a flat #08080a
- * void with the panel sitting in the corner of it. Verified in Chrome: that is
- * exactly what you get, and it is the FIRST thing a voter sees.
- *
- * It is not a hypothetical failure either. Managed Windows fleets, remote
- * desktop sessions and blocklisted integrated drivers all land here, and a
- * school hall is where all three live.
- *
- * Asked in the PARENT rather than by patching the frame, so the hash-verified
- * vendored document stays byte-for-byte what was published. Cached because
- * creating a WebGL context is not free and the answer cannot change.
+ * Re-exported because this is where it used to live, and callers still import
+ * it from here. The implementation moved to `@/lib/webgl` when the speeches
+ * wall needed it too: two scenes in different worlds should not have to import
+ * each other to ask the same question about the machine.
  */
-let webglSupport: boolean | null = null;
+export { supportsWebGL };
 
-export function supportsWebGL(): boolean {
-  if (webglSupport !== null) return webglSupport;
-  if (typeof document === 'undefined') return false;
-  try {
-    const canvas = document.createElement('canvas');
-    webglSupport = Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
-  } catch {
-    // Some hardened configurations throw rather than return null.
-    webglSupport = false;
-  }
-  return webglSupport;
-}
+export type PaperVariant = 'mesa-elections' | 'site-of-the-year';
 
 export interface PaperBackdropProps {
   variant?: PaperVariant;
@@ -110,7 +86,12 @@ export function PaperBackdrop({
   if (!usable) return <div ref={hostRef} className={className} aria-hidden="true" />;
 
   return (
-    <div ref={hostRef} className={className} aria-hidden="true" data-state={ready ? 'ready' : 'loading'}>
+    <div
+      ref={hostRef}
+      className={className}
+      aria-hidden="true"
+      data-state={ready ? 'ready' : 'loading'}
+    >
       {mounted && (
         <iframe
           title=""

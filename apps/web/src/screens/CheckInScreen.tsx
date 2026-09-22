@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { api, ApiError, type PublicElection, type RollMatch } from '@/lib/api';
 import { Panel } from '@/components/bauhaus/Panel';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Tag } from '@/components/ui/Tag';
+import { HouseCrest } from '@/components/bauhaus/HouseCrest';
+import { roleFor } from '@/lib/color';
+import { TYPE_FIELD } from '@/lib/voterType';
 import { COPY } from '@/lib/copy';
 
 export interface CheckInScreenProps {
@@ -32,6 +35,11 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mode = election.auth.mode;
+  // The roll payload already carries houseId and nothing was reading it.
+  const houseById = useMemo(
+    () => new Map(election.houses.map((house) => [house.id, house])),
+    [election.houses],
+  );
 
   useEffect(() => {
     if (mode === 'entra' || chosen) return;
@@ -51,7 +59,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
         setError(
           searchError instanceof ApiError && searchError.isNetwork
             ? COPY.error.network
-            : 'We could not search the roll just now. Please try again, or see the returning officer.',
+            : "We couldn't search the roll. Try again, or ask the person running the election.",
         );
       } finally {
         setSearching(false);
@@ -78,7 +86,7 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           ?.attemptsRemaining;
         setError(
           remaining !== undefined
-            ? `${checkInError.message} ${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} left before this pauses.`
+            ? `${checkInError.message} ${remaining} ${remaining === 1 ? 'try' : 'tries'} left.`
             : checkInError.message,
         );
       } else {
@@ -90,7 +98,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="relative z-10 mx-auto w-full max-w-2xl">
+
       <Panel raised className="overflow-hidden">
         <div
           className="px-6 py-6 sm:px-9"
@@ -112,8 +121,8 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
           {mode === 'entra' ? (
             <>
               <p style={{ color: 'var(--color-ink-soft)' }}>
-                You will sign in with Microsoft and come straight back. We only use it to check
-                you are on the roll and have not already voted.
+                You'll sign in with Microsoft and come straight back. We only check that
+                you're on the roll and haven't voted yet.
               </p>
               <a
                 href="/api/auth/entra/start"
@@ -156,13 +165,12 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
             <>
               <TextField
                 label="Your name"
-                placeholder="Start typing your name…"
+                placeholder="Type the first few letters"
                 value={query}
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
                 onChange={(event) => setQuery(event.target.value)}
-                hint="Start typing — two letters is enough."
                 {...(error ? { error } : {})}
               />
 
@@ -179,38 +187,75 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
                   </p>
                 )}
 
+                {/*
+                  ONE block with hairlines inside it, not eight blocks.
+
+                  Every row used to be its own 3px keyline with a gap either
+                  side, so a search returning eight names produced eight heavy
+                  black boxes stacked up the screen. The heavy keyline is the
+                  grammar for a PLATE — one object, bounded. Repeated down a
+                  list it stops being structure and becomes noise, on the first
+                  screen a voter meets after the landing page.
+
+                  The right-hand slot carries the voter's HOUSE, with its crest,
+                  rather than the word STUDENT. Eight rows that all said STUDENT
+                  told a voter nothing and cost a tag each; a house is the thing
+                  that actually separates two people with similar names, and it
+                  is already public on the ballot. Anyone with no house — an
+                  employee — keeps the type tag, which is then the exception it
+                  is meant to be.
+                */}
                 {!searching && results && results.length > 0 && (
-                  <ul className="flex list-none flex-col gap-2 p-0">
-                    {results.map((match) => (
-                      <li key={match.id}>
-                        <button
-                          type="button"
-                          onClick={() => setChosen(match)}
-                          className="roll-match flex w-full items-center gap-4 text-left"
-                          style={{
-                            minHeight: 'var(--hit)',
-                            padding: '12px 16px',
-                            background: 'var(--color-card)',
-                            border: '3px solid var(--color-ink)',
-                            borderRadius: 'var(--radius-control)',
-                          }}
-                        >
-                          <Avatar name={match.name} size="sm" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate" style={{ fontWeight: 550 }}>
-                              {match.name}
+                  <ul className="roll list-none p-0">
+                    {results.map((match) => {
+                      const house = match.houseId ? houseById.get(match.houseId) : undefined;
+
+                      return (
+                        <li key={match.id}>
+                          <button
+                            type="button"
+                            onClick={() => setChosen(match)}
+                            className="roll-match flex w-full items-center gap-4 text-left"
+                            style={
+                              house
+                                ? ({ ['--row-house-brand']: roleFor(house.color).text } as CSSProperties)
+                                : undefined
+                            }
+                          >
+                            <Avatar
+                              name={match.name}
+                              size="sm"
+                              {...(house?.color ? { color: house.color } : {})}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate" style={{ fontWeight: 550 }}>
+                                {match.name}
+                              </span>
+                              <span
+                                className="block truncate"
+                                style={{
+                                  fontSize: 'var(--text-xs)',
+                                  color: 'var(--row-ink-soft)',
+                                }}
+                              >
+                                {match.maskedEmail}
+                              </span>
                             </span>
-                            <span
-                              className="block truncate"
-                              style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}
-                            >
-                              {match.maskedEmail}
-                            </span>
-                          </span>
-                          <Tag>{match.type}</Tag>
-                        </button>
-                      </li>
-                    ))}
+
+                            {house ? (
+                              <HouseCrest
+                                house={house}
+                                size={20}
+                                withName
+                                nameColor="var(--row-house-ink)"
+                              />
+                            ) : (
+                              <Tag color={TYPE_FIELD[match.type]}>{match.type}</Tag>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -226,8 +271,50 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
       </Panel>
 
       <style>{`
-        .roll-match:hover { background: var(--bh-yellow); transform: translate(-2px,-2px); box-shadow: 4px 4px 0 var(--color-ink) }
-        .roll-match { transition: transform 150ms var(--ease-snap), box-shadow 150ms var(--ease-snap), background-color 150ms }
+        .roll {
+          border: var(--rule-weight) solid var(--color-ink);
+          background: var(--color-card);
+        }
+        .roll-match {
+          width: 100%;
+          min-height: var(--hit);
+          padding: 12px 16px;
+          background: transparent;
+          border: 0;
+          border-bottom: 2px solid var(--color-ink);
+          cursor: pointer;
+          transition: background-color 150ms;
+        }
+        /* The block's own keyline closes the last row. */
+        .roll li:last-child .roll-match { border-bottom: 0 }
+        /*
+          EVERY COLOUR IN THE ROW COMES FROM A VARIABLE, so the hover can flip
+          all of them at once.
+
+          Hovering turns the row into a fixed yellow FIELD, and type on a fixed
+          field takes fixed black — the same rule as the primary button. Without
+          this the row kept the page's ink and the house's own text colour, both
+          of which are lightened for a dark page: cream on yellow at 1.4:1 and a
+          pale red house name on yellow. The whole row became unreadable exactly
+          when a voter was pointing at it.
+
+          The house name needs a variable rather than a CSS override because it
+          is set as an inline style, which no stylesheet rule can outrank.
+        */
+        .roll-match {
+          --row-ink: var(--color-ink);
+          --row-ink-soft: var(--color-ink-soft);
+          --row-house-ink: var(--row-house-brand, var(--color-ink-soft));
+          color: var(--row-ink);
+        }
+        .roll-match:hover {
+          background: var(--bh-yellow);
+          --row-ink: var(--color-ink-fixed);
+          --row-ink-soft: var(--color-ink-fixed);
+          --row-house-ink: var(--color-ink-fixed);
+        }
+        /* Inside a bounded list there is nothing for a row to lift away from,
+           so the hover is the field alone — no offset, no shadow. */
       `}</style>
     </div>
   );
@@ -275,7 +362,7 @@ function CodeStep({
             {match.maskedEmail}
           </p>
         </div>
-        <Tag>{match.type}</Tag>
+        <Tag color={TYPE_FIELD[match.type]}>{match.type}</Tag>
       </div>
 
       {requiresCode ? (
@@ -289,7 +376,7 @@ function CodeStep({
           maxLength={12}
           spellCheck={false}
           onChange={(event) => setCode(event.target.value.toUpperCase())}
-          hint="Six characters, from the slip you were handed. Case does not matter."
+          hint="Six characters from your slip. Capitals don't matter."
           {...(error ? { error } : {})}
           style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.24em' }}
         />
@@ -308,12 +395,12 @@ function CodeStep({
           size="lg"
           loading={busy}
           disabled={requiresCode && code.trim().length < 4}
-          disabledReason="Enter the access code from your slip to continue."
+          disabledReason="Enter the code from your slip."
         >
           Continue
         </Button>
         <Button variant="quiet" onClick={onChangeName} type="button">
-          Not you? Pick a different name
+          Pick a different name
         </Button>
       </div>
     </form>

@@ -26,8 +26,8 @@ export function SubmittingScreen({ attempt }: { attempt: number }) {
 
           <p role="status" style={{ color: 'var(--color-ink-soft)' }}>
             {attempt > 1
-              ? `Still going — attempt ${attempt}. Do not close this screen.`
-              : 'This takes a second. Do not close this screen.'}
+              ? `Still going, attempt ${attempt}. Don't close this screen.`
+              : "This takes a second. Don't close this screen."}
           </p>
         </div>
       </Panel>

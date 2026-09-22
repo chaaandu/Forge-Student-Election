@@ -140,8 +140,8 @@ export function reducer(state: MachineState, action: MachineAction): MachineStat
               electionWindow.reason === 'NOT_STARTED' ? HEADLINE.notOpen : HEADLINE.closed,
             message:
               electionWindow.reason === 'NOT_STARTED'
-                ? `Voting has not opened yet${electionWindow.at ? `. It opens at ${formatTime(electionWindow.at)}` : ''}.`
-                : `Voting is closed${electionWindow.at ? `. It closed at ${formatTime(electionWindow.at)}` : ''}. Votes can no longer be accepted.`,
+                ? `Voting hasn't opened yet${electionWindow.at ? `. It opens at ${formatTime(electionWindow.at)}` : ''}.`
+                : `Voting closed${electionWindow.at ? ` at ${formatTime(electionWindow.at)}` : ''}, so we can't accept any more votes.`,
             retryable: false,
           },
         };

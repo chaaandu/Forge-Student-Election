@@ -14,9 +14,19 @@
  * ship an unreadable screen.
  */
 
-export const PAPER = '#F2EDE1';
+// The grounds live in ./ground so that module can have no imports and this one
+// can depend on it; the reverse would be a cycle. Re-exported here because
+// PAPER is what every caller that names a ground explicitly wants.
+export { PAPER, NIGHT } from './ground';
+import { TYPE_SURFACE } from './ground';
+
 export const BLACK = '#141414';
 export const WHITE = '#FFFFFF';
+
+/** Is this ground light enough that readable text has to go darker, not lighter? */
+export function isLightGround(background: string): boolean {
+  return relativeLuminance(background) > 0.2;
+}
 
 export const AA_BODY = 4.5;
 export const AA_LARGE = 3;
@@ -74,26 +84,39 @@ export function inkOn(field: string): typeof BLACK | typeof WHITE {
 }
 
 /**
- * Darken `colour` until it is readable as text on `background`.
+ * Move `colour` AWAY from `background` until it is readable as text on it.
  *
- * Hue is preserved — a darkened Bauhaus yellow still reads as that house's
- * yellow — while lightness is reduced in small steps until the ratio passes.
- * Returns black in the (impossible for real colours) case that nothing does.
+ * Hue is preserved — a shifted Bauhaus yellow still reads as that house's
+ * yellow — while lightness moves in small steps until the ratio passes.
+ *
+ * THE DIRECTION IS CHOSEN BY THE GROUND, and it has to be. This used to darken
+ * unconditionally, which is correct on paper and exactly backwards on a dark
+ * ground: `--bh-yellow-text` is `#876707` precisely because yellow must be
+ * darkened that far to survive on cream, and that same value is 3.79:1 on
+ * #0E0E10. Darkening a colour to make it legible against black produces
+ * something less legible than what you started with.
+ *
+ * Returns the extreme of whichever direction it was travelling if nothing in
+ * between passes, which cannot happen for a real colour.
  */
 export function readableOn(
   colour: string,
-  background: string = PAPER,
+  background: string = TYPE_SURFACE,
   minRatio: number = AA_BODY,
 ): string {
   if (contrastRatio(colour, background) >= minRatio) return colour;
 
   const [r, g, b] = parseHex(colour);
+  const darken = isLightGround(background);
+
   for (let step = 1; step <= 100; step += 1) {
-    const factor = 1 - step / 100;
-    const candidate = toHex([r * factor, g * factor, b * factor]);
+    const amount = step / 100;
+    const candidate = darken
+      ? toHex([r * (1 - amount), g * (1 - amount), b * (1 - amount)])
+      : toHex([r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount]);
     if (contrastRatio(candidate, background) >= minRatio) return candidate;
   }
-  return BLACK;
+  return darken ? BLACK : WHITE;
 }
 
 /**
@@ -162,7 +185,7 @@ export interface ColourRole {
   wash: string;
 }
 
-export function roleFor(colour: string, background: string = PAPER): ColourRole {
+export function roleFor(colour: string, background: string = TYPE_SURFACE): ColourRole {
   const [r, g, b] = parseHex(colour);
   const mix = (amount: number): string =>
     toHex([r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount]);

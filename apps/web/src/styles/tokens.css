@@ -31,6 +31,22 @@
   --bh-yellow-text: #876707; /*  4.52:1 — yellow can only be text when this dark */
   --bh-green-text: #1e7a4c; /*  4.56:1 */
 
+  /*
+   * The offset block, as a colour of its own.
+   *
+   * Depth in this interface is a hard offset, never a blur (design-direction
+   * §1.4). On paper that offset is simply the ink: a panel sits on a black
+   * block, the way a second impression sits under the first.
+   *
+   * On a dark ground it cannot be the ink, because the ink is now LIGHT, and a
+   * light block under every panel inverts the metaphor into an emboss. It also
+   * cannot be black, which is invisible against a near-black page. So it gets
+   * its own token and the dark theme picks a value that still reads as "this
+   * sits above the page" without becoming a highlight. This is the one part of
+   * the grammar that does not re-ground for free.
+   */
+  --color-block: var(--color-ink);
+
   /* ---------------------------------------------------------- substrate --- */
   --color-paper: #f2ede1; /* the page: warm poster stock */
   --color-card: #ffffff; /* a panel on it */
@@ -59,6 +75,21 @@
   --color-alert: var(--bh-red);
   --color-alert-text: var(--bh-red-text);
   --color-on-field: #ffffff; /* overridden per field by inkOn() */
+
+  /*
+   * Type that sits on a FIXED primary — the yellow of a button, of the skip
+   * link, of a dialog header. Always black, on both grounds.
+   *
+   * This is NOT --color-ink, and conflating the two is the single mistake the
+   * dark ground exposed. "Ink" is the page's foreground and it INVERTS: black
+   * on paper, cream at night. A yellow button does not invert, because
+   * --bh-yellow is the same yellow on both grounds — so its type was following
+   * the page and turned cream-on-yellow, 1.3:1, on the primary action of every
+   * screen. design-direction §2.1 already says a field's type is "black or
+   * white by luminance" rather than the page's ink; this is that rule given a
+   * token instead of a coincidence.
+   */
+  --color-ink-fixed: #141414;
 
   /* ------------------------------------------------------------- type --- */
   /*
@@ -114,9 +145,9 @@
   --radius-control: var(--radius-sm);
 
   /* No soft ambient shadows. Depth is a hard offset block, like overprinting. */
-  --shadow-block: 6px 6px 0 var(--color-ink);
-  --shadow-block-sm: 4px 4px 0 var(--color-ink);
-  --shadow-modal: 10px 10px 0 var(--color-ink);
+  --shadow-block: 6px 6px 0 var(--color-block);
+  --shadow-block-sm: 4px 4px 0 var(--color-block);
+  --shadow-modal: 10px 10px 0 var(--color-block);
   --focus-ring: 0 0 0 3px var(--color-paper), 0 0 0 6px var(--bh-blue);
 
   /* ----------------------------------------------------------- motion --- */
@@ -168,4 +199,59 @@
     transition-duration: 120ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/**
+ * THE DARK GROUND — `<html data-ground="night">`, set by VITE_GROUND=night.
+ *
+ * Only the substrate moves. Every rule in the app is written against
+ * `--color-ink` and `--color-paper` rather than against literal colours, so
+ * flipping what those two MEAN re-themes the interface without touching a
+ * component. "Ink" stops meaning black and starts meaning the mark colour,
+ * which is what it always meant on a press.
+ *
+ * WHAT DOES NOT COME FOR FREE, and had to be solved rather than inverted:
+ *
+ * 1. THE TEXT VARIANTS. These are not the light ones flipped. `readableOn()`
+ *    shifts a colour AWAY from its ground, so on paper it darkens and here it
+ *    lightens. #876707 is the paper yellow and is 3.79:1 here; #FFC20E is the
+ *    raw yellow and is 11.9:1 here. Same hue family, opposite direction.
+ *
+ * 2. THE OFFSET BLOCK. See --color-block above. It is a touch lighter than the
+ *    page rather than the ink colour: enough to read as a plate lifted off the
+ *    surface, not so much that every panel wears a light halo.
+ *
+ * 3. THE CARD IS LIGHTER THAN THE PAGE, inverting the paper relationship where
+ *    the card is the brighter white. A plate has to be distinguishable from the
+ *    page it sits on, and on a dark ground the only direction available is up.
+ *
+ * Every pair here is asserted by styles/__tests__/contrast.test.ts, which runs
+ * the same suite against both grounds.
+ */
+[data-ground='night'] {
+  /* Primaries are UNCHANGED. A field carries its own ink either way, which is
+     the whole reason this palette survives a change of ground at all. */
+
+  /* Text-safe counterparts, LIGHTENED until AA on the plate. Hue preserved. */
+  --bh-red-text: #e44f45; /*  4.55:1 on the plate */
+  --bh-blue-text: #6284ba; /*  4.57:1 */
+  --bh-yellow-text: #ffc20e; /* 10.72:1 — raw yellow is already the right answer */
+  --bh-green-text: #44916a; /*  4.55:1 */
+
+  --color-paper: #0e0e10; /* the page */
+  --color-card: #1a1a1e; /* a plate on it, LIGHTER than the page */
+  --color-sunk: #08080a; /* wells, inputs — below the page */
+
+  --color-ink: #f2ede1; /* 14.9:1 on the plate */
+  --color-ink-soft: #a8a29a; /*  6.9:1 */
+  --color-ink-faint: #7d766c; /*  3.9:1 — large text only, never body */
+  --color-text-muted: var(--color-ink-soft);
+
+  --color-rule: #f2ede1;
+  --color-rule-light: #35353c;
+
+  /* Not the ink: see --color-block. */
+  --color-block: #3a3a44;
+
+  --focus-ring: 0 0 0 3px var(--color-paper), 0 0 0 6px var(--bh-yellow);
 }

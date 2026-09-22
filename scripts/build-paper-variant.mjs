@@ -138,6 +138,9 @@ const houses = config.houses.map((h) => {
   };
 });
 
+/** The cohort the sheet is printed for. Shown in the hexagon and the footer. */
+const COHORT = 'C1';
+
 const positions = config.positions.length;
 const candidates = config.candidates.filter((c) => c.active).length;
 
@@ -281,22 +284,28 @@ const drawMesa = `function drawGame(ctx){
   ctx.strokeStyle='rgba(255,194,14,.34)'; ctx.lineWidth=1.4;
   ctx.beginPath(); ctx.moveTo(120,222); ctx.lineTo(TW-120,222); ctx.stroke();
 
-  // cohort hexagon
-  ctx.save(); ctx.translate(986,392);
+  // Cohort hexagon.
+  //
+  // Small enough to clear the title beneath it — at its old size the bottom
+  // vertex sat on the cap line of FORGE STUDENT and its right edge crossed the
+  // 120 px margin. The two lines inside are centred as one block, not
+  // individually: the label's cap line and the cohort's baseline are placed
+  // symmetrically about the centre, so the pair reads level in the shape.
+  ctx.save(); ctx.translate(986,352);
   ctx.beginPath();
   for(let i=0;i<6;i++){ const a=Math.PI/6+i*Math.PI/3;
-    ctx[i?'lineTo':'moveTo'](Math.cos(a)*112,Math.sin(a)*112); }
+    ctx[i?'lineTo':'moveTo'](Math.cos(a)*88,Math.sin(a)*88); }
   ctx.closePath();
   ctx.fillStyle='rgba(255,194,14,.10)'; ctx.fill();
   ctx.strokeStyle=LIME; ctx.lineWidth=4; ctx.stroke();
-  ctx.fillStyle=LIME; ctx.font='700 88px "Inter Tight", Inter, sans-serif';
-  mid(ctx,'C27',32,0);
-  ctx.font='700 16px '+MONO; ctx.fillStyle='rgba(255,194,14,.72)';
-  track(ctx,'FORGE',0,-52,4,true);
+  ctx.font='700 15px '+MONO; ctx.fillStyle='rgba(255,194,14,.72)';
+  track(ctx,'FORGE',0,-29,4,true);
+  ctx.fillStyle=LIME; ctx.font='700 76px "Inter Tight", Inter, sans-serif';
+  mid(ctx,'${COHORT}',39,0);
   ctx.restore();
 
   ctx.fillStyle='#F3F7EE'; ctx.font='600 104px "Inter Tight", Inter, sans-serif';
-  ctx.fillText('STUDENT',120,560);
+  ctx.fillText('FORGE STUDENT',120,560);
   ctx.fillStyle=LIME; ctx.fillText('ELECTIONS',120,668);
   ctx.fillStyle=CYAN; ctx.font='700 28px '+MONO;
   track(ctx,'ONE VOTER · ONE BALLOT',120,724,4,false);
@@ -337,7 +346,7 @@ const drawMesa = `function drawGame(ctx){
   ctx.strokeStyle='rgba(243,247,238,.12)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(120,1330); ctx.lineTo(TW-120,1330); ctx.stroke();
 
-  ctx.fillStyle=LIME; ctx.font='700 26px '+MONO; track(ctx,'MESA.ELECTIONS',120,1386,4,false);
+  ctx.fillStyle=LIME; ctx.font='700 26px '+MONO; track(ctx,'FORGE.ELECTIONS',120,1386,4,false);
   ctx.fillStyle='rgba(243,247,238,.46)'; ctx.font='400 20px '+MONO;
   ctx.fillText('STUDENTS 75%  //  EMPLOYEES 25%',120,1428);
 
@@ -346,7 +355,7 @@ const drawMesa = `function drawGame(ctx){
     ctx.fillRect(120+i*30,1474,18,18);
   }
   ctx.fillStyle='rgba(243,247,238,.40)'; ctx.font='400 20px '+MONO;
-  const d='FORGE C27'; ctx.fillText(d, TW-120-ctx.measureText(d).width, 1490);
+  const d='FORGE ${COHORT}'; ctx.fillText(d, TW-120-ctx.measureText(d).width, 1490);
 }
 
 `;

@@ -26,12 +26,12 @@ export const election: PublicElection = {
   positions: [
     position('president', 'President', 1, 'leadership', ['student', 'employee']),
     position('vice-president', 'Vice President', 2, 'leadership', ['student', 'employee']),
-    position('academic-lead-boy', 'Academic Lead — Boy', 3, 'leadership', ['student', 'employee']),
-    position('academic-lead-girl', 'Academic Lead — Girl', 4, 'leadership', ['student', 'employee']),
-    position('community-lead-boy', 'Community Lead — Boy', 5, 'leadership', ['student', 'employee']),
-    position('community-lead-girl', 'Community Lead — Girl', 6, 'leadership', ['student', 'employee']),
-    position('house-captain-aravalli', 'House Captain — Aravalli', 7, 'house-captain', ['student'], 'aravalli'),
-    position('house-captain-nilgiri', 'House Captain — Nilgiri', 8, 'house-captain', ['student'], 'nilgiri'),
+    position('academic-lead-boy', 'Boys’ Academic Lead', 3, 'leadership', ['student', 'employee']),
+    position('academic-lead-girl', 'Girls’ Academic Lead', 4, 'leadership', ['student', 'employee']),
+    position('community-lead-boy', 'Boys’ Community Lead', 5, 'leadership', ['student', 'employee']),
+    position('community-lead-girl', 'Girls’ Community Lead', 6, 'leadership', ['student', 'employee']),
+    position('house-captain-aravalli', 'Aravalli House Captain', 7, 'house-captain', ['student'], 'aravalli'),
+    position('house-captain-nilgiri', 'Nilgiri House Captain', 8, 'house-captain', ['student'], 'nilgiri'),
   ],
   candidates: [
     { id: 'p1', name: 'Alpha', positionId: 'president', active: true },

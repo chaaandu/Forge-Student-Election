@@ -72,10 +72,19 @@ describe('inkOn — type goes on a field as black or white, never a tint', () =>
   });
 });
 
-describe('readableOn — a colour used as text is darkened until it passes', () => {
+/**
+ * These name their ground explicitly.
+ *
+ * They used to rely on the DEFAULT being paper, which quietly coupled a unit
+ * test of a pure function to whichever theme the app happened to ship. When
+ * night became the default they all failed at once — correctly: `readableOn`
+ * shifts a colour AWAY from its ground, so with no ground named they were
+ * asserting that a colour lightened for a dark page is legible on a light one.
+ */
+describe('readableOn — a colour used as text is moved until it passes', () => {
   it('leaves an already-readable colour untouched', () => {
     const blue = HOUSE_COLOURS.knights;
-    expect(readableOn(blue)).toBe(blue);
+    expect(readableOn(blue, PAPER)).toBe(blue);
   });
 
   it('rescues the Vikings gold, which is hopeless as text at full strength', () => {
@@ -83,12 +92,12 @@ describe('readableOn — a colour used as text is darkened until it passes', () 
     // The premise: the raw gold is unreadable on paper.
     expect(contrastRatio(gold, PAPER)).toBeLessThan(2);
     // The fix: a darkened gold that passes.
-    expect(contrastRatio(readableOn(gold), PAPER)).toBeGreaterThanOrEqual(AA_BODY);
+    expect(contrastRatio(readableOn(gold, PAPER), PAPER)).toBeGreaterThanOrEqual(AA_BODY);
   });
 
   it('rescues every house colour sampled from the real crests', () => {
     for (const [house, colour] of Object.entries(HOUSE_COLOURS)) {
-      const text = readableOn(colour);
+      const text = readableOn(colour, PAPER);
       expect(
         contrastRatio(text, PAPER),
         `${house} text (${text}) on paper`,
@@ -97,14 +106,14 @@ describe('readableOn — a colour used as text is darkened until it passes', () 
   });
 
   it('preserves the hue, so a darkened gold still reads as that house', () => {
-    const [r, g, b] = parseHex(readableOn(HOUSE_COLOURS.vikings));
+    const [r, g, b] = parseHex(readableOn(HOUSE_COLOURS.vikings, PAPER));
     // Still gold: red and green high relative to blue.
     expect(r).toBeGreaterThan(b);
     expect(g).toBeGreaterThan(b);
   });
 
   it('is deterministic', () => {
-    expect(readableOn('#FFC20E')).toBe(readableOn('#FFC20E'));
+    expect(readableOn('#FFC20E', PAPER)).toBe(readableOn('#FFC20E', PAPER));
   });
 
   it('honours a stricter target', () => {
@@ -156,7 +165,7 @@ describe('accessibleField — a block that is guaranteed to carry type', () => {
 describe('roleFor — one configured colour, five derived uses', () => {
   it('derives a complete, accessible role for every house', () => {
     for (const [house, colour] of Object.entries(HOUSE_COLOURS)) {
-      const role = roleFor(colour);
+      const role = roleFor(colour, PAPER);
 
       // `brand` is the crest colour untouched — shapes, bars and crests use it.
       expect(role.brand, house).toBe(colour);
@@ -175,7 +184,7 @@ describe('roleFor — one configured colour, five derived uses', () => {
   });
 
   it('produces a wash that is close to paper, not a second field', () => {
-    const role = roleFor(HOUSE_COLOURS.samurai);
+    const role = roleFor(HOUSE_COLOURS.samurai, PAPER);
     expect(relativeLuminance(role.wash)).toBeGreaterThan(relativeLuminance(role.field));
     expect(contrastRatio(role.wash, PAPER)).toBeLessThan(1.5);
   });

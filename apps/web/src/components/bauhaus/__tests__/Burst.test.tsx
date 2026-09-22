@@ -14,12 +14,32 @@ describe('Burst', () => {
     const css = styles(container);
 
     // The first phase throws the pieces out; without a second they stop dead on
-    // their last keyframe and read as frozen.
+    // their last keyframe and read as frozen. Checked as a PROPERTY rather than
+    // by keyframe name — this assertion pinned the name `drift` and failed when
+    // the second phase was reworked into something better, which is a test
+    // getting in the way of the thing it was meant to protect.
     expect(css).toMatch(/@keyframes burst/);
-    expect(css).toMatch(/@keyframes drift/);
-    expect(css).toMatch(/animation:[\s\S]*burst[\s\S]*drift/);
+    expect(css).toMatch(/@keyframes fade/);
+    expect(css).toMatch(/animation:[\s\S]*burst[\s\S]*fade/);
     // And it ends invisible, so nothing is left stuck on screen.
-    expect(css).toMatch(/@keyframes drift[\s\S]*opacity:\s*0;/);
+    expect(css).toMatch(/@keyframes fade[\s\S]*opacity:\s*0;/);
+  });
+
+  it('overshoots and settles, rather than coasting to a stop', () => {
+    // A thrown block stops; it does not drift to a halt. The overshoot is what
+    // makes these read as objects instead of a particle effect, and it is the
+    // same curve the cards and buttons land on.
+    const css = styles(render(<Burst />).container);
+    expect(css).toMatch(/@keyframes burst[\s\S]*70%[\s\S]*scale\(1\.1\)/);
+    expect(css).toMatch(/burst var\(--dur\) var\(--ease-snap\)/);
+  });
+
+  it('gives each piece its own duration, so they do not land in unison', () => {
+    const { container } = render(<Burst />);
+    const durations = [...container.querySelectorAll<HTMLElement>('.burst-piece')].map((el) =>
+      el.style.getPropertyValue('--dur'),
+    );
+    expect(new Set(durations).size).toBeGreaterThan(3);
   });
 
   it('is decorative only', () => {

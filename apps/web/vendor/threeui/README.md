@@ -1,4 +1,11 @@
-# Vendored: ThreeUI `3d-paper`
+# Vendored: ThreeUI
+
+Two registry bundles live here: `3d-paper` (the welcome backdrop) and
+`woven-cloth` (the speeches wall). Both follow the same rule — the authored
+source is stored verbatim and never imported; a build script derives a
+content-patched document from it.
+
+## `3d-paper`
 
 These files are the **authored source**, retrieved from the registry and stored
 verbatim. Nothing here is edited, and nothing here is imported by the
@@ -11,7 +18,7 @@ application.
   run, so an accidental edit — or a silent upstream change after a re-fetch —
   fails the build rather than shipping.
 
-## Why it is here but not imported
+### Why it is here but not imported
 
 The brief requires the real source rather than a recreation, and these files are
 that source. The application does not import them for two reasons:
@@ -36,7 +43,34 @@ grain and the bundled three.js r149 are untouched.
 The authored variant is also served unmodified at `/paper/site-of-the-year.html`
 for comparison.
 
+## `woven-cloth`
+
+- Retrieved from: `https://threeui.com/source-code/woven-cloth.json`
+- Manifest: `woven-cloth/SOURCE.json`
+- All seven registered files match the SHA-256 published in the integration
+  brief, re-checked by `src/shaders/__tests__/norenSource.test.ts`.
+
+Not imported, for the same two reasons as above: `WovenCloth.tsx` pulls every
+variant in with `?raw`, and it inlines them with `srcDoc`, whose opaque origin
+is why the authored document fetches three.js r160 from `cdn.jsdelivr.net`
+at runtime.
+
+`scripts/build-noren-variant.mjs` derives
+`apps/web/public/noren/forge-speeches.html` from
+`woven-cloth/sources/woven-cloth-washi.html`. It re-verifies the source hash,
+then applies content-only patches: the sleeve and panel wording, the school's
+mark stencilled in place of the checkerboard *mon*, the r160 bundle inlined, and
+a texture re-upload once the mark decodes. The cloth simulation, the slit
+panels, the deckle edge, the material, the lighting and the camera fit are
+untouched, and the test fails on any line of the authored script disappearing
+that it has not been told about.
+
+The inlined engine is byte-identical to what jsdelivr serves for
+`three@0.160.0`, which the build asserts against the npm package. `three` is a
+**devDependency** for that reason alone — nothing imports it.
+
 ## Licence
 
 ThreeUI / `@designcodeio/threeui` — see `LICENSE` in the published package.
-The vendored documents embed three.js r149, MIT, © three.js authors.
+The vendored `3d-paper` documents embed three.js r149 and the derived noren
+embeds r160 — MIT, © three.js authors.

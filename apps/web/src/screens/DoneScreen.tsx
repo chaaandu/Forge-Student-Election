@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { Burst } from '@/components/bauhaus/Burst';
+import { useEffect } from 'react';
 import { Shape } from '@/components/bauhaus/Shape';
 import { Button } from '@/components/ui/Button';
 import { COPY } from '@/lib/copy';
@@ -23,22 +22,24 @@ export interface DoneScreenProps {
  *      here should suggest the voter won something or picked well.
  */
 export function DoneScreen({ holdSeconds, onFinished }: DoneScreenProps) {
-  const [visibleLines, setVisibleLines] = useState(1);
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i < COPY.done.length; i += 1) {
-      timers.push(setTimeout(() => setVisibleLines(i + 1), i * 620));
-    }
-    timers.push(setTimeout(onFinished, holdSeconds * 1000));
-    return () => timers.forEach(clearTimeout);
+    const timer = setTimeout(onFinished, holdSeconds * 1000);
+    return () => clearTimeout(timer);
   }, [holdSeconds, onFinished]);
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <div className="panel panel--raised relative overflow-hidden">
-        <Burst />
+      {/*
+        No burst, and no line-by-line reveal.
 
+        The shapes were scattered at random and the three lines typed themselves
+        in over nearly two seconds — on a shared kiosk, with the next voter
+        already waiting. A confirmation should be readable the instant it
+        appears and then get out of the way. The green block and the headline do
+        the whole job; everything else was decoration on top of a receipt.
+      */}
+      <div className="panel panel--raised relative overflow-hidden">
         <div className="relative flex flex-col items-center gap-7 px-7 py-16 text-center sm:px-10">
           <span
             className="flex items-center justify-center"
@@ -58,20 +59,16 @@ export function DoneScreen({ holdSeconds, onFinished }: DoneScreenProps) {
 
           <div className="bar" style={{ width: 120 }} />
 
-          <ul className="flex list-none flex-col gap-2.5 p-0" aria-live="polite">
-            {COPY.done.slice(0, visibleLines).map((line) => (
-              <li
-                key={line}
-                className="bh-line"
-                style={{ fontSize: 'var(--text-md)', color: 'var(--color-ink-soft)' }}
-              >
+          <ul className="flex list-none flex-col gap-2.5 p-0">
+            {COPY.done.map((line) => (
+              <li key={line} style={{ fontSize: 'var(--text-md)', color: 'var(--color-ink-soft)' }}>
                 {line}
               </li>
             ))}
           </ul>
 
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-faint)' }}>
-            This screen resets in a moment for the next person.
+            This screen clears in a moment for the next person.
           </p>
 
           <Button variant="secondary" onClick={onFinished} autoFocus>
@@ -80,16 +77,6 @@ export function DoneScreen({ holdSeconds, onFinished }: DoneScreenProps) {
         </div>
       </div>
 
-      <style>{`
-        .bh-line { animation: line-in 300ms var(--ease-snap) both }
-        @keyframes line-in {
-          from { opacity: 0; transform: translateY(7px) }
-          to   { opacity: 1; transform: translateY(0) }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          @keyframes line-in { from { opacity: 0 } to { opacity: 1 } }
-        }
-      `}</style>
     </div>
   );
 }

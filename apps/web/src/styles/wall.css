@@ -1,0 +1,168 @@
+/*
+  The speeches wall, and nothing else.
+
+  A projector page, not the kiosk: it is deliberately free of the application's
+  tokens and ground so it can never be affected by a change made for the ballot.
+*/
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  /* 100vh with no scrolling, on a machine we do not control. */
+  overflow: hidden;
+  background: #1d1c1d;
+  color: #f5edfb;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+#wall {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+  The frame the component fills.
+
+  It is sized in `dvh` as well as `vh` so a projector or a browser with chrome
+  that comes and goes cannot leave a strip of page below the cloth — which is
+  the one thing that would introduce a scrollbar. The scene inside fits itself
+  to whatever box it is given, so there is nothing here to scale by hand: the
+  page is correct at 1080 wide and at 1920 for the same reason.
+*/
+.shader-frame {
+  position: relative;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #1d1c1d;
+}
+
+/*
+  What a machine with no usable WebGL gets. Managed fleets, remote desktop
+  sessions and blocklisted integrated drivers all land here, and a school hall
+  is where all three live — a black rectangle on a projector is not an option.
+
+  The same three words, the same mark and the same reading order, in the same
+  two colours: the shoji glow behind, and the dyed cloth on it.
+
+  The shoji stops are the derived document's own values. The cloth stops are
+  not — they are what the cloth RENDERS as, median-sampled per band from a
+  headless Chrome screenshot of `/noren/forge-speeches.html` at 640x360, two
+  parts side panel to one part centre because two of the three panels are side
+  panels and the centre sits directly in front of the lantern. Taking the vat
+  hexes instead would have been wrong by a wide margin in the other direction:
+  the cloth is transmissive and lit, so it reads lighter and flatter than the
+  dye it was painted with. A fallback that drifts from the cloth is worse than
+  no fallback, because only one of the two is ever on screen and nobody is ever
+  in a position to see them disagree.
+*/
+.wall-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  /* The shoji behind the noren, from the authored `makeShojiTexture`. */
+  background: radial-gradient(
+    52% 74% at 50% 44%,
+    #e4a7f3 0%,
+    #7c4dcc 40%,
+    #2a1849 76%,
+    #1d1c1d 100%
+  );
+}
+
+/*
+  The cloth. 4.4 × 2.9 in the scene, and it is sized here to the share of the
+  viewport the authored camera actually gives it — measured in Chrome at
+  1920×1080 rather than guessed — so the three columns land where the three
+  panels land and the fallback is a redraw of the wall, not a rearrangement.
+*/
+.wall-fallback__cloth {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  /* The sleeve takes its own height and the panels take the rest, as on the
+     cloth — without this the implicit rows split the height evenly and leave a
+     band of empty indigo where the noren has none. */
+  grid-template-rows: auto 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: 1.6vmin 0.9vmin;
+  width: min(72vw, 128vh);
+  aspect-ratio: 4.4 / 2.9;
+  padding: 2.4vmin 0;
+  box-sizing: border-box;
+  color: #f5edfb;
+  background: linear-gradient(180deg, #3d2a74 0%, #3f2f6a 42%, #3f3360 100%);
+}
+
+.wall-fallback__sleeve {
+  grid-column: 1 / -1;
+  align-self: start;
+  margin: 0;
+  padding-bottom: 1.4vmin;
+  border-bottom: 0.18vmin solid rgba(245, 237, 251, 0.5);
+  width: 100%;
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(1.1rem, 2.4vmin, 2.2rem);
+  letter-spacing: 0.24em;
+}
+
+/* Katazome: the resist-dyed double frame the authored cloth prints inside each
+   panel, which is also what separates the three panels without the slits. */
+.wall-fallback__panel {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  justify-self: stretch;
+  margin: 0 1.4vmin;
+  padding: 0.9vmin;
+  border: 0.2vmin solid rgba(245, 237, 251, 0.72);
+  outline: 0.12vmin solid rgba(245, 237, 251, 0.72);
+  outline-offset: 0.7vmin;
+}
+
+.wall-fallback__word {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  gap: 0.18em;
+  font-weight: 700;
+  font-size: clamp(1.4rem, 3.2vmin, 3rem);
+  line-height: 1;
+}
+
+/* The authored crest ring, kept for the same reason the cloth keeps it: it is
+   what makes the centre read as a crest rather than a stray logo. */
+.wall-fallback__crest {
+  display: grid;
+  place-items: center;
+  width: clamp(6rem, 17vmin, 15rem);
+  aspect-ratio: 1;
+  border: 0.55vmin solid #e4a7f3;
+  border-radius: 50%;
+}
+
+.wall-fallback__mark {
+  width: 62%;
+  height: auto;
+  /*
+    The mark ships as dark ink on an opaque white ground; the cloth prints it in
+    Lavender Mist. `invert` turns the ink light and the ground black, and
+    `screen` drops black to nothing — so the ground disappears instead of
+    becoming a black tile over the panel. The sepia/hue-rotate/saturate run then
+    tints the result to the same #f5edfb as the lettering: white has no hue to
+    rotate, so sepia has to give it one first. The numbers are solved against
+    that hex, not eyeballed — they land on rgb(250, 237, 250). Every filter here
+    is a linear matrix or a multiply, so all of them leave black at black, which
+    is what keeps the knock-out clean.
+  */
+  filter: invert(1) sepia(0.6) hue-rotate(295deg) saturate(3.25) brightness(0.98);
+  mix-blend-mode: screen;
+}

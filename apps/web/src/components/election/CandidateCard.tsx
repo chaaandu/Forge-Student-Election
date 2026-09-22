@@ -7,7 +7,15 @@ import { candidatePhoto } from '@/lib/candidatePhoto';
 export interface CandidateCardProps {
   candidate: Candidate;
   selected: boolean;
-  /** The field colour for this contest: a house colour, or the default red. */
+  /**
+   * The field colour for this contest: a house colour, or the default red.
+   *
+   * Must be a LITERAL hex. `roleFor` can only correct a colour it can read, so
+   * a `var(--bh-red)` here silently skipped the whole ink-on-field machinery
+   * and fell back to the page ink — black on red at 3.92:1 on paper, and cream
+   * on red at 4.02:1 at night. Both under AA, on the one element that tells a
+   * voter what they just picked.
+   */
   accent?: string;
   onSelect: (candidateId: string) => void;
   tabbable: boolean;
@@ -29,7 +37,7 @@ export interface CandidateCardProps {
 export function CandidateCard({
   candidate,
   selected,
-  accent = 'var(--bh-red)',
+  accent = '#DE2B1F',
   onSelect,
   tabbable,
   onKeyDown,
@@ -78,9 +86,11 @@ export function CandidateCard({
             decoding="async"
             onError={() => setImageFailed(true)}
             className="h-full w-full object-cover"
-            // Heads sit high in a portrait; bias the crop upward so a wide card
-            // still frames a face rather than a chest.
-            style={{ objectPosition: 'center 22%' }}
+            // Top-aligned, matching the crop the import already applied. The
+            // box is a fixed height and a variable width, so a wide card can
+            // still need to take something off the photo; anchoring to the top
+            // means it comes off the bottom and never off a head.
+            style={{ objectPosition: 'center top' }}
           />
         ) : (
           <div
@@ -145,7 +155,10 @@ export function CandidateCard({
           )}
 
           {/* The fourth signal: the state in words. */}
-          <span className="label mt-2 block" style={{ color: 'inherit', opacity: selected ? 1 : 0.6 }}>
+          <span
+            className="label mt-2 block"
+            style={{ color: 'inherit', opacity: selected ? 1 : 0.6 }}
+          >
             {selected ? 'Selected' : 'Choose'}
           </span>
         </span>
@@ -173,9 +186,23 @@ export function CandidateCard({
           background: var(--field);
           color: var(--on-field);
         }
+        /*
+          A SELECTED card sits on a block of its own FIELD colour.
+
+          The offset block is how this interface shows depth, and on the dark
+          ground it is --color-block: a near-black grey that is nearly invisible
+          against a near-black page, so the chosen card lifted into nothing. The
+          old paper value was --color-ink, which at night is CREAM: a bright
+          halo round the one card the voter just picked, which is worse.
+
+          Taking the field colour solves both and says something true — the
+          block under the card is the same red, or the same house colour, as the
+          bar across its foot. The mark, the field, the word "Selected" and now
+          the block are all one signal.
+        */
         .bh-candidate[data-selected="true"] {
           transform: translate(-3px, -3px);
-          box-shadow: 7px 7px 0 var(--color-ink);
+          box-shadow: 7px 7px 0 var(--field);
         }
         @media (prefers-reduced-motion: reduce) {
           .bh-candidate, .bh-candidate:hover, .bh-candidate:active,

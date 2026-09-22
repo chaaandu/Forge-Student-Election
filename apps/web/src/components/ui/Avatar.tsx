@@ -14,12 +14,24 @@ function initials(name: string): string {
 
 const sizes = { sm: 40, md: 58, lg: 82 } as const;
 
-/** Initials in a hard-edged block. Decorative: the name is always alongside. */
+/**
+ * Initials in a hard-edged block. Decorative: the name is always alongside.
+ *
+ * WITH NO COLOUR IT IS NEUTRAL, not blue.
+ *
+ * The default used to be `--bh-blue`, which is also the Samurai field. On the
+ * check-in desk — where every student's avatar carries their real house colour
+ * so the list can be scanned — that gave the one voter with NO house, an
+ * employee, a Samurai-blue block. The only person on screen who belongs to no
+ * house was the one being coloured as if she did.
+ *
+ * Here colour means house and nothing else, so no house means no colour.
+ */
 export function Avatar({ name, color, size = 'md' }: AvatarProps) {
   const box = sizes[size];
   const adjusted = color?.startsWith('#') ? accessibleField(color) : null;
-  const field = adjusted?.field ?? color ?? 'var(--bh-blue)';
-  const ink = adjusted?.ink ?? '#FFFFFF';
+  const field = adjusted?.field ?? color ?? 'var(--color-paper)';
+  const ink = adjusted?.ink ?? 'var(--color-ink)';
 
   return (
     <span

@@ -29,7 +29,7 @@ invalid configuration — a half-valid election is worse than no election.
   "positions": [
     { "id": "president", "title": "President", "order": 1, "kind": "leadership",
       "eligibility": { "voterTypes": ["student", "employee"] } },
-    { "id": "house-captain-aravalli", "title": "House Captain — Aravalli", "order": 7,
+    { "id": "house-captain-aravalli", "title": "Aravalli House Captain", "order": 7,
       "kind": "house-captain", "houseId": "aravalli",
       "eligibility": { "voterTypes": ["student"], "houseId": "aravalli" } }
   ],

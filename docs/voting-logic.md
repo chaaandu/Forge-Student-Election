@@ -48,11 +48,11 @@ Current configuration:
 | --- | --- | --- | --- |
 | President | student, employee | — | everyone |
 | Vice President | student, employee | — | everyone |
-| Academic Lead — Boy | student, employee | — | everyone |
-| Academic Lead — Girl | student, employee | — | everyone |
-| Community Lead — Boy | student, employee | — | everyone |
-| Community Lead — Girl | student, employee | — | everyone |
-| House Captain — *each house* | student | that house | students of that house |
+| Boys’ Academic Lead | student, employee | — | everyone |
+| Girls’ Academic Lead | student, employee | — | everyone |
+| Boys’ Community Lead | student, employee | — | everyone |
+| Girls’ Community Lead | student, employee | — | everyone |
+| *each house* House Captain | student | that house | students of that house |
 
 Consequences that are *derived, never special-cased*:
 
