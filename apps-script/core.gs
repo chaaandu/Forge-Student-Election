@@ -127,8 +127,23 @@ function stepsFor_(voter) {
 
 // ------------------------------------------------------------------- roll ---
 
-/** The roll, indexed by id. Read once per request; 145 rows is nothing. */
+/**
+ * The roll, indexed by id.
+ *
+ * Cached, because it does not change while voting is open — the Roll tab is
+ * seeded once by `setup()` and then only read. Every request was re-reading all
+ * 145 rows out of the spreadsheet, and SpreadsheetApp calls are the expensive
+ * part of an Apps Script execution by a wide margin.
+ *
+ * Deliberately NOT extended to who has voted. That changes constantly, and a
+ * stale answer there is the one thing that could let the same person vote
+ * twice — see `votedSet_`.
+ */
 function roll_() {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get('roll');
+  if (hit) return JSON.parse(hit);
+
   var out = {};
   var data = rows_(TABS.roll);
   for (var i = 0; i < data.length; i += 1) {
@@ -142,6 +157,8 @@ function roll_() {
       house: String(r[4] || ''),
     };
   }
+
+  cache.put('roll', JSON.stringify(out), 1800);
   return out;
 }
 
@@ -164,12 +181,26 @@ function voterOf_(row) {
   };
 }
 
-/** Who has already voted, as a set of voter ids, read from the Voters tab. */
+/**
+ * Who has already voted, as a set of voter ids.
+ *
+ * Never cached, and only column A is read. This is the answer the one-vote
+ * guarantee turns on: `castBallot_` re-asks it inside the lock, and a cached
+ * reply there would be a reply from before the previous voter committed —
+ * which is exactly how the same person votes twice.
+ *
+ * Reading one column rather than the whole tab keeps it cheap enough not to
+ * need caching.
+ */
 function votedSet_() {
+  var tab = sheet_(TABS.voters);
+  var last = tab.getLastRow();
+  if (last < 2) return {};
+
+  var ids = tab.getRange(2, 1, last - 1, 1).getValues();
   var set = {};
-  var data = rows_(TABS.voters);
-  for (var i = 0; i < data.length; i += 1) {
-    if (data[i][0]) set[String(data[i][0])] = String(data[i][6] || '');
+  for (var i = 0; i < ids.length; i += 1) {
+    if (ids[i][0]) set[String(ids[i][0])] = true;
   }
   return set;
 }

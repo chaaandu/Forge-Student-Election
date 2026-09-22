@@ -306,7 +306,21 @@ export const api = {
     usingAppsScript
       ? callAppsScript<SubmitResult>(
           { action: 'ballot', token, selections, idempotencyKey },
-          { method: 'POST', timeoutMs: 30_000 },
+          /*
+            Sixty seconds, not twenty.
+
+            Apps Script answers in about a second but Google's content layer in
+            front of it is slow and wildly variable — measured between 0.5s and
+            30s for the same request. Aborting at twenty produced "STILL
+            SENDING" on votes that were in fact being recorded, and sent the
+            voter round the retry loop for a ballot that had already landed.
+
+            Waiting longer is the right trade here: the retry is safe (a second
+            attempt is refused as ALREADY_VOTED, never double-counted) but it is
+            alarming, and a voter who has just pressed the button should not be
+            told something went wrong because Google was thinking.
+          */
+          { method: 'POST', timeoutMs: 60_000 },
         )
       : request<SubmitResult>('/api/ballots', {
           method: 'POST',
