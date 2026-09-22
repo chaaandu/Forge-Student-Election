@@ -288,7 +288,8 @@ function doPost(e) {
 
   try {
     if (body.action === 'select') return json_(select_(body.voterId));
-    if (body.action === 'ballot') return json_(castBallot_(body.token, body.selections));
+    if (body.action === 'ballot')
+      return json_(castBallot_(body.token, body.selections, body.idempotencyKey));
     return fail_('NOT_FOUND', 'Unknown action.', 404);
   } catch (err) {
     var message = String(err && err.message ? err.message : err);
@@ -410,7 +411,29 @@ function named_(code, message) {
  * The lock is held for the whole read-check-write, and released in `finally` so
  * a thrown validation error cannot wedge the election.
  */
-function castBallot_(token, selections) {
+function castBallot_(token, selections, idempotencyKey) {
+  /*
+    Replay a submission we have already recorded.
+
+    The client has always sent an idempotency key and this ignored it, which was
+    fine while nothing retried. It is not fine now: Apps Script's delivery layer
+    drops responses often enough that the ballot has to retry, and without this
+    the second attempt finds the voter already marked and tells them they have
+    already voted — for a vote they just cast and were never told about. The
+    vote would be correct and the voter would be certain something had gone
+    wrong.
+
+    Cached rather than written to a tab because it is not a record of the
+    election, it is a short-lived note to ourselves. Six hours outlasts a
+    polling day. A cache miss is still SAFE, just unhelpful: the duplicate is
+    refused by the check under the lock, exactly as before.
+  */
+  var replayKey = idempotencyKey ? 'idem:' + String(idempotencyKey) : null;
+  if (replayKey) {
+    var prior = CacheService.getScriptCache().get(replayKey);
+    if (prior) return JSON.parse(prior);
+  }
+
   var voterId = readToken_(token);
   if (!voterId) throw named_('UNAUTHORIZED', 'Your check-in has expired. Check in again to vote.');
 
@@ -475,7 +498,15 @@ function castBallot_(token, selections) {
 
     SpreadsheetApp.flush();
 
-    return { status: 'recorded', receiptId: ballotId.slice(0, 8), submittedAt: now.toISOString() };
+    var result = {
+      status: 'recorded',
+      receiptId: ballotId.slice(0, 8),
+      submittedAt: now.toISOString(),
+    };
+    // Stored INSIDE the lock, after the write, so a retry that arrives while
+    // the first is still committing waits for the lock rather than racing it.
+    if (replayKey) CacheService.getScriptCache().put(replayKey, JSON.stringify(result), 21600);
+    return result;
   } finally {
     lock.releaseLock();
   }
