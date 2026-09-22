@@ -230,3 +230,42 @@ describe('lookup against Apps Script', () => {
     expect(calls).toEqual([]);
   });
 });
+
+/**
+ * The boot must not depend on the network.
+ *
+ * The regression: `election()` fetched from Apps Script, and when that dropped
+ * four times the voter watched "Preparing the ballot…" for about three minutes
+ * and was then told to find the person running the election - for a candidate
+ * list that had not changed since the bundle was built.
+ */
+describe('the election comes from the bundle', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('opens the ballot without making a single request', async () => {
+    vi.stubEnv('VITE_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfy/exec');
+    const fetchSpy = vi.fn(() => Promise.reject(new Error('the network must not be touched')));
+    vi.stubGlobal('fetch', fetchSpy);
+    vi.resetModules();
+
+    const { api } = await import('../api');
+    const election = await api.election();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(election.positions.length).toBeGreaterThan(0);
+    expect(election.candidates.length).toBeGreaterThan(0);
+    expect(election.auth.mode).toBe('supervised');
+  });
+
+  it('still asks the server when there is no Apps Script deployment', async () => {
+    vi.resetModules();
+    respondWith(JSON.stringify({ positions: [] }), 200, 'application/json');
+
+    const { api } = await import('../api');
+    await api.election();
+
+    expect(fetch).toHaveBeenCalled();
+  });
+});

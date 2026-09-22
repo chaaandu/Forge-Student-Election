@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Mesa Departures — the voter-facing election experience.",
+  "description": "Mesa Departures \u2014 the voter-facing election experience.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "prebuild": "node ../../scripts/bake-election.mjs",
+    "predev": "node ../../scripts/bake-election.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

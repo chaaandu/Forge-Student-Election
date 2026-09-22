@@ -47,7 +47,8 @@
     "election:serve": "node scripts/election-day.mjs",
     "election:tunnel": "node scripts/election-day.mjs --tunnel",
     "appsscript:build": "node scripts/build-apps-script.mjs",
-    "appsscript:verify": "tsx scripts/verify-apps-script.ts"
+    "appsscript:verify": "tsx scripts/verify-apps-script.ts",
+    "election:bake": "node scripts/bake-election.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",

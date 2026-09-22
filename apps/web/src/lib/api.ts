@@ -1,4 +1,5 @@
 import type { Candidate, House, Position } from '@mesa/election-core';
+import { BAKED_ELECTION } from '@/generated/election';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 const KIOSK_TOKEN = import.meta.env.VITE_KIOSK_TOKEN ?? 'dev-kiosk-token';
@@ -128,14 +129,35 @@ async function callAppsScriptOnce<T>(
  */
 async function callAppsScript<T>(
   payload: Record<string, unknown>,
-  init: { method: 'GET' | 'POST'; timeoutMs?: number },
+  init: { method: 'GET' | 'POST'; timeoutMs?: number; budgetMs?: number },
 ): Promise<T> {
   const attempts = 4;
+  /*
+    A WALL-CLOCK CEILING, not just a count of tries.
+
+    Four attempts at a 45-second timeout is a budget of three minutes, and it
+    was spent in full: the boot fetch failed four times, the voter watched
+    "Preparing the ballot…" for about three minutes, and was then told to fetch
+    the person running the election. Nobody waits three minutes at a kiosk, and
+    a retry that arrives after they have walked away is not a retry.
+
+    So each call carries a deadline. Attempts stop when it passes, whether or
+    not the count is used up. Casting a ballot sets its own, much longer, one —
+    that is the request worth waiting for.
+  */
+  const deadline = Date.now() + (init.budgetMs ?? 20_000);
   let last: unknown;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const remaining = deadline - Date.now();
+    if (attempt > 1 && remaining <= 0) break;
+
     try {
-      return await callAppsScriptOnce<T>(payload, init);
+      return await callAppsScriptOnce<T>(payload, {
+        ...init,
+        // Never let one attempt outlive the budget for all of them.
+        timeoutMs: Math.max(1_000, Math.min(init.timeoutMs ?? 45_000, remaining)),
+      });
     } catch (error) {
       last = error;
       const retryable = error instanceof ApiError && error.code === 'UPSTREAM';
@@ -480,10 +502,33 @@ export function matchRoll(
 }
 
 export const api = {
-  election: () =>
-    usingAppsScript
-      ? callAppsScript<PublicElection>({ action: 'election' }, { method: 'GET' })
-      : request<PublicElection>('/api/election'),
+  /**
+   * The ballot, with no network at all.
+   *
+   * Houses, positions and candidates are compiled into the bundle by
+   * `npm run election:bake`, because they cannot change while the bundle is
+   * the bundle. Fetching them was the single point of failure in the boot: one
+   * flaky request stood between the voter and a screen that could have been
+   * drawn from disk.
+   */
+  election: async (): Promise<PublicElection> => {
+    if (!usingAppsScript) return request<PublicElection>('/api/election');
+    return BAKED_ELECTION;
+  },
+
+  /** True when `election()` answered from the bundle rather than the server. */
+  electionIsBaked: usingAppsScript,
+
+  /**
+   * Re-check the one field that can change during polling.
+   *
+   * The baked copy cannot know the election was closed after the bundle was
+   * built. This is asked for in the background, and applied only while nobody
+   * is part-way through voting. It is a courtesy, not a control: the server
+   * re-checks the window before recording anything.
+   */
+  electionFresh: () =>
+    callAppsScript<PublicElection>({ action: 'election' }, { method: 'GET', budgetMs: 25_000 }),
 
   /**
    * Warm the roll so the first keystroke is already answered.
@@ -597,7 +642,7 @@ export const api = {
             alarming, and a voter who has just pressed the button should not be
             told something went wrong because Google was thinking.
           */
-          { method: 'POST', timeoutMs: 60_000 },
+          { method: 'POST', timeoutMs: 60_000, budgetMs: 150_000 },
         )
       : request<SubmitResult>('/api/ballots', {
           method: 'POST',

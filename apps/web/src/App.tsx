@@ -122,6 +122,23 @@ export function App() {
         */
         void api.primeRoll();
 
+        /*
+          The election is baked into the bundle, so the screen above drew
+          without asking anyone. The one thing the bundle cannot know is that
+          polling was closed after it was built, so ask - in the background,
+          where a slow or dropped reply costs the voter nothing.
+
+          The reducer applies this only before anyone has started voting.
+        */
+        if (api.electionIsBaked) {
+          void api
+            .electionFresh()
+            .then((fresh) => {
+              if (!cancelled) dispatch({ type: 'ELECTION_LOADED', election: fresh });
+            })
+            .catch(() => undefined);
+        }
+
         // Returning from Microsoft: exchange the one-time handoff code for a
         // session. The session token itself is never placed in a URL.
         const params = new URLSearchParams(window.location.search);

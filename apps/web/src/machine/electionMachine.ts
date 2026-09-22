@@ -138,6 +138,20 @@ function toWelcome(state: MachineState): MachineState {
 export function reducer(state: MachineState, action: MachineAction): MachineState {
   switch (action.type) {
     case 'ELECTION_LOADED': {
+      /*
+        Only before anyone has started.
+
+        The election is compiled into the bundle and re-checked in the
+        background, so this can now arrive a second time - seconds after boot,
+        with a fresher `status`. Applying it mid-ballot would reset a voter who
+        is half way through choosing. Before check-in it is exactly what we
+        want: an election closed since the bundle was built says so on the
+        first screen instead of at submission.
+      */
+      if (state.phase !== 'LOADING' && state.phase !== 'WELCOME' && state.phase !== 'BLOCKED') {
+        return state;
+      }
+
       const { window: electionWindow } = action.election;
       if (!electionWindow.open) {
         return {
