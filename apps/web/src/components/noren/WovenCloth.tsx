@@ -50,7 +50,7 @@ type VariantDefinition = {
 const VARIANTS: Record<WovenClothVariant, VariantDefinition> = {
   washi: {
     title: 'Woven Cloth washi noren',
-    background: '#0d0a07',
+    background: '#1d1c1d',
     document: '/noren/forge-speeches.html',
   },
 };

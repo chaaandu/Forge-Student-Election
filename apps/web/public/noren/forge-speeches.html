@@ -20,11 +20,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
 </script>
 <style>
-  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0d0a07; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1D1C1D; }
   #cloth { display: block; width: 100%; height: 100%; }
   #vignette {
     position: fixed; inset: 0; pointer-events: none;
-    background: radial-gradient(80% 74% at 50% 44%, transparent 46%, rgba(10,7,5,.80) 100%);
+    background: radial-gradient(80% 74% at 50% 44%, transparent 46%, rgba(29,28,29,.80) 100%);
   }
 </style>
 </head>
@@ -121,14 +121,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   // The authored ring, kept exactly: it is what makes the centre panel read as
   // a crest. Only what sits inside it has changed.
   function drawCrestRing(x, cx, cy, R) {
-    x.strokeStyle = '#f3ece0';
+    x.strokeStyle = '#E4A7F3';
     x.lineWidth = R * 0.10;
     x.beginPath(); x.arc(cx, cy, R * 0.96, 0, Math.PI * 2); x.stroke();
   }
 
   /* Katazome leaves the cloth's own pigment behind the resist, so the mark is
      taken as a stencil rather than stamped on: the PNG's darkness becomes the
-     same cream #f3ece0 as the frames and the lettering, and its white ground
+     same #F5EDFB as the frames and the lettering, and its white ground
      falls away. Rendered at 384 and drawn down, so the edges stay clean at the
      size the crest is actually printed. */
   function stencil(img, size, ink) {
@@ -152,7 +152,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     img.onload = () => {
       const size = CREST.R * 1.62;
       ctx.drawImage(
-        stencil(img, 384, [243, 236, 224]),
+        stencil(img, 384, [245, 237, 251]),
         CREST.cx - size / 2, CREST.cy - size / 2, size, size,
       );
       done();
@@ -187,9 +187,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     // Indigo vat: deeper where the cloth was dipped longest.
     const g = x.createLinearGradient(0, 0, 0, TH);
-    g.addColorStop(0, '#284a6c');
-    g.addColorStop(0.42, '#203d5e');
-    g.addColorStop(1, '#17304e');
+    g.addColorStop(0, '#5A3A8E');
+    g.addColorStop(0.42, '#452A74');
+    g.addColorStop(1, '#2A1849');
     x.fillStyle = g; x.fillRect(0, 0, TW, TH);
 
     const cloud = rng(4471);
@@ -197,16 +197,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const cx = cloud() * TW, cy = cloud() * TH, r = 120 + cloud() * 320;
       const light = cloud() > 0.5;
       const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r);
-      rg.addColorStop(0, light ? 'rgba(96,132,168,0.13)' : 'rgba(9,22,40,0.16)');
+      rg.addColorStop(0, light ? 'rgba(124,77,204,0.13)' : 'rgba(20,10,38,0.16)');
       rg.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = rg; x.fillRect(cx - r, cy - r, r * 2, r * 2);
     }
 
     // Laid lines from the bamboo screen, then the heavier chain lines.
-    x.strokeStyle = 'rgba(180,205,228,0.045)';
+    x.strokeStyle = 'rgba(228,167,243,0.045)';
     x.lineWidth = 1;
     for (let px = 0; px < TW; px += 4) { x.beginPath(); x.moveTo(px + 0.5, 0); x.lineTo(px + 0.5, TH); x.stroke(); }
-    x.strokeStyle = 'rgba(196,218,238,0.10)';
+    x.strokeStyle = 'rgba(245,237,251,0.10)';
     x.lineWidth = 2;
     for (let py = 26; py < TH; py += 38) { x.beginPath(); x.moveTo(0, py + 0.5); x.lineTo(TW, py + 0.5); x.stroke(); }
 
@@ -219,8 +219,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const bow = (fib() - 0.5) * 26;
       const pale = fib();
       x.strokeStyle = pale > 0.3
-        ? 'rgba(214,232,247,' + (0.022 + fib() * 0.048) + ')'
-        : 'rgba(10,20,36,' + (0.04 + fib() * 0.07) + ')';
+        ? 'rgba(245,237,251,' + (0.022 + fib() * 0.048) + ')'
+        : 'rgba(26,12,46,' + (0.04 + fib() * 0.07) + ')';
       x.lineWidth = 0.7 + fib() * 1.9;
       x.beginPath();
       x.moveTo(fx, fy);
@@ -233,7 +233,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     // Katazome: a resist-dyed frame inside each panel.
     const panelW = TW / PANELS;
-    x.strokeStyle = 'rgba(243,236,224,0.72)';
+    x.strokeStyle = 'rgba(245,237,251,0.72)';
     for (let k = 0; k < PANELS; k++) {
       const x0 = k * panelW + 34, w = panelW - 68;
       x.lineWidth = 5;
@@ -243,17 +243,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
 
     // The sleeve the rod runs through, and its shadow on the cloth below.
-    x.fillStyle = 'rgba(8,18,34,0.30)';
+    x.fillStyle = 'rgba(20,10,38,0.30)';
     x.fillRect(0, 0, TW, TH * BAND);
     const sh = x.createLinearGradient(0, TH * BAND, 0, TH * BAND + 54);
-    sh.addColorStop(0, 'rgba(6,14,28,0.42)');
-    sh.addColorStop(1, 'rgba(6,14,28,0)');
+    sh.addColorStop(0, 'rgba(16,8,32,0.42)');
+    sh.addColorStop(1, 'rgba(16,8,32,0)');
     x.fillStyle = sh; x.fillRect(0, TH * BAND, TW, 54);
-    x.strokeStyle = 'rgba(243,236,224,0.5)';
+    x.strokeStyle = 'rgba(245,237,251,0.5)';
     x.lineWidth = 2.5;
     x.beginPath(); x.moveTo(0, TH * BAND); x.lineTo(TW, TH * BAND); x.stroke();
 
-    x.fillStyle = '#f3ece0';
+    x.fillStyle = '#F5EDFB';
     // The sleeve is the one band the slits never reach, so it is the only place
     // on this cloth a line can run the whole way across.
     horizontalWord(x, 'FORGE STUDENTS', TW * 0.5, TH * BAND * 0.60, 62, 14);
@@ -293,16 +293,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   // A shoji screen behind the noren gives the paper something to glow with.
   function makeShojiTexture() {
     const W = 768, H = 512, s = surface(W, H), x = s.ctx;
-    x.fillStyle = '#1a1109'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#1D1C1D'; x.fillRect(0, 0, W, H);
     const glow = x.createRadialGradient(W * 0.5, H * 0.44, 0, W * 0.5, H * 0.44, W * 0.52);
-    glow.addColorStop(0, '#ffdda4');
-    glow.addColorStop(0.40, '#a97c42');
-    glow.addColorStop(0.76, '#341d0c');
-    glow.addColorStop(1, '#150d06');
+    glow.addColorStop(0, '#E4A7F3');
+    glow.addColorStop(0.40, '#7C4DCC');
+    glow.addColorStop(0.76, '#2A1849');
+    glow.addColorStop(1, '#1D1C1D');
     x.fillStyle = glow; x.fillRect(0, 0, W, H);
     // Kumiko lattice, softened so it stays a suggestion behind the cloth.
     if ('filter' in x) x.filter = 'blur(7px)';
-    x.strokeStyle = 'rgba(46,28,13,0.20)';
+    x.strokeStyle = 'rgba(29,28,29,0.20)';
     x.lineWidth = 3;
     for (let px = 54; px < W; px += 128) { x.beginPath(); x.moveTo(px, 0); x.lineTo(px, H); x.stroke(); }
     for (let py = 46; py < H; py += 118) { x.beginPath(); x.moveTo(0, py); x.lineTo(W, py); x.stroke(); }
@@ -320,7 +320,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0c0906);
+  scene.background = new THREE.Color(0x1d1c1d);
 
   const shoji = new THREE.Mesh(
     new THREE.PlaneGeometry(13, 8.4),
@@ -351,10 +351,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     transmission: 0.82,
     thickness: 0.10,
     ior: 1.36,
-    attenuationColor: new THREE.Color('#9dc0dd'),
+    attenuationColor: new THREE.Color('#b49ae0'),
     attenuationDistance: 3.0,
     sheen: 0.9,
-    sheenColor: new THREE.Color('#d8e6f2'),
+    sheenColor: new THREE.Color('#ece2f7'),
     sheenRoughness: 0.85,
   });
 
@@ -378,12 +378,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   });
 
   /* ------------------------------------------------------------ lights -- */
-  scene.add(new THREE.AmbientLight(0x4a3a28, 0.8));
-  const lantern = new THREE.DirectionalLight(0xffd9a0, 3.6);   // through the shoji
+  scene.add(new THREE.AmbientLight(0x3a2c52, 0.8));
+  const lantern = new THREE.DirectionalLight(0xe8d2ff, 3.6);   // through the shoji
   lantern.position.set(-0.4, 0.9, -3.2); scene.add(lantern);
-  const key = new THREE.DirectionalLight(0xffe9cc, 2.1);
+  const key = new THREE.DirectionalLight(0xf6ecff, 2.1);
   key.position.set(-2.6, 2.4, 2.6); scene.add(key);
-  const fill = new THREE.DirectionalLight(0x94b6d8, 0.5);
+  const fill = new THREE.DirectionalLight(0xa88ad0, 0.5);
   fill.position.set(3.0, -1.0, 2.0); scene.add(fill);
 
   /* ----------------------------------------------------------- physics --

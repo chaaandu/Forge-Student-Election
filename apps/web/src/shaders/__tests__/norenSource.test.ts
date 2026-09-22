@@ -138,9 +138,11 @@ describe('the derived speeches wall', () => {
     }
   });
 
-  it('changes only the content layer', () => {
+  it('changes only the content layer and the dye', () => {
     // Everything the derivation removed from the authored script, enumerated.
-    // Anything else disappearing from the simulation fails here.
+    // Anything else disappearing from the simulation fails here — unless the
+    // only thing that changed on the line was a colour, which `recolour` below
+    // proves rather than takes on trust.
     const script = (html: string) =>
       [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1] ?? '').pop() ?? '';
 
@@ -186,7 +188,66 @@ describe('the derived speeches wall', () => {
       'x.beginPath(); x.arc(cx, cy, R * 0.96, 0, Math.PI * 2); x.stroke();',
     ]);
 
-    expect(missing.filter((line) => !expected.has(line))).toEqual([]);
+    /*
+      A line whose ONLY difference is a colour value is the dye, not drift.
+
+      Blanking every colour literal and asking whether the line still exists in
+      the derived file is a stronger guard than listing the recoloured lines
+      would be: an allowlist of forty hexes says nothing about what else moved
+      on those lines, and it would have to be re-typed on every palette change.
+      This says the shape is identical and only the colour moved, which is the
+      claim the header comment actually makes.
+    */
+    const blankColours = (line: string) =>
+      line
+        .replace(/#[0-9a-f]{3,8}\b/gi, '#C')
+        .replace(/0x[0-9a-f]{6}\b/gi, '0xC')
+        .replace(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+/gi, 'rgba(C');
+
+    const derivedShapes = new Set([...derivedLines].map(blankColours));
+    const recoloured = (line: string) => derivedShapes.has(blankColours(line));
+
+    expect(missing.filter((line) => !expected.has(line) && !recoloured(line))).toEqual([]);
+  });
+
+  it('is dyed in the Forge palette, with no indigo left anywhere', () => {
+    // Every value the authored washi noren was built from. One surviving means
+    // a half-applied recolour, which on a projector reads as a bug rather than
+    // as a choice.
+    const authoredDye = [
+      '#284a6c',
+      '#203d5e',
+      '#17304e', // the indigo vat
+      '#f3ece0', // the printed cream
+      '#9dc0dd',
+      '#d8e6f2', // the material's blue tint
+      '0xffd9a0',
+      '0xffe9cc',
+      '0x94b6d8',
+      '0x4a3a28', // the warm rig
+      '#ffdda4',
+      '#a97c42',
+      '#1a1109', // the shoji lantern
+      '0x0c0906',
+      '#0d0a07', // the room
+    ];
+    for (const value of authoredDye) {
+      expect(authored.toLowerCase(), `authored: ${value}`).toContain(value);
+      expect(derived.toLowerCase(), `derived still has ${value}`).not.toContain(value);
+    }
+
+    // And the palette it was dyed in, from the Mesa Forge brand book.
+    for (const value of ['#5a3a8e', '#452a74', '#2a1849', '#e4a7f3', '#f5edfb', '#1d1c1d']) {
+      expect(derived.toLowerCase(), `derived is missing ${value}`).toContain(value);
+    }
+  });
+
+  it('keeps the rod timber, so the frame is not monochrome', () => {
+    // The palette has no brown and the fittings are the only warm thing left.
+    // Losing them is how the noren stops reading as an object in a room.
+    for (const value of ['#a1764a', '#7d5533', '#563820']) {
+      expect(derived).toContain(value);
+    }
   });
 
   it('holds 100vh with nothing to scroll', () => {

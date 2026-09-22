@@ -13,8 +13,8 @@ body {
   height: 100%;
   /* 100vh with no scrolling, on a machine we do not control. */
   overflow: hidden;
-  background: #0d0a07;
-  color: #f3ece0;
+  background: #1d1c1d;
+  color: #f5edfb;
   font-family: Georgia, 'Times New Roman', serif;
 }
 
@@ -39,7 +39,7 @@ body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #0d0a07;
+  background: #1d1c1d;
 }
 
 /*
@@ -48,7 +48,18 @@ body {
   is where all three live — a black rectangle on a projector is not an option.
 
   The same three words, the same mark and the same reading order, in the same
-  two colours: the shoji's warm ground, and the indigo cloth on it.
+  two colours: the shoji glow behind, and the dyed cloth on it.
+
+  The shoji stops are the derived document's own values. The cloth stops are
+  not — they are what the cloth RENDERS as, median-sampled per band from a
+  headless Chrome screenshot of `/noren/forge-speeches.html` at 640x360, two
+  parts side panel to one part centre because two of the three panels are side
+  panels and the centre sits directly in front of the lantern. Taking the vat
+  hexes instead would have been wrong by a wide margin in the other direction:
+  the cloth is transmissive and lit, so it reads lighter and flatter than the
+  dye it was painted with. A fallback that drifts from the cloth is worse than
+  no fallback, because only one of the two is ever on screen and nobody is ever
+  in a position to see them disagree.
 */
 .wall-fallback {
   display: grid;
@@ -58,10 +69,10 @@ body {
   /* The shoji behind the noren, from the authored `makeShojiTexture`. */
   background: radial-gradient(
     52% 74% at 50% 44%,
-    #ffdda4 0%,
-    #a97c42 40%,
-    #341d0c 76%,
-    #150d06 100%
+    #e4a7f3 0%,
+    #7c4dcc 40%,
+    #2a1849 76%,
+    #1d1c1d 100%
   );
 }
 
@@ -85,8 +96,8 @@ body {
   aspect-ratio: 4.4 / 2.9;
   padding: 2.4vmin 0;
   box-sizing: border-box;
-  color: #f3ece0;
-  background: linear-gradient(180deg, #33424c 0%, #2b3a46 42%, #24333f 100%);
+  color: #f5edfb;
+  background: linear-gradient(180deg, #3d2a74 0%, #3f2f6a 42%, #3f3360 100%);
 }
 
 .wall-fallback__sleeve {
@@ -94,7 +105,7 @@ body {
   align-self: start;
   margin: 0;
   padding-bottom: 1.4vmin;
-  border-bottom: 0.18vmin solid rgba(243, 236, 224, 0.5);
+  border-bottom: 0.18vmin solid rgba(245, 237, 251, 0.5);
   width: 100%;
   text-align: center;
   font-weight: 700;
@@ -111,8 +122,8 @@ body {
   justify-self: stretch;
   margin: 0 1.4vmin;
   padding: 0.9vmin;
-  border: 0.2vmin solid rgba(243, 236, 224, 0.72);
-  outline: 0.12vmin solid rgba(243, 236, 224, 0.72);
+  border: 0.2vmin solid rgba(245, 237, 251, 0.72);
+  outline: 0.12vmin solid rgba(245, 237, 251, 0.72);
   outline-offset: 0.7vmin;
 }
 
@@ -134,7 +145,7 @@ body {
   place-items: center;
   width: clamp(6rem, 17vmin, 15rem);
   aspect-ratio: 1;
-  border: 0.55vmin solid #f3ece0;
+  border: 0.55vmin solid #e4a7f3;
   border-radius: 50%;
 }
 
@@ -143,12 +154,15 @@ body {
   height: auto;
   /*
     The mark ships as dark ink on an opaque white ground; the cloth prints it in
-    cream. `invert` turns the ink light and the ground black, and `screen` drops
-    black to nothing — so the ground disappears instead of becoming a black tile
-    over the panel. The sepia/saturate pair warms the result to the same cream
-    as the lettering. Every one of those filters leaves black at black, which is
-    what keeps the knock-out clean.
+    Lavender Mist. `invert` turns the ink light and the ground black, and
+    `screen` drops black to nothing — so the ground disappears instead of
+    becoming a black tile over the panel. The sepia/hue-rotate/saturate run then
+    tints the result to the same #f5edfb as the lettering: white has no hue to
+    rotate, so sepia has to give it one first. The numbers are solved against
+    that hex, not eyeballed — they land on rgb(250, 237, 250). Every filter here
+    is a linear matrix or a multiply, so all of them leave black at black, which
+    is what keeps the knock-out clean.
   */
-  filter: invert(1) sepia(0.4) saturate(0.55) brightness(1.04);
+  filter: invert(1) sepia(0.6) hue-rotate(295deg) saturate(3.25) brightness(0.98);
   mix-blend-mode: screen;
 }

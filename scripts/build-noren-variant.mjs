@@ -10,10 +10,15 @@
  * to the CONTENT LAYER ONLY.
  *
  * Untouched: the Verlet cloth, the slit panels and their independent sway, the
- * wind model, the deckle edge and its alpha mask, the indigo vat, the laid and
- * chain lines, the kozo fibres, the katazome frames, the rod and cords, the
- * shoji backlight, the lighting rig, the material, the camera fit, and the
- * reduced-motion path.
+ * wind model, the deckle edge and its alpha mask, the laid and chain lines as
+ * MARKS, the kozo fibres, the katazome frames, the rod and cords, the camera
+ * fit, and the reduced-motion path. Every geometry, simulation and timing
+ * number in the authored file survives verbatim.
+ *
+ * Recoloured (patch 8): the vat, the vat clouding, the screen lines, the
+ * fibres, the printed cream, the material tint, the lighting rig and the shoji.
+ * Colour is the one layer this file changes wholesale, and it says so rather
+ * than claiming an untouched lighting rig it no longer has.
  *
  * Changed, and why:
  *   1. Title      — it is a Mesa slide, not a ThreeUI demo page.
@@ -40,10 +45,10 @@
  *
  *                   The mark is used as a STENCIL, not stamped on as an image.
  *                   The PNG is dark ink on white; everything else printed on
- *                   this cloth is the resist-dyed cream #f3ece0, and a white
- *                   tile in the middle of an indigo noren would read as a
- *                   mistake. Its darkness becomes the cream instead, which is
- *                   what katazome actually does to a sheet.
+ *                   this cloth is the resist-dyed Lavender Mist, and a white
+ *                   tile in the middle of a dyed noren would read as a mistake.
+ *                   Its darkness becomes that tint instead, which is what
+ *                   katazome actually does to a sheet.
  *
  *                   Inlined as a data URI for the same reason as three.js: an
  *                   opaque-origin frame cannot fetch /favicon-192x192.png.
@@ -56,6 +61,30 @@
  *                   An image decode is not synchronous, so the mark is printed
  *                   on the already-live cloth canvas and the texture is flagged
  *                   for re-upload. Without this the centre panel stays empty.
+ *
+ *   8. Palette    — the authored cloth is indigo under a paper lantern. Mesa
+ *                   Forge is purple, and a projected wall is the largest thing
+ *                   in the hall carrying the brand, so it is dyed in the Forge
+ *                   core palette instead.
+ *
+ *                   This is a re-dye, not a filter. The component exposes a
+ *                   `hue` prop that hue-rotates the whole frame in CSS, which
+ *                   is one line and wrong: `hue-rotate` is a linear matrix
+ *                   approximation applied to everything, so it takes the timber
+ *                   rod with it and lands the cloth somewhere near the target
+ *                   rather than on it. Each surface is given its own value.
+ *
+ *                   The lighting had to move with it. The authored rig is a
+ *                   warm paper lantern behind the cloth — amber light through a
+ *                   purple sheet is brown, so the lantern, the key, the fill,
+ *                   the ambient and the shoji glow are all re-tinted. The
+ *                   material's blue attenuation and sheen go for the same
+ *                   reason: a violet cloth read through a blue tint is muddy.
+ *
+ *                   The rod and cords stay timber. The palette has no brown,
+ *                   and they are the only warm thing left — without them the
+ *                   frame is monochrome and the noren stops reading as an
+ *                   object hanging in a room.
  *
  * The slide's wording is derived from the live election configuration where it
  * can be, so the artwork cannot drift from the ballot.
@@ -110,6 +139,28 @@ const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js
 
 /** The school's mark, as shipped for the favicon. */
 const MARK = 'apps/web/public/favicon-192x192.png';
+
+/**
+ * The Mesa Forge core palette, verbatim from the brand book.
+ *
+ * Named here rather than inlined at each call site so the cloth can be read
+ * against the brand sheet without decoding hexes, and so a palette revision is
+ * one edit. The roles are the brand book's own: INK is "light page background",
+ * used here for everything the resist leaves undyed, and ORCHID is named for
+ * the ring motif, which is exactly what it is on this cloth.
+ */
+const FORGE = {
+  aubergine: '#2A1849',
+  royal: '#452A74',
+  amethyst: '#5A3A8E',
+  violet: '#7C4DCC',
+  orchid: '#E4A7F3',
+  ink: '#F5EDFB',
+  black: '#1D1C1D',
+};
+
+/** The undyed tint as RGB, for the stencil's per-pixel path. */
+const INK_RGB = [245, 237, 251];
 
 const OUT = 'apps/web/public/noren/forge-speeches.html';
 
@@ -238,14 +289,14 @@ replace(
   // The authored ring, kept exactly: it is what makes the centre panel read as
   // a crest. Only what sits inside it has changed.
   function drawCrestRing(x, cx, cy, R) {
-    x.strokeStyle = '#f3ece0';
+    x.strokeStyle = '${FORGE.orchid}';
     x.lineWidth = R * 0.10;
     x.beginPath(); x.arc(cx, cy, R * 0.96, 0, Math.PI * 2); x.stroke();
   }
 
   /* Katazome leaves the cloth's own pigment behind the resist, so the mark is
      taken as a stencil rather than stamped on: the PNG's darkness becomes the
-     same cream #f3ece0 as the frames and the lettering, and its white ground
+     same ${FORGE.ink} as the frames and the lettering, and its white ground
      falls away. Rendered at 384 and drawn down, so the edges stay clean at the
      size the crest is actually printed. */
   function stencil(img, size, ink) {
@@ -269,7 +320,7 @@ replace(
     img.onload = () => {
       const size = CREST.R * 1.62;
       ctx.drawImage(
-        stencil(img, 384, [243, 236, 224]),
+        stencil(img, 384, [${INK_RGB.join(', ')}]),
         CREST.cx - size / 2, CREST.cy - size / 2, size, size,
       );
       done();
@@ -285,7 +336,7 @@ replace(
     verticalWord(x, 'WOVEN', panelW * 0.5, TH * 0.34, 96, 116);
     drawWeaveCrest(x, panelW * 1.5, TH * 0.53, 158);
     verticalWord(x, 'CLOTH', panelW * 2.5, TH * 0.34, 96, 116);`,
-  `    x.fillStyle = '#f3ece0';
+  `    x.fillStyle = '${FORGE.ink}';
     // The sleeve is the one band the slits never reach, so it is the only place
     // on this cloth a line can run the whole way across.
     horizontalWord(x, 'FORGE STUDENTS', TW * 0.5, TH * BAND * 0.60, 62, 14);
@@ -325,6 +376,150 @@ replace(
   albedo.colorSpace = THREE.SRGBColorSpace;
   printMark(clothCanvas.ctx, () => { albedo.needsUpdate = true; });`,
 );
+
+// 8 ── the dye. Everything below is a colour value and nothing else: no
+//      geometry, no timing, no alpha-mask or simulation number moves.
+
+// The vat, keeping the authored logic that the cloth is deeper where it was
+// dipped longest — Amethyst at the top of the dip, Aubergine at the bottom.
+replace(
+  'vat — Forge dip ramp',
+  `    g.addColorStop(0, '#284a6c');
+    g.addColorStop(0.42, '#203d5e');
+    g.addColorStop(1, '#17304e');`,
+  `    g.addColorStop(0, '${FORGE.amethyst}');
+    g.addColorStop(0.42, '${FORGE.royal}');
+    g.addColorStop(1, '${FORGE.aubergine}');`,
+);
+
+// Vat unevenness: the pale blooms are where the dye took least. Vivid Violet is
+// the palette's high-energy value and it is the only one that still reads as a
+// bloom at 13% over Royal Purple.
+replace(
+  'vat clouding',
+  `      rg.addColorStop(0, light ? 'rgba(96,132,168,0.13)' : 'rgba(9,22,40,0.16)');`,
+  `      rg.addColorStop(0, light ? 'rgba(124,77,204,0.13)' : 'rgba(20,10,38,0.16)');`,
+);
+
+// The bamboo screen's laid lines, then the heavier chain lines. Orchid and the
+// undyed tint respectively — the same two the crest and the lettering use, so
+// the sheet is made of the marks the print is made of.
+replace(
+  'laid lines',
+  `    x.strokeStyle = 'rgba(180,205,228,0.045)';`,
+  `    x.strokeStyle = 'rgba(228,167,243,0.045)';`,
+);
+replace(
+  'chain lines',
+  `    x.strokeStyle = 'rgba(196,218,238,0.10)';`,
+  `    x.strokeStyle = 'rgba(245,237,251,0.10)';`,
+);
+
+// Kozo fibres, pale and dark.
+replace(
+  'kozo fibres',
+  `      x.strokeStyle = pale > 0.3
+        ? 'rgba(214,232,247,' + (0.022 + fib() * 0.048) + ')'
+        : 'rgba(10,20,36,' + (0.04 + fib() * 0.07) + ')';`,
+  `      x.strokeStyle = pale > 0.3
+        ? 'rgba(245,237,251,' + (0.022 + fib() * 0.048) + ')'
+        : 'rgba(26,12,46,' + (0.04 + fib() * 0.07) + ')';`,
+);
+
+// The katazome frames, the sleeve and its shadow, and the rule under the rod.
+replace(
+  'katazome frames',
+  `    x.strokeStyle = 'rgba(243,236,224,0.72)';`,
+  `    x.strokeStyle = 'rgba(245,237,251,0.72)';`,
+);
+replace(
+  'sleeve and its shadow',
+  `    x.fillStyle = 'rgba(8,18,34,0.30)';`,
+  `    x.fillStyle = 'rgba(20,10,38,0.30)';`,
+);
+replace(
+  'sleeve shadow gradient',
+  `    sh.addColorStop(0, 'rgba(6,14,28,0.42)');
+    sh.addColorStop(1, 'rgba(6,14,28,0)');`,
+  `    sh.addColorStop(0, 'rgba(16,8,32,0.42)');
+    sh.addColorStop(1, 'rgba(16,8,32,0)');`,
+);
+replace(
+  'rule under the rod',
+  `    x.strokeStyle = 'rgba(243,236,224,0.5)';`,
+  `    x.strokeStyle = 'rgba(245,237,251,0.5)';`,
+);
+
+/* The material reads the cloth through its own tint, because the sheet is
+   transmissive — the authored blue is what made indigo sit right. Left alone it
+   pulls the dye grey-blue and Royal Purple lands nearer slate than purple. Only
+   the two colours move; transmission, thickness, ior, roughness and the sheen
+   amount are the authored values. */
+replace(
+  'material attenuation',
+  `    attenuationColor: new THREE.Color('#9dc0dd'),`,
+  `    attenuationColor: new THREE.Color('#b49ae0'),`,
+);
+replace(
+  'material sheen',
+  `    sheenColor: new THREE.Color('#d8e6f2'),`,
+  `    sheenColor: new THREE.Color('#ece2f7'),`,
+);
+
+/* The rig. This is the change that actually decides whether the wall is purple:
+   the authored lantern is a warm amber lamp at intensity 3.6 behind a sheet
+   with transmission 0.82, and amber through violet is brown. Every intensity
+   and every position is the authored number — only the colours move. */
+replace(
+  'lighting rig re-tinted',
+  `  scene.add(new THREE.AmbientLight(0x4a3a28, 0.8));
+  const lantern = new THREE.DirectionalLight(0xffd9a0, 3.6);   // through the shoji`,
+  `  scene.add(new THREE.AmbientLight(0x3a2c52, 0.8));
+  const lantern = new THREE.DirectionalLight(0xe8d2ff, 3.6);   // through the shoji`,
+);
+replace(
+  'key light',
+  `  const key = new THREE.DirectionalLight(0xffe9cc, 2.1);`,
+  `  const key = new THREE.DirectionalLight(0xf6ecff, 2.1);`,
+);
+replace(
+  'fill light',
+  `  const fill = new THREE.DirectionalLight(0x94b6d8, 0.5);`,
+  `  const fill = new THREE.DirectionalLight(0xa88ad0, 0.5);`,
+);
+
+// The shoji behind the cloth, which is what the lantern shines through.
+replace(
+  'shoji ground',
+  `    x.fillStyle = '#1a1109'; x.fillRect(0, 0, W, H);`,
+  `    x.fillStyle = '${FORGE.black}'; x.fillRect(0, 0, W, H);`,
+);
+replace(
+  'shoji glow',
+  `    glow.addColorStop(0, '#ffdda4');
+    glow.addColorStop(0.40, '#a97c42');
+    glow.addColorStop(0.76, '#341d0c');
+    glow.addColorStop(1, '#150d06');`,
+  `    glow.addColorStop(0, '${FORGE.orchid}');
+    glow.addColorStop(0.40, '${FORGE.violet}');
+    glow.addColorStop(0.76, '${FORGE.aubergine}');
+    glow.addColorStop(1, '${FORGE.black}');`,
+);
+replace(
+  'kumiko lattice',
+  `    x.strokeStyle = 'rgba(46,28,13,0.20)';`,
+  `    x.strokeStyle = 'rgba(29,28,29,0.20)';`,
+);
+
+// The room around the cloth: Ink Black, so nothing on a projector is warmer
+// than the wall itself.
+replace(
+  'scene background',
+  `  scene.background = new THREE.Color(0x0c0906);`,
+  `  scene.background = new THREE.Color(0x1d1c1d);`,
+);
+replace('page ground', `background: #0d0a07; }`, `background: ${FORGE.black}; }`);
+replace('vignette', `rgba(10,7,5,.80) 100%);`, `rgba(29,28,29,.80) 100%);`);
 
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, out);

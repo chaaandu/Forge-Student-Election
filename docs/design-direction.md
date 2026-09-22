@@ -288,10 +288,11 @@ A separate page from the ballot, at `/wall`. It is projected in the hall
 while candidates speak, and it says three things: whose election it is, and what
 is happening. Nothing on it is interactive, because nobody is standing at it.
 
-An indigo-dyed kozo noren hangs on a wooden rod, backlit through a shoji. Three
-panels, freed by slits in the cloth, sway on their own beat. It is the same
-world as the welcome backdrop — one object, lit, in a dark room — and a
-deliberate contrast with the light Bauhaus plates a voter actually marks.
+A kozo noren hangs on a wooden rod, backlit through a shoji, dyed in the Mesa
+Forge purples. Three panels, freed by slits in the cloth, sway on their own
+beat. It is the same world as the welcome backdrop — one object, lit, in a dark
+room — and a deliberate contrast with the light Bauhaus plates a voter actually
+marks.
 
 ### Provenance
 
@@ -316,15 +317,38 @@ does not already know about, so the cloth simulation cannot quietly drift.
 | Sleeve lettering | The authored cloth prints nothing on the uncut band above the rule. It now carries **FORGE STUDENTS**. That band is the one place a line can run the whole way across, because the alpha mask cuts the slits from `TH*BAND` downward. |
 | Panel wording | **WOVEN** / **CLOTH** is the component's own wordmark. It reads **ELECTION** / **SPEECHES**. Both are eight letters, so the panels stay symmetrical; the type steps down from the authored 96/116 to 68/82 and re-centres on the katazome frame, because eight glyphs have to fit where five did. |
 | Crest | The authored checkerboard *mon* is replaced by the school's mark. The authored **ring** around it is kept — it is what makes the centre panel read as a crest rather than a sticker. |
-| The mark is stencilled, not stamped | The PNG is dark ink on white. Everything else printed on this cloth is the resist-dyed cream `#f3ece0`, and a white tile in the middle of an indigo noren reads as a mistake. The image's darkness becomes the cream instead, which is what katazome does to a sheet. |
+| The mark is stencilled, not stamped | The PNG is dark ink on white. Everything else printed on this cloth is the resist-dyed Lavender Mist `#F5EDFB`, and a white tile in the middle of a dyed noren reads as a mistake. The image's darkness becomes that tint instead, which is what katazome does to a sheet. |
+| The vermilion seal removed | The authored cloth stamps a hanko at the foot of the centre panel. It is the component's own mark, it reads as a second logo under the school's, and a red block is the only thing on the cloth that competes with the crest for a room looking from the back. |
+| Dyed in the Forge palette | The authored cloth is indigo under a paper lantern. A projected wall is the largest thing in the hall carrying the brand, so the vat becomes Amethyst → Royal Purple → Deep Aubergine (keeping the authored logic that the cloth is deeper where it was dipped longest), the print becomes Lavender Mist, and the crest ring becomes Orchid — which is the value the brand book names for the ring motif. See below for why this is a re-dye and not a filter. |
 | three.js inlined | The authored document pulls r160 from `cdn.jsdelivr.net` at runtime. A hall projector must not depend on a third-party request, and the frame is sandboxed *without* `allow-same-origin`, so it could not fetch our own copy either. The file npm installs for `three@0.160.0` is **byte-identical** to the one jsdelivr serves from that URL; the build asserts it, so this is an inlining and not an engine change. |
 | Redraw once the mark decodes | The authored file builds its `CanvasTexture` in one synchronous pass. An image decode is not synchronous, so the mark is printed onto the live cloth canvas afterwards and the texture re-uploaded. Without this the centre panel stays empty. |
 
 Untouched: the Verlet cloth and the cut links that free the panels, the wind
-model, the deckle edge and its alpha mask, the indigo vat, the laid and chain
-lines, the kozo fibres, the katazome frames, the vermilion seal, the rod and
-cords, the shoji backlight, the lighting rig, the material, the camera fit and
-the reduced-motion path.
+model, the deckle edge and its alpha mask, the laid and chain lines, the kozo
+fibres, the katazome frames, the rod and cords, the camera fit and the
+reduced-motion path. Every geometry, timing and simulation number in the
+authored file survives verbatim; what the dye changed is colour and nothing
+else, which the test proves by blanking every colour literal and requiring the
+line to still exist rather than by keeping a list of hexes.
+
+### Why the dye is a re-dye and not a filter
+
+`WovenCloth` exposes a `hue` prop that hue-rotates the frame in CSS. It is one
+line and it is wrong: `hue-rotate` is a linear matrix approximation applied to
+everything in the frame, so it takes the timber rod with it and lands the cloth
+near the target rather than on it. Each surface is given its own value instead.
+
+The **lighting had to move with the cloth**, which is the part that is easy to
+miss. The authored rig is a warm amber lantern at intensity 3.6 behind a sheet
+with transmission 0.82 — amber light through a violet sheet is brown. The
+lantern, key, fill, ambient and shoji glow are all re-tinted, and the material's
+blue `attenuationColor` and `sheenColor` go with them, because a violet cloth
+read through a blue tint is muddy. Every intensity and position is the authored
+number; only the colours moved.
+
+The **rod and cords stay timber**. The palette has no brown, and they are the
+only warm thing left — without them the frame is monochrome and the noren stops
+reading as an object hanging in a room.
 
 ### Why there is no responsive layout
 
