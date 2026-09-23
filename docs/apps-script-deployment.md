@@ -78,6 +78,41 @@ The `/exec` URL stays the same.
   actually moved. **Election → Publish results now**
   on the Sheet menu forces one.
 
+### Adding or removing people
+
+**The Roll tab is the roll.** Edit it directly — add a row, delete a row — and
+the ballot picks it up within a minute (immediately, usually: editing the tab
+clears the ballot's copy of it).
+
+| Column | What to put |
+| --- | --- |
+| `voter_id` | Anything unique, e.g. `emp-firstname-lastname`. Never reuse one. |
+| `name` | As the voter will search for it |
+| `email` | Their address; only the first two letters are ever shown |
+| `type` | `student` or `employee` (any capitalisation) |
+| `house` | A student's house name, e.g. `Vikings`. Leave blank for employees |
+
+Then **Election → Check the roll.** It lists anything the ballot cannot use —
+a duplicate id, a repeated email, a type it does not know, a house that is
+misspelt — with the row number. Fix those before anyone on them votes: a row
+that fails the check is refused at check-in rather than being given a ballot
+with a contest missing.
+
+Things worth knowing:
+
+- **Weighting is unaffected.** Scores are shares of the votes each group
+  actually cast, so ten more employees does not dilute the student 75%, and it
+  does not change anyone's score until they vote.
+- **Removing someone who has already voted does not remove their vote.** It
+  cannot: the ballot has no link back to the person. Their vote still counts;
+  they simply stop appearing in turnout.
+- **Set up / repair no longer touches the roll** once it has people on it. To
+  reload the tab from `Config.gs` on purpose — replacing every hand edit — use
+  **Election → Replace roll from Config.gs…**
+- Edits made in the tab are not copied back into `voters.json` in the
+  repository. That only matters if you ever move the election back onto the
+  laptop server.
+
 ### Clearing the rehearsal votes
 
 On the Sheet: **Election → Clear all votes…**

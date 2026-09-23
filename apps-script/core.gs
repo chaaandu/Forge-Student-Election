@@ -128,12 +128,25 @@ function stepsFor_(voter) {
 // ------------------------------------------------------------------- roll ---
 
 /**
- * The roll, indexed by id.
+ * How long the roll is remembered, in seconds.
  *
- * Cached, because it does not change while voting is open — the Roll tab is
- * seeded once by `setup()` and then only read. Every request was re-reading all
- * 145 rows out of the spreadsheet, and SpreadsheetApp calls are the expensive
- * part of an Apps Script execution by a wide margin.
+ * It was half an hour, on the reasoning that the roll does not change while
+ * voting is open. It does: the desk adds the staff member nobody put on the
+ * list and removes the student who left, straight into the Roll tab. With a
+ * thirty-minute memory, the person added was told they were not on the roll
+ * and the person removed could still vote, both for up to half an hour.
+ *
+ * A minute costs one read of a few hundred rows, once a minute. `onEdit` in
+ * setup.gs clears it the moment the tab is edited, and this is the backstop
+ * for when that does not fire.
+ */
+var ROLL_CACHE_SECONDS = 60;
+
+/**
+ * The roll, indexed by id, read from the Roll tab.
+ *
+ * The Roll TAB is the roll. `setup()` only seeds it when it is empty, so
+ * names added or removed there by hand are what the ballot uses.
  *
  * Deliberately NOT extended to who has voted. That changes constantly, and a
  * stale answer there is the one thing that could let the same person vote
@@ -148,27 +161,104 @@ function roll_() {
   var data = rows_(TABS.roll);
   for (var i = 0; i < data.length; i += 1) {
     var r = data[i];
-    if (!r[0]) continue;
-    out[String(r[0])] = {
-      id: String(r[0]),
-      name: String(r[1]),
-      email: String(r[2]),
-      type: String(r[3]),
-      house: String(r[4] || ''),
+    var id = String(r[0] || '').trim();
+    if (!id) continue;
+    out[id] = {
+      id: id,
+      name: String(r[1] || '').trim(),
+      email: String(r[2] || '').trim(),
+      /*
+        Folded, because people type it. "Employee", " student" and "STUDENT"
+        were each a person with no contests at all: eligibility compares this
+        against the config exactly, and nothing between the keyboard and that
+        comparison said so.
+      */
+      type: String(r[3] || '').trim().toLowerCase(),
+      house: String(r[4] || '').trim(),
     };
   }
 
-  cache.put('roll', JSON.stringify(out), 1800);
+  cache.put('roll', JSON.stringify(out), ROLL_CACHE_SECONDS);
   return out;
 }
 
-/** House id from the display name the Roll tab stores. */
+/** Forget the roll, so the next request reads the tab. */
+function forgetRoll_() {
+  CacheService.getScriptCache().remove('roll');
+}
+
+/** House id from the display name the Roll tab stores, or the id itself. */
 function houseIdFromName_(name) {
-  if (!name) return null;
+  var wanted = String(name || '').trim().toLowerCase();
+  if (!wanted) return null;
   for (var i = 0; i < CONFIG.houses.length; i += 1) {
-    if (CONFIG.houses[i].name === name || CONFIG.houses[i].id === name) return CONFIG.houses[i].id;
+    var house = CONFIG.houses[i];
+    if (house.name.toLowerCase() === wanted || house.id.toLowerCase() === wanted) return house.id;
   }
   return null;
+}
+
+/**
+ * What is wrong with this row, in words the desk can act on, or null.
+ *
+ * The roll used to be checked by the config schema before the server would
+ * even start. Rows typed into the tab skip that, so the same checks are made
+ * here instead — and the one that matters most is the silent one. A student
+ * whose house is misspelt does not get an error; they get a ballot with no
+ * house captain on it, and lose that vote without anyone ever knowing.
+ *
+ * Both rules are read from the positions, never from a branch on voter type:
+ * a type is valid if some contest admits it, and a house is required if some
+ * house-scoped contest admits that type.
+ */
+function rollProblem_(row) {
+  var typeKnown = false;
+  var needsHouse = false;
+  for (var i = 0; i < CONFIG.positions.length; i += 1) {
+    var p = CONFIG.positions[i];
+    if (p.eligibility.voterTypes.indexOf(row.type) === -1) continue;
+    typeKnown = true;
+    if (p.eligibility.houseId) needsHouse = true;
+  }
+
+  if (!row.name) return 'has no name';
+  if (!typeKnown) {
+    return 'has type "' + row.type + '", which is not one of: ' + voterTypes_().join(', ');
+  }
+  if (needsHouse && !houseIdFromName_(row.house)) {
+    return row.house
+      ? 'has house "' + row.house + '", which is not one of: ' + houseNames_().join(', ')
+      : 'has no house';
+  }
+  return null;
+}
+
+function voterTypes_() {
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < CONFIG.positions.length; i += 1) {
+    var types = CONFIG.positions[i].eligibility.voterTypes;
+    for (var j = 0; j < types.length; j += 1) {
+      if (!seen[types[j]]) out.push(types[j]);
+      seen[types[j]] = true;
+    }
+  }
+  return out;
+}
+
+function houseNames_() {
+  var out = [];
+  for (var i = 0; i < CONFIG.houses.length; i += 1) out.push(CONFIG.houses[i].name);
+  return out;
+}
+
+/** The refusal a voter sees when their row cannot be voted from. */
+function rollRefusal_() {
+  return named_(
+    'NOT_ON_ROLL',
+    "Your entry on the roll isn't complete, so you can't vote yet. " +
+      'The person running the election can fix this.',
+  );
 }
 
 function voterOf_(row) {
@@ -462,7 +552,13 @@ function lookup_(query) {
 function select_(voterId) {
   var all = roll_();
   var row = all[String(voterId)];
-  if (!row) throw named_('NOT_ON_ROLL', 'That name is not on the roll for this election.');
+  if (!row) throw named_(
+      'NOT_ON_ROLL',
+      "That name isn't on the roll for this election. The person running it can sort this out.",
+    );
+
+  // Refused, not waved through with fewer contests. See `rollProblem_`.
+  if (rollProblem_(row)) throw rollRefusal_();
 
   var voter = voterOf_(row);
   if (Object.prototype.hasOwnProperty.call(votedSet_(), voter.id)) {
@@ -616,7 +712,13 @@ function castBallot_(token, selections, idempotencyKey) {
     }
 
     var row = roll_()[voterId];
-    if (!row) throw named_('NOT_ON_ROLL', 'That name is not on the roll for this election.');
+    if (!row) throw named_(
+      'NOT_ON_ROLL',
+      "That name isn't on the roll for this election. The person running it can sort this out.",
+    );
+    // Again here: a check-in lasts twenty minutes, and the row can be edited
+    // in between.
+    if (rollProblem_(row)) throw rollRefusal_();
     var voter = voterOf_(row);
 
     // Re-checked under the lock, against the sheet, not against anything the

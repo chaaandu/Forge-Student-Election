@@ -11,7 +11,8 @@
  */
 
 /* global CONFIG, TABS, sheet_, book_, ScriptApp, SpreadsheetApp,
-   PropertiesService, CacheService, renderDashboard */
+   PropertiesService, CacheService, renderDashboard, forgetRoll_, rows_,
+   rollProblem_ */
 
 var HEADERS = {
   Roll: ['voter_id', 'name', 'email', 'type', 'house'],
@@ -63,20 +64,25 @@ function setup() {
     tab.setFrozenRows(1);
   }
 
-  // Seed the two tabs that do not change during the election. Rewritten in
-  // full rather than appended, so a re-run after a candidate is corrected
-  // replaces the old row instead of adding a second one.
+  /*
+    THE ROLL IS SEEDED ONCE, NEVER OVERWRITTEN.
+
+    This used to rewrite the Roll tab from Config.gs on every run. That was
+    right while the roll lived only in the repository, and wrong the moment
+    the desk started adding and removing people in the tab itself — "Set up /
+    repair" is exactly what someone reaches for when something looks off, and
+    it silently threw away every name typed in by hand.
+
+    So the Roll tab is now the roll. It is filled from Config.gs only when it
+    is empty; reloading it over the top of edits is a separate, deliberate
+    menu item: Election → Replace roll from Config.gs…
+  */
   var roll = sheet_(TABS.roll);
-  if (roll.getLastRow() > 1) {
-    roll.getRange(2, 1, roll.getLastRow() - 1, roll.getLastColumn()).clearContent();
-  }
-  if (CONFIG.roll && CONFIG.roll.length > 0) {
-    var rollRows = [];
-    for (var r = 0; r < CONFIG.roll.length; r += 1) {
-      var v = CONFIG.roll[r];
-      rollRows.push([v.id, v.name, v.email, v.type, houseName_(v.houseId)]);
-    }
-    roll.getRange(2, 1, rollRows.length, 5).setValues(rollRows);
+  var rollNote;
+  if (roll.getLastRow() < 2) {
+    rollNote = writeRollFromConfig_() + ' on the roll, seeded from Config.gs';
+  } else {
+    rollNote = roll.getLastRow() - 1 + ' on the roll, kept as it is';
   }
 
   var candidates = sheet_(TABS.candidates);
@@ -106,20 +112,160 @@ function setup() {
   installTrigger_();
   SpreadsheetApp.flush();
 
-  // The roll is cached for half an hour, so a re-seed would otherwise not be
-  // visible to the ballot until that expired — and `setup` is exactly what
-  // someone runs when the roll looks wrong.
-  CacheService.getScriptCache().remove('roll');
+  // `setup` is exactly what someone runs when the roll looks wrong, so the
+  // ballot should see the tab as it is now, not as it was a minute ago.
+  forgetRoll_();
 
   return (
     'Ready. ' +
-    (CONFIG.roll ? CONFIG.roll.length : 0) +
-    ' on the roll, ' +
+    rollNote +
+    '. ' +
     CONFIG.candidates.length +
     ' candidates, ' +
     CONFIG.positions.length +
     ' contests.'
   );
+}
+
+/** Replace the Roll tab's rows with the roll in Config.gs. Returns the count. */
+function writeRollFromConfig_() {
+  var roll = sheet_(TABS.roll);
+  if (roll.getLastRow() > 1) roll.deleteRows(2, roll.getLastRow() - 1);
+  if (roll.getMaxRows() < 2) roll.insertRowsAfter(1, 200);
+
+  var rows = [];
+  var source = CONFIG.roll || [];
+  for (var r = 0; r < source.length; r += 1) {
+    var v = source[r];
+    rows.push([v.id, v.name, v.email, v.type, houseName_(v.houseId)]);
+  }
+  if (rows.length > 0) {
+    if (roll.getMaxRows() < rows.length + 1) {
+      roll.insertRowsAfter(roll.getMaxRows(), rows.length + 1 - roll.getMaxRows());
+    }
+    roll.getRange(2, 1, rows.length, 5).setValues(rows);
+  }
+  forgetRoll_();
+  return rows.length;
+}
+
+/**
+ * Throw away the Roll tab and reload it from Config.gs, with a confirmation.
+ *
+ * For when the repository's voters.json is the one that was corrected. It
+ * says how many rows the tab has now and how many it will have after, because
+ * the number that disappears is the hand edits, and those are the thing a
+ * person would want to know they are about to lose.
+ */
+function replaceRollFromConfig() {
+  var ui = uiOrExplain_('Election \u2192 Replace roll from Config.gs\u2026');
+  var now = Math.max(0, sheet_(TABS.roll).getLastRow() - 1);
+  var next = CONFIG.roll ? CONFIG.roll.length : 0;
+
+  var answer = ui.alert(
+    'Replace the roll?',
+    'The Roll tab has ' + now + ' people. Config.gs has ' + next + '.\n\n' +
+      'Every row on the Roll tab is replaced, including anyone added or removed by hand. ' +
+      'Votes already cast are not touched.\n\nContinue?',
+    ui.ButtonSet.YES_NO,
+  );
+  if (answer !== ui.Button.YES) return;
+
+  var written = writeRollFromConfig_();
+  ui.alert('Done', 'The roll now has ' + written + ' people, from Config.gs.', ui.ButtonSet.OK);
+}
+
+/**
+ * Read the Roll tab and say what is wrong with it.
+ *
+ * Run it after any edit to the roll. The failures it looks for are the ones
+ * the ballot cannot report on its own: a duplicate id means one of two people
+ * cannot vote, a duplicate email usually means the same person was added
+ * twice, and a misspelt house quietly costs a student their house captain
+ * vote — see `rollProblem_`.
+ */
+function checkRoll() {
+  forgetRoll_();
+  var data = rows_(TABS.roll);
+  var problems = [];
+  var ids = {};
+  var emails = {};
+  var counts = {};
+
+  for (var i = 0; i < data.length; i += 1) {
+    var line = i + 2;
+    var id = String(data[i][0] || '').trim();
+    var name = String(data[i][1] || '').trim();
+    if (!id && !name) continue;
+    if (!id) {
+      problems.push('Row ' + line + ' (' + name + ') has no voter_id, so they cannot be found.');
+      continue;
+    }
+    if (ids[id]) {
+      problems.push(
+        'Row ' + line + ' repeats voter_id "' + id + '" from row ' + ids[id] +
+          '. Only one of them can vote.',
+      );
+    }
+    ids[id] = line;
+
+    var email = String(data[i][2] || '').trim().toLowerCase();
+    if (email) {
+      if (emails[email]) {
+        problems.push('Row ' + line + ' repeats the email on row ' + emails[email] + '.');
+      }
+      emails[email] = line;
+    }
+
+    var row = {
+      id: id,
+      name: name,
+      type: String(data[i][3] || '').trim().toLowerCase(),
+      house: String(data[i][4] || '').trim(),
+    };
+    var problem = rollProblem_(row);
+    if (problem) problems.push('Row ' + line + ' (' + (name || id) + ') ' + problem + '.');
+    else counts[row.type] = (counts[row.type] || 0) + 1;
+  }
+
+  var summary = [];
+  for (var type in counts) {
+    if (Object.prototype.hasOwnProperty.call(counts, type)) summary.push(counts[type] + ' ' + type);
+  }
+  var head = 'Ready to vote: ' + (summary.join(', ') || 'nobody') + '.';
+  var message = problems.length
+    ? head + '\n\n' + problems.length + ' to fix:\n' + problems.slice(0, 20).join('\n') +
+      (problems.length > 20 ? '\n\u2026and ' + (problems.length - 20) + ' more.' : '')
+    : head + '\n\nNothing to fix.';
+
+  try {
+    SpreadsheetApp.getUi().alert(problems.length ? 'The roll needs fixing' : 'The roll is fine', message,
+      SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (noUi) {
+    // Run from the editor: the answer goes to the execution log instead.
+  }
+  return message;
+}
+
+/**
+ * The moment the Roll tab is edited, the ballot stops remembering the old one.
+ *
+ * A simple trigger, so it needs no installing and runs for whoever makes the
+ * edit. It also clears both publish fingerprints, so the Dashboard's "X of Y
+ * have voted" picks up the new Y at the next refresh instead of waiting for
+ * someone to vote. Wrapped, because nothing that fails here may stop someone
+ * editing their own spreadsheet; the one-minute cache is the backstop.
+ */
+function onEdit(e) {
+  try {
+    if (!e || !e.range || e.range.getSheet().getName() !== TABS.roll) return;
+    forgetRoll_();
+    var props = PropertiesService.getScriptProperties();
+    props.deleteProperty('RESULTS_AT');
+    props.deleteProperty('DASHBOARD_AT');
+  } catch (ignored) {
+    // See above.
+  }
 }
 
 /**
@@ -143,6 +289,26 @@ function installTrigger_() {
 }
 
 /**
+ * The spreadsheet's UI, or a sentence saying where the button is.
+ *
+ * There is no UI to put a dialog in when a menu action is run from the script
+ * editor, and Google's own words for that are "Cannot call
+ * SpreadsheetApp.getUi() from this context" — which names a method nobody
+ * clicked. The destructive actions keep their confirmations in those dialogs,
+ * so they deliberately do not fall back to running without them.
+ */
+function uiOrExplain_(where) {
+  try {
+    return SpreadsheetApp.getUi();
+  } catch (noUi) {
+    throw new Error(
+      'Run this from the spreadsheet, not the script editor: reload the Sheet, then ' + where +
+        ' . It has to ask you to confirm first, and there is nowhere to ask from here.',
+    );
+  }
+}
+
+/**
  * Clear the votes, from the Sheet's own menu, with a confirmation.
  *
  * The typed-name guard below is the real protection; this is the way to reach
@@ -153,26 +319,8 @@ function installTrigger_() {
  * to click through.
  */
 function clearAllVotesFromMenu() {
-  /*
-    Say which button this is, when it is pressed from the wrong place.
-
-    There is no UI to put a dialog in when this is run from the script editor,
-    and Google's own words for that are "Cannot call SpreadsheetApp.getUi()
-    from this context" — which names a method nobody clicked and gives no hint
-    that the same action is two menu items away. The typed-name guard lives in
-    those dialogs, so this deliberately does not fall back to clearing without
-    them.
-  */
-  var ui;
-  try {
-    ui = SpreadsheetApp.getUi();
-  } catch (noUi) {
-    throw new Error(
-      'Run this from the spreadsheet, not the script editor: reload the Sheet, then ' +
-        'Election \u2192 Clear all votes\u2026 . It has to ask you to type the election name ' +
-        'before it destroys anything, and there is nowhere to ask from here.',
-    );
-  }
+  // See `uiOrExplain_`: the typed-name guard lives in these dialogs.
+  var ui = uiOrExplain_('Election \u2192 Clear all votes\u2026');
 
   var ballots = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
   var voters = Math.max(0, sheet_(TABS.voters).getLastRow() - 1);

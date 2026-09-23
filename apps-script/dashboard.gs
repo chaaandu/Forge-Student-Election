@@ -37,7 +37,7 @@
  * Redrawn on every publish — once a minute while voting is open.
  */
 
-/* global CONFIG, TABS, sheet_, book_, rows_, roll_, votedSet_, resultsModel_,
+/* global CONFIG, TABS, sheet_, book_, rows_, roll_, votedSet_, resultsModel_, countStamp_,
    PropertiesService, SpreadsheetApp, Utilities, Session */
 
 var DASHBOARD_TAB = 'Dashboard';
@@ -146,9 +146,10 @@ function leadersOf_(position) {
  * the same spreadsheet. It also clears and rewrites the tab under whoever is
  * reading it, which is a flicker they did not ask for.
  *
- * The fingerprint is the number of recorded selections, which only ever grows
- * while voting is open and drops to zero on a reset - both of which are
- * exactly when the picture should change.
+ * The fingerprint is the number of recorded selections plus the size of the
+ * roll (`countStamp_`). The first only grows while voting is open and drops to
+ * zero on a reset; the second moves when the desk adds or removes someone.
+ * Those are exactly the moments the picture should change.
  */
 function dashboardIsCurrent_(fingerprint) {
   var props = PropertiesService.getScriptProperties();
@@ -167,7 +168,8 @@ function renderDashboard(force) {
   // ballot in the sheet to find out how many there are is the expensive way to
   // ask a question the row number already answers.
   var fingerprint = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
-  if (existing && !force && dashboardIsCurrent_(fingerprint)) {
+  // The roll is part of what this picture shows; see `countStamp_`.
+  if (existing && !force && dashboardIsCurrent_(countStamp_())) {
     return 'Dashboard already current.';
   }
 

@@ -50,6 +50,21 @@ function toMachineError(error: unknown): MachineError {
           message: COPY.error.sessionExpired,
           retryable: false,
         };
+      /*
+        Taken off the roll, or on it with an entry that cannot be voted from.
+
+        It fell through to the generic failure, which tells the voter their vote
+        was not recorded and to try again. Trying again changes nothing: the
+        answer is at the desk. The server's sentence says which of the two it
+        is, and both end by saying who can fix it.
+      */
+      case 'NOT_ON_ROLL':
+        return {
+          code: error.code,
+          headline: HEADLINE.checkInFailed,
+          message: error.message || COPY.error.notOnRoll,
+          retryable: false,
+        };
       case 'NETWORK':
       case 'TIMEOUT':
         return {

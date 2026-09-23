@@ -29,8 +29,10 @@ const config = JSON.parse(read('apps/server/config/election.config.json')) as El
 
 type Row = (string | number | boolean)[];
 let BALLOT_ROWS: Row[] = [];
+const ROLL_ROWS: Row[] = [];
 
 const sandbox: Record<string, unknown> = {
+  ROLL_ROWS,
   console,
   Date,
   JSON,
@@ -59,6 +61,7 @@ const sandbox: Record<string, unknown> = {
     BorderStyle: { SOLID: 'SOLID' },
   },
   Session: { getScriptTimeZone: () => 'UTC' },
+  CacheService: { getScriptCache: () => ({ get: () => null, put: () => {}, remove: () => {} }) },
   LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
   ContentService: { createTextOutput: (s: string) => ({ setMimeType: () => s }), MimeType: {} },
   ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({}) },
@@ -73,7 +76,11 @@ runInContext(read('apps-script/dashboard.gs'), context);
 // The two functions that read the sheet are replaced with fixtures.
 runInContext(
   `
-  rows_ = function (name) { return name === TABS.ballots ? BALLOT_ROWS : []; };
+  rows_ = function (name) {
+    if (name === TABS.ballots) return BALLOT_ROWS;
+    if (name === TABS.roll) return ROLL_ROWS;
+    return [];
+  };
   sheet_ = function () { throw new Error('not needed'); };
 `,
   context,
@@ -134,6 +141,73 @@ for (const voter of [
     `core=${JSON.stringify(expected)} script=${JSON.stringify(actual)}`,
   );
 }
+
+// ------------------------------------------------------ a hand-edited roll ---
+
+/*
+  The Roll tab is edited by hand during the election: the desk adds the staff
+  member nobody listed and removes the student who left. Rows typed there skip
+  the config schema the repository roll goes through, so the script has to be
+  forgiving about how they are typed and strict about what they mean.
+
+  The failure this guards against is the silent one. A student whose house is
+  misspelt used to get no error at all: they got a ballot without their house
+  captain on it, and lost that vote without anyone knowing.
+*/
+console.log('\na hand-edited roll');
+
+const aHouse = config.houses[0]!;
+ROLL_ROWS.push(
+  ['emp-typed', 'Typed Employee', 'e@x', ' Employee ', ''],
+  ['stu-typed', 'Typed Student', 's@x', 'STUDENT', ` ${aHouse.name.toUpperCase()} `],
+  ['stu-misspelt', 'Misspelt House', 'm@x', 'student', 'Atlantis'],
+  ['stu-houseless', 'No House', 'n@x', 'student', ''],
+  ['x-staff', 'Wrong Type', 'w@x', 'staff', ''],
+  ['', 'No Id', 'i@x', 'student', aHouse.name],
+);
+
+const roll = runInContext('roll_()', context) as Record<string, { type: string; house: string }>;
+const problemOf = (id: string) =>
+  runInContext(`rollProblem_(roll_()[${JSON.stringify(id)}])`, context) as string | null;
+const contestsOf = (id: string) =>
+  runInContext(`stepsFor_(voterOf_(roll_()[${JSON.stringify(id)}])).length`, context) as number;
+
+const employeeContests = buildSteps(config, { id: 'e', name: 'E', email: 'e@x', type: 'employee' }).length;
+const studentContests = buildSteps(config, {
+  id: 's', name: 'S', email: 's@x', type: 'student', houseId: aHouse.id,
+}).length;
+
+check(roll['emp-typed']?.type === 'employee', 'a type typed as " Employee " is read as employee');
+check(
+  problemOf('emp-typed') === null && contestsOf('emp-typed') === employeeContests,
+  `...and gets the employee ballot (${employeeContests} contests)`,
+  `problem=${problemOf('emp-typed')} contests=${contestsOf('emp-typed')}`,
+);
+check(
+  problemOf('stu-typed') === null && contestsOf('stu-typed') === studentContests,
+  `a house typed in capitals still finds the house (${studentContests} contests)`,
+  `problem=${problemOf('stu-typed')} contests=${contestsOf('stu-typed')}`,
+);
+check(
+  /house/.test(problemOf('stu-misspelt') ?? ''),
+  'a misspelt house is refused, not given a ballot with no house captain',
+  `problem=${problemOf('stu-misspelt')}`,
+);
+check(/house/.test(problemOf('stu-houseless') ?? ''), 'a student with no house is refused');
+check(/type/.test(problemOf('x-staff') ?? ''), 'an unknown voter type is refused');
+check(!('' in roll) && Object.keys(roll).length === 5, 'a row with no voter_id is skipped');
+
+let refusedAtCheckIn = '';
+try {
+  runInContext('select_("stu-misspelt")', context);
+} catch (error) {
+  refusedAtCheckIn = (error as { code?: string }).code ?? '';
+}
+check(
+  refusedAtCheckIn === 'NOT_ON_ROLL',
+  'check-in refuses a row that cannot be voted from',
+  `got ${refusedAtCheckIn || 'no refusal'}`,
+);
 
 // ------------------------------------------------------------ weighting ---
 

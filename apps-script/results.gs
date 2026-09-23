@@ -211,6 +211,22 @@ function calculateResults_() {
 }
 
 /**
+ * What the published picture depends on: the ballots, and the size of the roll.
+ *
+ * The count alone used to be the fingerprint, which is right for the Results
+ * tab - results depend on nothing else - and wrong for the Dashboard beside
+ * it, whose "X of Y have voted" depends on the roll too. Ten staff added to
+ * the Roll tab left Y where it was until somebody happened to vote.
+ */
+function countStamp_() {
+  return (
+    Math.max(0, sheet_(TABS.ballots).getLastRow() - 1) +
+    '/' +
+    Math.max(0, sheet_(TABS.roll).getLastRow() - 1)
+  );
+}
+
+/**
  * Write a fresh snapshot to the Results tab.
  *
  * Replaces rather than appends: the tab is the current count, and a Dashboard
@@ -238,7 +254,7 @@ function publishResults(force) {
     publish that overlaps a ballot can read a tally one selection short; the
     next publish corrects it. A ballot that cannot be cast corrects nothing.
   */
-  var fingerprint = Math.max(0, sheet_(TABS.ballots).getLastRow() - 1);
+  var fingerprint = countStamp_();
   var props = PropertiesService.getScriptProperties();
 
   /*
@@ -318,8 +334,10 @@ function onOpen() {
     .createMenu('Election')
     .addItem('Publish results now', 'publishResultsNow')
     .addItem('Refresh dashboard', 'refreshDashboardNow')
+    .addItem('Check the roll', 'checkRoll')
     .addItem('Set up / repair', 'setup')
     .addSeparator()
+    .addItem('Replace roll from Config.gs…', 'replaceRollFromConfig')
     .addItem('Clear all votes…', 'clearAllVotesFromMenu')
     .addToUi();
 }
