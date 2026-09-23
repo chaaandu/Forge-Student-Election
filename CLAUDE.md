@@ -4,7 +4,8 @@
 > repository — a person or an AI assistant. It explains what the system is, how
 > it is put together, why the unusual decisions were made, how to run it, and
 > what will bite you. Everything here was verified against the code on
-> 2026-09-22; where a detail lives in a deeper document, the link is given.
+> 2026-09-23 (`main` @ `35632e2`); where a detail lives in a deeper document,
+> the link is given.
 
 ---
 
@@ -30,7 +31,8 @@
 18. [Election-day runbook](#18-election-day-runbook)
 19. [Conventions and guardrails](#19-conventions-and-guardrails)
 20. [Current state, known gaps, gotchas](#20-current-state-known-gaps-gotchas)
-21. [Further reading](#21-further-reading)
+21. [Open questions and next steps](#21-open-questions-and-next-steps)
+22. [Further reading](#22-further-reading)
 
 ---
 
@@ -49,6 +51,27 @@ person one vote, ballot secrecy, no silent vote loss, no trust in the client.
 Low scale is what lets the system use a single-node SQLite database and get
 serialisability for free rather than building distributed coordination.
 
+**Why it exists.** The goal is an election whose integrity can be *shown*
+rather than taken on trust. It has to give one ballot per person, keep choices
+secret by the shape of the data, and apply eligibility per voter (an employee
+never sees a house-captain contest). Results still have to land somewhere the
+organisers already work, which is a Google Sheet. The repo doesn't record what
+Mesa used before this system.
+
+**There are now two backends** for the same ballot (§5, §17):
+
+- **Express + SQLite** (`apps/server`) runs on a laptop in the hall. It is the
+  stronger system: real transactions, immutability triggers, a hash-chained
+  audit log, and the `/monitor` desk.
+- **Google Apps Script + the Sheet** (`apps-script/`) runs with the ballot on
+  Vercel at `/voting`. You get a permanent public URL and nothing to keep
+  switched on, and the Sheet is the only store. It is weaker in ways that
+  `docs/apps-script-deployment.md` spells out. Most commits since 2026-09-22
+  target this path.
+
+The web app talks to Apps Script when `VITE_APPS_SCRIPT_URL` is set at build
+time, and to Express when it isn't.
+
 | | |
 | --- | --- |
 | Repo name | `mesa-elections` (npm workspaces monorepo) |
@@ -57,10 +80,12 @@ serialisability for free rather than building distributed coordination.
 | Server | Express 5 + better-sqlite3 (WAL) + zod |
 | Web | React 19 + Vite 7 + Tailwind 4 + ogl/three (artwork only) |
 | Domain core | `packages/election-core` — pure TypeScript, one dependency (zod) |
-| Tests | Vitest, 3 projects (`core`, `server`, `web`), 39 files / 524 tests |
+| Hosted backend | Google Apps Script (ES5 `.gs`, pasted into the Sheet's script editor) |
+| Tests | Vitest, 3 projects (`core`, `server`, `web`), 42 files / 537 tests, plus `npm run appsscript:verify` |
 | Live election data | 10 positions · 4 houses · 25 candidates · 145 voters (119 students, 26 employees) |
-| Auth mode in use | `supervised` (voter picks their own name with an invigilator present) |
-| Spreadsheet mirror | Google Sheets via a service account |
+| Auth mode in use | `supervised` (voter picks their own name with an invigilator present). Apps Script supports only this mode |
+| Spreadsheet | Express: a downstream mirror via a service account. Apps Script: the Sheet *is* the store |
+| CI | none. No workflow files and no Dockerfile. `npm run verify` is run by hand |
 
 The current election configuration is **real data, not seed data**
 (`isSeedData` is absent from `apps/server/config/election.config.json`).
@@ -81,11 +106,22 @@ npm run dev                                   # API :8787, web :5173
 - Ballot — <http://localhost:5173>
 - Election desk — <http://localhost:8787/monitor> (admin token `dev-admin-token` locally)
 - Speeches wall — <http://localhost:5173/wall.html> (`/wall` once served by the API)
+- Personal link — <http://localhost:5173/voting/stu-abeer-bhati> (any roll id; see §12)
+
+There is **one `.env`, at the repository root**, and both halves read it. The
+server loads it by absolute path, and Vite's `envDir` points at the root. A
+stray `apps/server/.env` or `apps/web/.env` is ignored. If `VITE_APPS_SCRIPT_URL`
+is set there, the local web app talks to the Apps Script deployment rather than
+to `npm run dev`'s Express server.
 
 The voter roll (`apps/server/config/voters.json`) is **git-ignored** because it
 contains 145 real names and school email addresses. A fresh clone therefore has
 no roll. Use `apps/server/config/voters.sample.json`, or regenerate the real one
 with `npm run data:build` (needs the source spreadsheet/PDF, also git-ignored).
+
+> **But the same roll is committed elsewhere.** `apps-script/Config.gs` is
+> generated from `voters.json` and holds all 145 names and full email addresses.
+> It is tracked in git, and the GitHub repository is **public**. See §20.
 
 ---
 
@@ -106,14 +142,18 @@ apps/
       services/               VotingService · ResultsService · ResultsPublisher ·
                               SyncWorker · SessionService · ElectionReset · adminAuth
       spreadsheet/            SpreadsheetRepository port → Google Sheets | Graph Excel | JSONL spool
-      scripts/                seed · reset · genSecrets
+      scripts/                seed · reset · genSecrets · monitorPassword
   web/                        React 19 + Vite. Presentation and flow only.
     src/
+      generated/election.ts   GENERATED by `election:bake` — houses/positions/candidates
+                              compiled into the bundle (committed; no roll in it)
       machine/                the voting state machine (contains no election rules)
       screens/                Welcome · CheckIn · IdentityConfirm · Position · Review ·
                               Submitting · Done · SpeechesWall
       components/             bauhaus/ · election/ · ui/ · backdrop/ · ink/ · noren/ · paper/
-      lib/                    api · color · copy · ground · voterType · candidatePhoto · webgl
+      lib/                    api (Express *and* Apps Script transport) · voterLink ·
+                              houseCrest · color · copy · ground · voterType ·
+                              candidatePhoto · webgl
       styles/                 tokens.css · global.css · wall.css · fonts.css
       assets/candidates/      imported, cropped, compressed candidate photos (committed)
     public/                   candidates/*.svg placeholders · houses/*.png · paper/ · noren/
@@ -121,7 +161,10 @@ apps/
     wall.html / src/wall.tsx  the projected speeches wall — a second entry point
 packages/election-core/       Pure domain: types · config schema · eligibility · steps ·
                               validation · results (weighting). No I/O, no framework.
-docs/                         Nine deep documents (see §21)
+apps-script/                  The hosted backend, pasted into the Sheet's script editor:
+                              Config.gs (GENERATED; contains the roll) · core.gs (doGet/doPost
+                              API) · results.gs (weighting, menu) · dashboard.gs · setup.gs
+docs/                         Ten deep documents (see §22)
 scripts/                      Build/import/verify tooling (see §15)
 assets/                       Drop zones: candidate-photos/ (ignored), house-logos/ (committed)
 ```
@@ -129,6 +172,13 @@ assets/                       Drop zones: candidate-photos/ (ignored), house-log
 **Dependency direction is strictly one-way.** `election-core` knows nothing
 about HTTP, React or SQLite. Both the browser and the server import it — the
 browser for instant feedback, the server as the only answer that counts.
+
+**Apps Script can't import it.** `apps-script/*.gs` contains a second, hand-written
+ES5 copy of eligibility, validation and weighting. `npm run appsscript:verify`
+(`scripts/verify-apps-script.ts`) runs the `.gs` files in a Node sandbox and
+checks them against `election-core` on the same scenarios. That is the only
+thing that stops the two drifting apart, and it isn't part of `npm test` or
+`npm run verify`.
 
 ---
 
@@ -255,6 +305,41 @@ processes** contending for the same database file.
 Rejections are audited **outside** the transaction, because an audit row written
 inside a transaction that then aborts disappears with it — and rejections are
 exactly what an election most needs recorded.
+
+### The same ballot on Apps Script
+
+`core.gs` exposes one `/exec` URL. GET `action=` handles `election | roll |
+lookup | session | turnout` and POST `action=` handles `select | ballot`.
+`castBallot_` runs these steps in order:
+
+1. idempotency replay from `CacheService`
+2. verify the token
+3. check `CONFIG.election.status`
+4. `LockService` lock, waiting up to 30 s and then returning `BUSY`
+5. replay from the cache again
+6. re-read the voter from the Roll tab
+7. the already-voted check against the Voters tab. A retry carrying the *same*
+   key gets its original receipt back rather than `ALREADY_VOTED`.
+8. `validate_`
+9. append Ballots first (no voter column, hour-bucketed), then the Voters row
+
+There are no `opensAt`/`closesAt` checks on this path; only `status` counts,
+and it is baked into `Config.gs`.
+
+The session token is HMAC-signed with a `SESSION_SECRET` Script Property, which
+`setup()` generates. The body carries only selections. What the script gives up
+compared with Express is listed in `docs/apps-script-deployment.md`: no
+immutability, no audit chain, and anyone who can edit the Sheet can edit votes.
+
+The client absorbs the different transport in `apps/web/src/lib/api.ts`:
+
+- It sends `text/plain` so the browser skips a CORS preflight that Apps Script
+  can't answer.
+- It retries `UPSTREAM`/`TIMEOUT` up to four times within a wall-clock budget
+  (20 s by default, longer for casting). The reason is that Google's redirect
+  hop drops about one reply in three, measured.
+- It fetches the whole masked roll once and searches it in the browser.
+- It reads the election from the baked bundle rather than over the network.
 
 ---
 
@@ -538,6 +623,26 @@ mid-ballot must not leave the kiosk on their screen), a `sessionStorage` ballot
 draft, and a celebration hold of `VITE_CELEBRATION_SECONDS` before resetting for
 the next voter.
 
+**Changes made for the Apps Script transport** (commits of 2026-09-22 and 23):
+
+- **The election is baked into the bundle.** `scripts/bake-election.mjs` runs on
+  the web app's `predev`/`prebuild` and writes `src/generated/election.ts`. On
+  Apps Script the ballot opens without a network request. `api.electionFresh()`
+  re-checks `status` in the background and applies it only while nobody is
+  mid-ballot.
+- **Check-in doesn't wait for the session.** `IDENTIFIED` can carry
+  `token: null`, so the voter moves on while `select` is still in flight. If the
+  session comes back refused, the voter is stopped mid-flow; `flow.test.tsx`
+  covers this.
+- **Personal links.** `/voting/<voter_id>` (`lib/voterLink.ts`, read from the
+  path only, never the query string) opens on *Continue as \<name\>* with no
+  search. A link picks a name; it doesn't prove who is holding the phone. The
+  one-vote rule and eligibility are still enforced server-side.
+- **The roll is searched in the browser** on Apps Script
+  (`rollSearchIsLocal`). The whole masked roll comes over in one request and is
+  cached in `sessionStorage`. The Express path still uses the kiosk-token
+  `/api/auth/lookup`.
+
 ### Copy
 
 `apps/web/src/lib/copy.ts` holds every string carrying legal or integrity
@@ -629,8 +734,18 @@ name appears anywhere under `apps/web`.
 | `ADMIN_API_TOKEN` | bearer for `/api/admin/*` and the desk. ≥32 chars, non-placeholder in production |
 | `MONITOR_EMAIL` · `MONITOR_PASSWORD_HASH` · `MONITOR_SESSION_HOURS` | desk sign-in; hash form `scrypt$salt$hash` |
 | `VITE_APP_NAME` · `VITE_API_BASE_URL` · `VITE_CELEBRATION_SECONDS` · `VITE_GROUND` | browser-side |
+| `VITE_APPS_SCRIPT_URL` | the Apps Script `/exec` URL. If set, the whole client talks to Apps Script instead of Express. Set in Vercel's project env for the hosted ballot. **Missing from `.env.example`** |
 
 `npm run gen:secrets` prints a ready-to-paste block of fresh secrets.
+
+All of this lives in **one root `.env`** (§2). Default config/database paths are
+anchored to `apps/server`, not to `cwd`, so `node apps/server/dist/main.js` works
+from the root. A path you set explicitly stays relative to `cwd`.
+
+**Apps Script has no `.env`.** Its only secret is the `SESSION_SECRET` Script
+Property, generated by `setup()`. Its other state lives in Script Properties
+too: `BALLOT_EPOCH`, which a reset bumps, and the `RESULTS_AT`/`DASHBOARD_AT`
+fingerprints. Everything about the election itself is compiled into `Config.gs`.
 
 **Production boot guards** (`apps/server/src/config/env.ts`) — the server
 refuses to start if: the election config is invalid or marked `isSeedData`;
@@ -647,6 +762,9 @@ worse than one that does not.*
 people) · `data/` and every SQLite file · `access-codes-*` (plaintext
 credentials) · `.excel-spool/` · `assets/candidate-photos/*` originals ·
 compiled `.js`/`.d.ts` emitted beside sources.
+
+**Not ignored, though it holds the same personal data:** `apps-script/Config.gs`
+(§20).
 
 ---
 
@@ -671,7 +789,12 @@ compiled `.js`/`.d.ts` emitted beside sources.
 | `npm run seed -w @mesa/server -- --codes` | also issue one-time access codes |
 | `npm run db:reset` | delete the database (refuses in production without `--i-understand`) |
 | `npm run gen:secrets` | print fresh secrets |
+| `npm run monitor:password -- <email> '<password>'` | print a `MONITOR_PASSWORD_HASH` for the desk sign-in |
 | `npm run data:build` | rebuild `election.config.json` + `voters.json` from the source PDF/XLSX |
+| `npm run election:bake` | regenerate `apps/web/src/generated/election.ts`. Runs automatically on web `dev`/`build` |
+| `npm run appsscript:build` | regenerate `apps-script/Config.gs` from `election.config.json` + `voters.json` |
+| `npm run appsscript:verify` | run the `.gs` files in a `node:vm` sandbox against `election-core`. **Always run after `appsscript:build` or any `.gs` edit** |
+| `npm run election:serve` · `election:tunnel` | the laptop deployment (§17) |
 | `npm run sheets:check` · `sheets:setup` | verify credentials / create tabs, headers, formatting, Dashboard |
 | `npm run results:publish` | push a results snapshot now |
 | `npm run sheets:retry` | requeue dead-lettered outbox rows against a local server |
@@ -699,7 +822,11 @@ npm test                              # everything
 npx vitest run --project core         # domain logic only
 npx vitest run --project server       # API, persistence, concurrency, sync
 npx vitest run --project web          # machine, components, full journeys
+npm run appsscript:verify             # the .gs port against election-core — NOT in npm test
 ```
+
+As of 2026-09-23: **42 files, 537 tests, all passing.** `appsscript:verify` passes
+too.
 
 The server project runs with `fileParallelism: false` — the election database is
 a single writer by design, and tests that exercise concurrency spawn their own
@@ -709,7 +836,8 @@ processes rather than relying on the runner.
 | --- | --- |
 | `core` | weighting including both zero-turnout policies, ties, unknown candidates, config validation, eligibility, step sequences, ballot validation |
 | `server` | one-vote enforcement, **eight-process concurrency**, idempotency, forged payloads, roll masking, admin authz, audit-chain tampering, immutability triggers, Sheets auth/errors/header-ordering, spreadsheet failure/throttle/recovery, the monitor, the results publisher, the wall routing, server copy voice, end-to-end weighted results, shared-kiosk rate limits |
-| `web` | the state machine, the colour system, ink-mark and button accessibility contracts, measured token and house-colour contrast, the candidate-photo pipeline, and full student and employee journeys through the real UI |
+| `web` | the state machine, the colour system, ink-mark and button accessibility contracts, measured token and house-colour contrast, the candidate-photo pipeline, full student and employee journeys through the real UI, the Apps Script transport and in-browser roll search (`lib/__tests__/api.test.ts`), personal links (`voterLink.test.ts`) |
+| `appsscript:verify` | weighting (two-way, zero-turnout, student-only, exact tie, no votes) computed by `results.gs` vs `election-core`; the Dashboard never writes an accidental formula and names both sides of a tie |
 
 The three that matter most: `concurrency.test.ts` (eight OS processes, one
 ballot), `flow.test.tsx` → *"NEVER shows success before the server responds"*,
@@ -746,7 +874,10 @@ restart.
 **Back up `DATABASE_PATH` and its `-wal` file on a schedule, and rehearse a
 restore before election day.** The whole election is that one file.
 
-### Why there is no cloud deployment
+### Why the Express server has no cloud deployment
+
+(The hosted option is the Apps Script backend below. It isn't this server moved
+to a cloud host.)
 
 One person one vote is a `BEGIN IMMEDIATE` transaction against a single SQLite
 file owned by a single process (ADR-3). A serverless host — Vercel, Netlify,
@@ -757,16 +888,37 @@ A platform-as-a-service free tier fails the same way more slowly: no persistent
 disk, and the container recycled when idle. Anything hosting this needs a
 process that stays up and a disk that persists.
 
-### Vercel — the wall only
+### The hosted deployment — Vercel + Apps Script
 
-`vercel.json` deploys `apps/web` as a static build. There is no `/api` behind
-it, so the ballot cannot work there: check-in used to fail with
-`Unexpected token 'T', "The page c"...`, which is Vercel's own HTML 404 arriving
-where JSON was expected. `/` now **redirects to `/wall`**, so the deployment is
-only the thing that actually works there. Point a projector at it, not a booth.
-(A `redirect` rather than a `rewrite` because Vercel checks the filesystem
-before applying rewrites, and `/` matches `index.html` — a rewrite would be
-ignored.)
+Full steps are in `docs/apps-script-deployment.md`. In short:
+
+1. `npm run appsscript:build && npm run appsscript:verify`
+2. Paste the five `.gs` files into the Sheet (Extensions → Apps Script).
+3. Run `setup` once. It creates the tabs, seeds Roll and Candidates, installs a
+   **5-minute** `scheduledPublish` trigger and an `onEdit` roll-cache
+   invalidator, and adds an **Election** menu.
+4. Deploy as a Web app: Execute as **Me**, access **Anyone**. The `/exec` URL
+   stays the same across new versions.
+5. Set `VITE_APPS_SCRIPT_URL` in Vercel and redeploy.
+
+On the day, the Sheet's **Dashboard** tab (drawn by `dashboard.gs`) is the
+election desk; `/monitor` doesn't exist here. The **Roll tab is the live roll**
+and can be hand-edited: *Election → Check the roll* validates it, and *Set up /
+repair* won't overwrite it. *Election → Clear all votes…* is the reset, guarded
+by typing the election name.
+
+**Vercel serves `apps/web` as a static build.** Routes:
+
+- `/voting` is the ballot, and `/voting/<voter_id>` is a personal link.
+- `/wall` is the speeches wall.
+- `/` **redirects to `/voting`**. It used to go to `/wall`, when the ballot had
+  no backend there.
+
+Without `VITE_APPS_SCRIPT_URL` the ballot on Vercel has nothing to talk to. It
+fails with `Unexpected token 'T', "The page c"...`, which is Vercel's HTML 404
+arriving where JSON was expected. `api.ts` turns that into an `UPSTREAM` error.
+The root route uses a `redirect` rather than a `rewrite` because Vercel checks
+the filesystem before rewrites, and `/` matches `index.html`.
 
 Three things that had to be pinned, each of which cost a debugging session
 (`docs/deploying-the-wall.md`):
@@ -776,16 +928,23 @@ Three things that had to be pinned, each of which cost a debugging session
 - `installCommand: "npm ci --include=dev"`, because Vercel sets
   `NODE_ENV=production`, npm then defaults to `omit=dev`, and `typescript` and
   `vite` are devDependencies → `tsc: command not found`.
-- `rewrites` maps `/wall` → `/wall.html` and everything else → `/index.html`,
-  with a `(?!api/)` guard so a future serverless API is not silently swallowed.
+- `rewrites` maps `/voting` → `/index.html`, `/wall` → `/wall.html` and
+  everything else → `/index.html`, with a `(?!api/)` guard so a future
+  serverless API is not silently swallowed.
 
-Note that Vercel sends no `X-Frame-Options` at all. That is acceptable only
-because the ballot has no API, session or data behind it there. **If an API is
-ever added to that deployment, the header rules have to come with it.**
+Note that Vercel sends no `X-Frame-Options` at all. The deploying-the-wall doc
+still says that's acceptable "because the ballot has no API … behind it there".
+**That reasoning no longer holds now the ballot talks to Apps Script** (§21).
 
 ---
 
 ## 18. Election-day runbook
+
+This runbook is for the **Express/laptop** deployment. For the Apps Script
+deployment, follow *On the day* in `docs/apps-script-deployment.md`. There, to
+close voting you set `status` to `closed` in `election.config.json`, run
+`appsscript:build`, re-paste `Config.gs` and deploy a new version. Status is
+compiled into the script, and no time window is enforced.
 
 **Before**
 
@@ -852,28 +1011,53 @@ enforces on itself.
 12. Prose in this repo — comments, docs, commit messages — explains **why**, not
     what. Several comments record a bug that actually happened; keep that style,
     and do not delete the archaeology.
+13. **Commit subjects state the outcome as a plain sentence**, with no
+    `feat:`/`fix:` prefix. For example: *"A tie prints both names, not #REF!"* or
+    *"Counting the votes stops blocking the casting of them"*. The body explains
+    the failure and why this fix.
+14. **Election rules exist twice** (TypeScript and `.gs`). Change one, change
+    the other, and run `npm run appsscript:verify`. Never hand-edit the generated
+    `Config.gs` or `generated/election.ts`; edit `election.config.json` and
+    regenerate.
 
 ---
 
 ## 20. Current state, known gaps, gotchas
 
-Verified on **2026-09-22**, branch `candidate-photos`.
+Verified on **2026-09-23**, branch `main` @ `35632e2`, clean working tree.
+`candidate-photos` has been merged; the aurora, wall, desk sign-in,
+`ElectionReset`, `ResultsPublisher` and photo work are all on `main`.
 
-- **Tests: 523 of 524 pass.** The one failure is
-  `apps/server/src/__tests__/monitor.test.ts:35`, which still asserts the string
-  `Admin token` on the monitor page. The page was rebuilt around the new
-  email + password desk sign-in (§9) and now reads *Election desk*. The test is
-  stale, not the code — fix the assertion.
-- **`npm run monitor:password` does not exist.** `apps/server/src/config/env.ts`
-  tells you to run it to generate `MONITOR_PASSWORD_HASH`, but no such script is
-  defined. Until one is added, call `hashPassword()` from
-  `apps/server/src/services/adminAuth.ts` directly, e.g.
-  `npx tsx -e "import {hashPassword} from './apps/server/src/services/adminAuth.ts'; console.log(hashPassword('...'))"`.
-- **`README.md` quotes stale test counts** (319 in the banner, 244 in the command
-  table). The real figure is above.
-- **The branch has a large uncommitted working tree** — the aurora backdrop, the
-  speeches wall, the desk sign-in, `ElectionReset`, `ResultsPublisher` and the
-  candidate-photo work. Check `git status` before assuming what is on `main`.
+- **Tests: 537 of 537 pass**, lint/branching/client-secrets/css-vars checks
+  pass, and `appsscript:verify` passes.
+- **The voter roll is public.** `apps-script/Config.gs` is committed with all
+  145 real names and school email addresses, and
+  `github.com/chaaandu/Forge-Student-Election` is a public repository. This
+  undoes the reason `voters.json` is git-ignored. Removing the file now doesn't
+  remove it from history. Decide whether to make the repo private or rewrite
+  history, and whether `Config.gs` should be ignored with the roll left for the
+  Roll tab to supply.
+- **Closing the Apps Script election means a redeploy.** `castBallot_` checks
+  `CONFIG.election.status`, which is compiled in; `opensAt`/`closesAt` aren't
+  enforced there.
+- **The Roll tab and `voters.json` drift.** Hand edits to the Roll tab are never
+  copied back to the repository. Only matters if the election moves back to
+  Express.
+- **`VITE_APPS_SCRIPT_URL` is not in `.env.example`**; it is declared only in
+  `apps/web/src/vite-env.d.ts`.
+- **`README.md` is stale.** It quotes 319 tests in the banner and 244 in the
+  command table, and doesn't mention the Apps Script backend or `/voting`.
+  `docs/deploying-the-wall.md` still opens by saying the ballot can't work on
+  Vercel; its routing section further down is current.
+- A comment in `dashboard.gs` says it redraws "once a minute"; the trigger
+  `setup.gs` installs runs every **five** minutes.
+- **`postgres-migration` is an abandoned branch**, three commits ahead of an
+  older `main`. It ports the server to Postgres and has unfinished tests. The
+  last commit says the work was superseded by the Sheet-only approach and kept
+  so it can be recovered. Don't merge it.
+- **Secrets on disk at the root:** `.env` and a service-account key
+  `forge-student-elections-*.json`. Both are git-ignored (`.gitignore:21`, `:32`);
+  keep it that way.
 - **A fresh clone has no voter roll** (git-ignored). Copy
   `apps/server/config/voters.sample.json`, or regenerate with `npm run data:build`
   if you hold the source files.
@@ -885,7 +1069,34 @@ Verified on **2026-09-22**, branch `candidate-photos`.
 
 ---
 
-## 21. Further reading
+## 21. Open questions and next steps
+
+Nothing in the repository settles these. They are listed so nobody assumes an
+answer.
+
+- **Which backend runs the real election?** Recent work (the Dashboard tab,
+  personal links, Roll-tab editing, retry hardening) all targets Apps Script,
+  and Vercel now sends `/` to the ballot. The README, the runbook in §18 and
+  `docs/security-model.md` still describe the Express system.
+- **Is the Apps Script trade-off accepted?** Editors of the Sheet can alter
+  votes, there is no audit chain, and a running count is visible to everyone
+  the Sheet is shared with. The Sheet's sharing list is now the security
+  boundary.
+- **Are personal links acceptable?** Anyone who has a link, or guesses a
+  `voter_id` (ids follow `stu-first-last` / `emp-first-last`), can vote as that
+  person on a public URL. The same is true of name search on that URL.
+- **Frame headers on Vercel.** The ballot there now has a backend, but Vercel
+  sends no `X-Frame-Options`/CSP. Add them in `vercel.json` `headers`, excluding
+  `/paper` and `/noren`, which need `SAMEORIGIN`.
+- **CI.** Nothing runs `verify` or `appsscript:verify` automatically. Adding
+  `appsscript:verify` to `verify` is the cheapest guard against the two
+  implementations drifting.
+- Housekeeping: add `VITE_APPS_SCRIPT_URL` to `.env.example`, refresh
+  `README.md`, fix the "once a minute" comment in `dashboard.gs`.
+
+---
+
+## 22. Further reading
 
 | Document | What is in it |
 | --- | --- |
@@ -897,6 +1108,7 @@ Verified on **2026-09-22**, branch `candidate-photos`.
 | [`docs/data-model.md`](docs/data-model.md) | configuration schema, SQL schema, retention, the workbook shape, how to add a position/house/voter type |
 | [`docs/design-direction.md`](docs/design-direction.md) | "Vote / Form" — the Bauhaus grammar, the field-not-ink colour rule, house colour + form, gamification's one hard limit, and what was taken from open source |
 | [`docs/google-sheets-setup.md`](docs/google-sheets-setup.md) | the six manual steps, with the failure messages |
-| [`docs/deploying-the-wall.md`](docs/deploying-the-wall.md) | Vercel, and why the ballot cannot go there |
+| [`docs/apps-script-deployment.md`](docs/apps-script-deployment.md) | the hosted backend: why Apps Script, deploy steps, editing the Roll tab, personal links, clearing rehearsal votes, what it is weaker at |
+| [`docs/deploying-the-wall.md`](docs/deploying-the-wall.md) | Vercel: the pinned settings, `/voting` · `/wall` routing, the frame-header caveat |
 | [`docs/implementation-plan.md`](docs/implementation-plan.md) | the fifteen phases, sequencing rationale, risk register |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | dependency licences |
