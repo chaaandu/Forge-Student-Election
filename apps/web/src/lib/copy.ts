@@ -56,6 +56,10 @@ export const COPY = {
       'second time.',
     notOnRoll:
       "That account isn't on the roll for this election. The person running it can sort this out.",
+    // A personal link whose id matches nobody: usually a typo in the address.
+    badLink:
+      "That link doesn't match anyone on the roll. Check the link you were sent, or ask the " +
+      'person running the election.',
     noMatch: 'No match yet. Try a different spelling, or ask the person running the election.',
   },
   /**

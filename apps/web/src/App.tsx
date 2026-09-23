@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { api, ApiError, type CheckInResult, type VoterProfile } from '@/lib/api';
 import { COPY, HEADLINE } from '@/lib/copy';
+import { voterIdFromPath } from '@/lib/voterLink';
 import {
   currentStep,
   initialState,
@@ -116,6 +117,22 @@ export function App() {
   const voterRef = useRef<VoterProfile | null>(null);
   voterRef.current = state.voter;
 
+  /*
+    Arrived by a personal link, /voting/<voter_id>.
+
+    Read once, from the address the page was opened at. `voter` is filled in
+    when the server confirms who the id belongs to; until then the welcome
+    screen says it is finding their ballot. Cleared after a successful vote,
+    so the screen that follows is the ordinary one.
+  */
+  const [personal, setPersonal] = useState<{ voterId: string; voter: VoterProfile | null } | null>(
+    () => {
+      const voterId = voterIdFromPath(window.location.pathname);
+      return voterId ? { voterId, voter: null } : null;
+    },
+  );
+  const personalIdRef = useRef(personal?.voterId ?? null);
+
   // --------------------------------------------------------- bootstrap ---
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +156,62 @@ export function App() {
           search faster, and `api.lookup` answers without it.
         */
         void api.primeRoll();
+
+        /*
+          A personal link: ask who it is for before the voter has to.
+
+          This is only the NAME for the button. The session the ballot is
+          cast with is asked for again when they press Continue, because a
+          link opened now and used an hour later would otherwise carry a
+          check-in that had long since expired.
+
+          A refusal is shown at once - they have already voted, or the link
+          matches nobody - rather than after they have filled in a ballot. A
+          dropped reply is not a refusal: the link quietly becomes the
+          ordinary welcome screen, and they can find their name like anyone
+          else.
+        */
+        const linkedId = personalIdRef.current;
+        if (linkedId) {
+          api.selectVoter(linkedId).then(
+            (result) => {
+              if (cancelled) return;
+              if (result.voter.hasVoted) {
+                setPersonal(null);
+                dispatch({
+                  type: 'FATAL',
+                  error: {
+                    code: 'ALREADY_VOTED',
+                    headline: HEADLINE.alreadyVoted,
+                    message: COPY.error.alreadyVoted,
+                    retryable: false,
+                  },
+                });
+                return;
+              }
+              setPersonal({ voterId: linkedId, voter: result.voter });
+            },
+            (error: unknown) => {
+              if (cancelled) return;
+              setPersonal(null);
+              if (error instanceof ApiError && error.code === 'NOT_ON_ROLL') {
+                dispatch({
+                  type: 'FATAL',
+                  error: {
+                    code: error.code,
+                    headline: HEADLINE.checkInFailed,
+                    message: COPY.error.badLink,
+                    retryable: false,
+                  },
+                });
+                return;
+              }
+              if (error instanceof ApiError && !error.isNetwork) {
+                dispatch({ type: 'FATAL', error: toMachineError(error) });
+              }
+            },
+          );
+        }
 
         /*
           The election is baked into the bundle, so the screen above drew
@@ -345,6 +418,22 @@ export function App() {
     [],
   );
 
+  /*
+    "Continue as Varun": the name was confirmed by the link, so this is the
+    identity confirmation too - it goes straight to the first contest.
+
+    A fresh session is asked for here rather than reusing the one fetched to
+    draw the button (see the bootstrap), through the same path the booth uses,
+    so a refusal or a dropped reply is handled exactly as it is there.
+  */
+  const handlePersonalContinue = useCallback(() => {
+    if (!personal?.voter) return;
+    const session = api.selectVoter(personal.voterId);
+    session.catch(() => undefined);
+    handleIdentified({ voter: personal.voter, session });
+    dispatch({ type: 'CONFIRM_IDENTITY' });
+  }, [personal, handleIdentified]);
+
   const submit = useCallback(async () => {
     // Generated once per ballot and kept for every retry. A fresh key on retry
     // would turn a timeout into a second vote.
@@ -390,6 +479,9 @@ export function App() {
         const token = await resolveToken();
         const result = await api.submitBallot(token, state.selections, key);
         clearDraft();
+        // The link has done its job; whoever uses this screen next gets the
+        // ordinary welcome, not a button with somebody else's name on it.
+        setPersonal(null);
         dispatch({ type: 'SUBMIT_SUCCESS', receiptId: result.receiptId });
       } catch (error) {
         // One automatic retry for a network blip — safe because the key is the
@@ -538,6 +630,14 @@ export function App() {
             election={state.election}
             onCheckIn={() => dispatch({ type: 'BEGIN_CHECK_IN' })}
             isSeedData={isSeedData}
+            {...(personal
+              ? {
+                  personal: {
+                    name: personal.voter?.name ?? null,
+                    onContinue: handlePersonalContinue,
+                  },
+                }
+              : {})}
           />
         )}
 

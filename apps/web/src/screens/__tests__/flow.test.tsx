@@ -460,3 +460,106 @@ describe('check-in does not block on the session', () => {
     expect(await screen.findByText(HEADLINE.alreadyVoted)).toBeInTheDocument();
   });
 });
+
+/*
+  Personal links: /voting/<voter_id>, sent to founders and leaders who vote
+  from wherever they are rather than at a booth.
+*/
+describe('a personal link', () => {
+  const openLink = (id: string) => window.history.pushState({}, '', `/voting/${id}`);
+
+  afterEach(() => {
+    window.history.pushState({}, '', '/');
+  });
+
+  it('offers "Continue as <name>" and goes straight to the first contest', async () => {
+    const user = userEvent.setup();
+    openLink(employee.id);
+    mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: employee });
+
+    render(<App />);
+    await user.click(
+      await screen.findByRole('button', { name: new RegExp(`continue as ${employee.name}`, 'i') }),
+    );
+
+    // No search, no second "is this you": the link already said who.
+    expect(screen.queryByLabelText(/your name/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /that.s me/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('radiogroup')).toBeInTheDocument();
+    expect(screen.getByText('1 of 6')).toBeInTheDocument();
+    expect(mocks.selectVoter).toHaveBeenCalledWith(employee.id);
+  });
+
+  it('casts the vote with a session asked for at Continue, not at page load', async () => {
+    const user = userEvent.setup();
+    openLink(employee.id);
+    mocks.selectVoter
+      .mockResolvedValueOnce({ token: 'from-page-load', expiresAt: '2099', voter: employee })
+      .mockResolvedValue({ token: 'from-continue', expiresAt: '2099', voter: employee });
+    mocks.submitBallot.mockResolvedValue({
+      status: 'recorded',
+      receiptId: 'r1',
+      replayed: false,
+      submittedAt: 'now',
+    });
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /continue as/i }));
+    await completeAllGates(user);
+    await user.click(await screen.findByRole('button', { name: /confirm & submit vote/i }));
+    await user.click(await screen.findByRole('button', { name: /cast my vote/i }));
+    await screen.findByRole('heading', { name: 'Vote recorded' });
+
+    // A link opened now and used an hour later must not carry an expired check-in.
+    expect(mocks.submitBallot.mock.calls[0]![0]).toBe('from-continue');
+  });
+
+  it('stops someone who has already voted before they see a ballot', async () => {
+    openLink(employee.id);
+    mocks.selectVoter.mockRejectedValue(
+      new ApiErrorCtor('ALREADY_VOTED', 'Our records show you have already voted.', 409),
+    );
+
+    render(<App />);
+    expect(await screen.findByText(HEADLINE.alreadyVoted)).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+  });
+
+  it('says so plainly when the link matches nobody', async () => {
+    openLink('emp_9999');
+    mocks.selectVoter.mockRejectedValue(
+      new ApiErrorCtor('NOT_ON_ROLL', "That name isn't on the roll for this election.", 404),
+    );
+
+    render(<App />);
+    expect(await screen.findByText(COPY.error.badLink)).toBeInTheDocument();
+  });
+
+  it('falls back to the ordinary welcome when the reply is dropped', async () => {
+    openLink(employee.id);
+    mocks.selectVoter.mockRejectedValue(
+      new ApiErrorCtor('UPSTREAM', 'We could not reach the election server.', 0),
+    );
+
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /start voting/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /continue as/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps "Not you?" so the person holding the link can find their own name', async () => {
+    const user = userEvent.setup();
+    openLink(employee.id);
+    mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: employee });
+
+    render(<App />);
+    await screen.findByRole('button', { name: /continue as/i });
+    await user.click(screen.getByRole('button', { name: /not you/i }));
+    expect(await screen.findByLabelText(/your name/i)).toBeInTheDocument();
+  });
+
+  it('leaves an ordinary visit to the ballot exactly as it was', async () => {
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /start voting/i })).toBeInTheDocument();
+    expect(mocks.selectVoter).not.toHaveBeenCalled();
+  });
+});

@@ -6,6 +6,11 @@ export interface WelcomeScreenProps {
   election: PublicElection;
   onCheckIn: () => void;
   isSeedData: boolean;
+  /**
+   * Arrived by a personal link (`/voting/<voter_id>`). `name` is null while the
+   * server is still being asked who the link is for.
+   */
+  personal?: { name: string | null; onContinue: () => void };
 }
 
 /**
@@ -25,7 +30,7 @@ export interface WelcomeScreenProps {
  * dissolving a moment later read as a glitch, not as a poster — so the ground
  * is now just the dark room, and the sheet arrives into it.
  */
-export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreenProps) {
+export function WelcomeScreen({ election, onCheckIn, isSeedData, personal }: WelcomeScreenProps) {
   const leadership = election.positions.filter((p) => p.kind === 'leadership');
   const hasHouseContests = election.positions.some((p) => p.kind === 'house-captain');
 
@@ -115,11 +120,45 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData }: WelcomeScreen
                 Pick the people who'll run your year. Nothing counts until you submit.
               </p>
 
-              <div className="mt-7">
-                <Button variant="primary" size="lg" onClick={onCheckIn} autoFocus>
-                  Start voting <span aria-hidden="true">→</span>
-                </Button>
-              </div>
+              {personal ? (
+                /*
+                  A personal link: the name is already known, so the search is
+                  skipped. "Not you?" is kept because a link can land on the
+                  wrong screen - a forwarded email, a shared laptop - and the
+                  person holding it must always have a way to be themselves.
+                */
+                <div className="mt-7 flex flex-col items-start gap-4">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={personal.onContinue}
+                    disabled={personal.name === null}
+                    autoFocus
+                  >
+                    {personal.name === null ? (
+                      'Finding your ballot…'
+                    ) : (
+                      <>
+                        Continue as {personal.name} <span aria-hidden="true">→</span>
+                      </>
+                    )}
+                  </Button>
+                  <button
+                    type="button"
+                    className="underline underline-offset-4"
+                    style={{ color: 'var(--color-ink-soft)', fontSize: 'var(--text-sm)' }}
+                    onClick={onCheckIn}
+                  >
+                    Not you? Find your name
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-7">
+                  <Button variant="primary" size="lg" onClick={onCheckIn} autoFocus>
+                    Start voting <span aria-hidden="true">→</span>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 

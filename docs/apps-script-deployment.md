@@ -113,6 +113,30 @@ Things worth knowing:
   repository. That only matters if you ever move the election back onto the
   laptop server.
 
+### Personal links, for people who will not come to a booth
+
+Founders and leaders can be emailed a link ending in their own `voter_id`:
+
+```
+https://forge-student-election-speeches.vercel.app/voting/emp-varun-mehta
+```
+
+It opens on **Continue as Varun** and goes straight to the first contest — no
+search, no second confirmation. A "Not you? Find your name" link stays on the
+screen for whoever the link reached by mistake.
+
+- The `voter_id` is the one in column A of the Roll tab. Nothing needs setting
+  up; any id on the roll works as a link.
+- One vote per person still holds. Someone who votes by link and later comes to
+  a booth is refused there, and the other way round.
+- A link for someone who has already voted says so at once. A link that matches
+  nobody says that too, rather than showing an empty ballot.
+
+**Know what a link is.** It names a voter; it does not prove who is holding the
+phone. Anyone who has the link — or who guesses an id — can vote as that
+person, the same as anyone can pick a name from the booth's search on this
+public URL. Send each link only to its owner, and ask them not to forward it.
+
 ### Clearing the rehearsal votes
 
 On the Sheet: **Election → Clear all votes…**
