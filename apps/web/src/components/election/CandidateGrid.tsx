@@ -32,14 +32,12 @@ export function columnsFor(count: number): number {
  * would be odd to reintroduce the orphan one breakpoint down. This election
  * runs 2, 3 and 4, and all three land cleanly.
  *
- * Phones get one card, set by the stylesheet: two 144px cards side by side wrap
- * most of these names onto three lines, and a name a voter has to decipher is a
- * worse trade than a scroll they can already see the end of — the action bar is
- * pinned, so the length of the page costs them nothing.
- *
- * "Phone" means up to 640px, the same line CandidateCard draws. It used to be
- * 480px, which let a large phone — or any phone with its display zoom turned
- * down — through to two across, and voters saw the faces side by side.
+ * Phones get two across whatever the count, set by the stylesheet, with square
+ * portraits. One across was tried: a full-width card is a letterbox, and the
+ * 600x460 source photo lost most of its height to it, so a face became a strip
+ * of forehead and office ceiling. Two square cards show the whole face, and the
+ * card lays its name out on a line of its own so "Shrivastava" still fits.
+ * "Phone" means up to 640px, the same line CandidateCard draws.
  */
 export function columnsForNarrow(count: number): number {
   return count <= 3 ? Math.max(count, 1) : 2;
@@ -165,7 +163,19 @@ export function CandidateGrid({
           the choice back to the space, which is what orphaned the fourth card
           on the desktop plate in the first place.
         */
-        .bh-grid { display: grid; grid-template-columns: minmax(0, 300px) }
+        .bh-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+        /* A name that wraps must not leave its neighbour a shorter card: the
+           slot stretches to the row, and the card fills the slot. */
+        .bh-grid > [data-candidate-slot] > .bh-candidate { height: 100% }
+        /* An odd field on a phone centres its last card under the pair rather
+           than leaving it in the left column beside a hole. */
+        @media (max-width: 640px) {
+          .bh-grid > [data-candidate-slot]:last-of-type:nth-of-type(odd) {
+            grid-column: 1 / -1;
+            justify-self: center;
+            width: calc((100% - 1rem) / 2);
+          }
+        }
         @media (min-width: 641px) {
           .bh-grid { grid-template-columns: repeat(var(--cols-narrow), minmax(0, 300px)) }
         }

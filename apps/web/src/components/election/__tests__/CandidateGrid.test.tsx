@@ -44,6 +44,12 @@ const css = (n: number): string => {
   return [...container.querySelectorAll('style')].map((el) => el.textContent ?? '').join('\n');
 };
 
+/** The bodies of every `@media (max-width: 640px)` block, and the sheet without them. */
+const PHONE = /@media\s*\(max-width:\s*640px\)\s*\{((?:[^{}]*\{[^}]*\})*)\s*\}/g;
+const phoneRules = (sheet: string): string =>
+  [...sheet.matchAll(PHONE)].map((m) => m[1]).join('\n');
+const withoutPhoneRules = (sheet: string): string => sheet.replace(PHONE, '');
+
 /**
  * Every position plate must be the same height, whatever the field size.
  *
@@ -58,9 +64,12 @@ describe('CandidateGrid keeps every position the same size', () => {
     // This is the whole mechanism. With an aspect ratio, a wider card is a
     // taller card, so the positions with the FEWEST candidates produced the
     // TALLEST pages. A fixed height decouples the two.
+    // The phone block is the one exception: there the grid is always two
+    // across, so the width no longer follows the field and a square is safe.
     for (const n of [2, 3, 4]) {
-      expect(css(n), `${n} candidates`).toMatch(/\.bh-photo\s*\{[^}]*height:/);
-      expect(css(n), `${n} candidates still uses an aspect ratio`).not.toMatch(/aspect-ratio/);
+      const wide = withoutPhoneRules(css(n));
+      expect(wide, `${n} candidates`).toMatch(/\.bh-photo\s*\{[^}]*height:/);
+      expect(wide, `${n} candidates still uses an aspect ratio`).not.toMatch(/aspect-ratio/);
     }
   });
 
@@ -127,11 +136,26 @@ describe('CandidateGrid keeps every position the same size', () => {
     for (const n of [1, 2, 3]) expect(columnsForNarrow(n), `${n} candidates`).toBe(n);
   });
 
-  it('gives a phone one clear card', () => {
-    // Two 144px cards side by side wrap most of these names onto three lines.
-    // A name a voter has to decipher is the worse trade: the action bar is
-    // pinned, so the extra scroll costs them nothing.
-    expect(css(4)).toMatch(/\.bh-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*300px\)/);
+  it('gives a phone two square cards, whatever the field', () => {
+    // One across was a full-width letterbox that cropped every face to a
+    // forehead. Two across is fixed, not counted, so the square is safe.
+    for (const n of [2, 3, 4]) {
+      expect(css(n)).toMatch(
+        /\.bh-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+      );
+      expect(phoneRules(css(n))).toMatch(/\.bh-photo\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/);
+    }
+  });
+
+  it('gives a phone name the width of the card, not what is left beside the box', () => {
+    // Beside the box, "Shrivastava" had about 80px and broke mid-word.
+    expect(phoneRules(css(2))).toMatch(/\.bh-candidate__body\s*\{[^}]*flex-direction:\s*column/);
+  });
+
+  it('centres the odd card out on a phone rather than leaving a hole beside it', () => {
+    expect(phoneRules(css(3))).toMatch(
+      /last-of-type:nth-of-type\(odd\)\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/,
+    );
   });
 
   it('centres the row', () => {

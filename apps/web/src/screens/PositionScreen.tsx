@@ -104,7 +104,7 @@ export function PositionScreen({
           />
         </div>
 
-        <div className="px-6 py-8 sm:px-8">
+        <div className="px-4 py-6 sm:px-8 sm:py-8">
           <h2 id="position-heading" className="sr-only">
             {step.title}. Pick one candidate.
           </h2>

@@ -132,8 +132,8 @@ export function CandidateCard({
 
         <span className="min-w-0 flex-1">
           <span
-            className="block"
-            style={{ fontSize: 'var(--text-md)', fontWeight: 600, lineHeight: 1.25 }}
+            className="bh-candidate__name block"
+            style={{ fontWeight: 600, lineHeight: 1.25 }}
           >
             {candidate.name}
           </span>
@@ -168,10 +168,22 @@ export function CandidateCard({
         /* A fixed HEIGHT, never an aspect ratio: it is what lets a card widen
            to fill the plate without the page growing taller. */
         .bh-photo { height: clamp(180px, 24vh, 232px); }
-        /* On a phone the cards stack one per row, and a 200px portrait above a
-           90px name turned one position into two screens of scrolling. The face
-           is still the largest thing on the card. */
-        @media (max-width: 640px) { .bh-photo { height: 132px } }
+        /*
+          On a phone the grid is always two across, so the card's width no
+          longer depends on how many stand — which is the only reason the
+          photo is a fixed height everywhere else. Here it can be square, and
+          must be: a full-width 132px strip cropped the face down to a forehead.
+
+          The name gets the card's full width on its own line, with the box
+          above it. Beside a 26px box, "Shrivastava" had about 80px and broke
+          mid-word.
+        */
+        @media (max-width: 640px) {
+          .bh-photo { height: auto; aspect-ratio: 1 / 1 }
+          .bh-candidate__body { flex-direction: column; gap: 0.5rem; padding: 0.75rem }
+          .bh-candidate__name { font-size: 1rem }
+        }
+        .bh-candidate__name { font-size: var(--text-md) }
         .bh-candidate {
           background: var(--color-card);
           border: 3px solid var(--color-ink);
