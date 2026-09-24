@@ -84,7 +84,6 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   const [busy, setBusy] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchId = useRef(0);
-  const sessionRef = useRef<Promise<CheckInResult> | null>(null);
 
   const mode = election.auth.mode;
   // The roll payload already carries houseId and nothing was reading it.
@@ -168,21 +167,28 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
   }, [query, mode, chosen]);
 
   /*
-    Ask for the session the moment a name is picked.
+    A picked name goes straight to "Voting as", unless there is a code to enter.
 
-    There is a second click between here and Continue - the voter reads their
-    own name back and presses it - and that is free time the round trip can
-    happen in.
+    There used to be a card here that showed the name back with a Continue
+    button, and then "Voting as" showed it back again with "That's me". That
+    was two confirmations of the same thing in a row. The second one is the
+    one that matters: it is the poster-large name the invigilator reads across
+    the booth, and it has "Not you? Start again".
+
+    The session is still requested the moment the name is picked, and the
+    voter's read of "Voting as" gives the round trip time to finish.
   */
   function chooseName(match: RollMatch) {
-    setChosen(match);
     setError(null);
-    if (mode !== 'access-code') {
-      sessionRef.current = api.selectVoter(match.id);
-      // Attached now so a rejection is never an unhandled promise; App.tsx
-      // attaches the handler that actually shows it to the voter.
-      sessionRef.current.catch(() => undefined);
+    if (mode === 'access-code') {
+      setChosen(match);
+      return;
     }
+    const session = api.selectVoter(match.id);
+    // Attached now so a rejection is never an unhandled promise; App.tsx
+    // attaches the handler that actually shows it to the voter.
+    session.catch(() => undefined);
+    onIdentified({ voter: profileFor(election, match), session });
   }
 
   async function identify(voterId: string, accessCode?: string) {
@@ -190,29 +196,18 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
     setError(null);
     try {
       /*
-        SUPERVISED CHECK-IN DOES NOT WAIT HERE.
+        Only access codes reach this, and they wait, as they must: entering
+        the code IS the authentication, and its answer is the point of the
+        step.
 
-        This used to await `selectVoter`, so pressing Continue stalled on one
-        Apps Script round trip - the same 0.5s-to-30s hop the search was moved
-        off. The voter sat on a spinner before a screen that only shows them
-        their own name back.
-
-        Everything that screen needs is already known: the roll supplied the
-        name and house, and the gate sequence follows from the election config
-        by the same predicate the server uses. So the journey continues now and
-        the session, already in flight since the name was picked, is awaited
-        once at submission.
-
-        Access codes still wait, and must: entering the code IS the
-        authentication, and its answer is the point of the step.
+        Supervised check-in never waits. It used to await `selectVoter`, which
+        stalled the voter on one Apps Script round trip (0.5s to 30s) before a
+        screen that only shows them their own name back. Everything that
+        screen needs is already known: the roll supplied the name and house,
+        and the gate sequence follows from the election config by the same
+        predicate the server uses. So `chooseName` moves the journey on at
+        once, and the session is awaited at submission.
       */
-      if (mode !== 'access-code') {
-        const chosenMatch = chosen;
-        if (!chosenMatch) return;
-        onIdentified({ voter: profileFor(election, chosenMatch), session: sessionRef.current });
-        return;
-      }
-
       const result = await api.verifyCode(voterId, accessCode ?? '');
       onIdentified({ voter: result.voter, session: Promise.resolve(result) });
     } catch (checkInError) {
@@ -287,14 +282,11 @@ export function CheckInScreen({ election, onIdentified, onBack }: CheckInScreenP
               setCode={setCode}
               error={error}
               busy={busy}
-              requiresCode={mode === 'access-code'}
               onSubmit={() => identify(chosen.id, code)}
               onChangeName={() => {
                 setChosen(null);
                 setCode('');
                 setError(null);
-                // Whatever was fetched belongs to the name they just abandoned.
-                sessionRef.current = null;
               }}
             />
           ) : (
@@ -497,7 +489,6 @@ function CodeStep({
   setCode,
   error,
   busy,
-  requiresCode,
   onSubmit,
   onChangeName,
 }: {
@@ -506,7 +497,6 @@ function CodeStep({
   setCode: (value: string) => void;
   error: string | null;
   busy: boolean;
-  requiresCode: boolean;
   onSubmit: () => void;
   onChangeName: () => void;
 }) {
@@ -536,28 +526,20 @@ function CodeStep({
         <Tag color={TYPE_FIELD[match.type]}>{match.type}</Tag>
       </div>
 
-      {requiresCode ? (
-        <TextField
-          label="Your access code"
-          placeholder="e.g. K7M2PQ"
-          value={code}
-          autoFocus
-          inputMode="text"
-          autoComplete="one-time-code"
-          maxLength={12}
-          spellCheck={false}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
-          hint="Six characters from your slip. Capitals don't matter."
-          {...(error ? { error } : {})}
-          style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.24em' }}
-        />
-      ) : (
-        error && (
-          <p role="alert" style={{ color: 'var(--color-alert)', fontSize: 'var(--text-sm)' }}>
-            {error}
-          </p>
-        )
-      )}
+      <TextField
+        label="Your access code"
+        placeholder="e.g. K7M2PQ"
+        value={code}
+        autoFocus
+        inputMode="text"
+        autoComplete="one-time-code"
+        maxLength={12}
+        spellCheck={false}
+        onChange={(event) => setCode(event.target.value.toUpperCase())}
+        hint="Six characters from your slip. Capitals don't matter."
+        {...(error ? { error } : {})}
+        style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.24em' }}
+      />
 
       <div className="flex flex-wrap gap-3">
         <Button
@@ -565,7 +547,7 @@ function CodeStep({
           variant="primary"
           size="lg"
           loading={busy}
-          disabled={requiresCode && code.trim().length < 4}
+          disabled={code.trim().length < 4}
           disabledReason="Enter the code from your slip."
         >
           Continue

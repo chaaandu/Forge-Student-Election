@@ -147,9 +147,18 @@ describe('CandidateGrid keeps every position the same size', () => {
     }
   });
 
-  it('gives a phone name the width of the card, not what is left beside the box', () => {
-    // Beside the box, "Shrivastava" had about 80px and broke mid-word.
-    expect(phoneRules(css(2))).toMatch(/\.bh-candidate__body\s*\{[^}]*flex-direction:\s*column/);
+  it('puts the box in the photo corner, where the review screen puts its pencil', () => {
+    // Beside the name, the box left "Shrivastava" about 80px on a phone and
+    // it broke mid-word. In the photo, the name has the card's whole width.
+    const { container } = render(
+      <CandidateGrid candidates={candidates(2)} onSelect={() => {}} labelledBy="h" />,
+    );
+    const cards = container.querySelectorAll('[data-candidate-card]');
+    for (const card of cards) {
+      expect(card.querySelector('[data-photo] .bh-candidate__box')).not.toBeNull();
+      expect(card.querySelector('.bh-candidate__body .bh-candidate__box')).toBeNull();
+    }
+    expect(css(2)).toMatch(/\.bh-candidate__box\s*\{[^}]*position:\s*absolute[^}]*bottom:/);
   });
 
   it('centres the odd card out on a phone rather than leaving a hole beside it', () => {

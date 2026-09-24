@@ -66,7 +66,6 @@ async function checkInAs(voter: typeof student | typeof employee) {
 
   await user.type(await screen.findByLabelText(/your name/i), 'One');
   await user.click(await screen.findByRole('button', { name: new RegExp(voter.name, 'i') }));
-  await user.click(await screen.findByRole('button', { name: /continue/i }));
   // Identity confirmation: "That's me".
   await user.click(await screen.findByRole('button', { name: /that.s me/i }));
 
@@ -150,7 +149,6 @@ describe('the student journey', () => {
     await user.click(await screen.findByRole('button', { name: /start voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
-    await user.click(await screen.findByRole('button', { name: /continue/i }));
 
     expect(await screen.findByRole('button', { name: /that.s me/i })).toBeInTheDocument();
     expect(await screen.findByText(student.name)).toBeInTheDocument();
@@ -362,7 +360,6 @@ describe('blocked states', () => {
     await user.click(await screen.findByRole('button', { name: /start voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
-    await user.click(await screen.findByRole('button', { name: /continue/i }));
 
     expect(await screen.findByText(HEADLINE.alreadyVoted)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(COPY.error.alreadyVoted);
@@ -414,12 +411,27 @@ describe('check-in does not block on the session', () => {
     await user.click(await screen.findByRole('button', { name: /start voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
-    await user.click(await screen.findByRole('button', { name: /continue/i }));
 
     expect(await screen.findByRole('button', { name: /that.s me/i })).toBeInTheDocument();
   });
 
-  it('asks for the session as soon as the name is picked, not on Continue', async () => {
+  it('goes from the name straight to "Voting as", with no card between', async () => {
+    const user = userEvent.setup();
+    mockRollFor(student);
+    mocks.selectVoter.mockResolvedValue({ token: 'tok', expiresAt: '2099', voter: student });
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /start voting/i }));
+    await user.type(await screen.findByLabelText(/your name/i), 'One');
+    await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
+
+    // One confirmation of who is voting, not two in a row.
+    expect(await screen.findByRole('button', { name: /that.s me/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /pick a different name/i })).not.toBeInTheDocument();
+  });
+
+  it('asks for the session as soon as the name is picked', async () => {
     const user = userEvent.setup();
     mockRollFor(student);
     mocks.selectVoter.mockReturnValue(new Promise(() => {}));
@@ -429,7 +441,7 @@ describe('check-in does not block on the session', () => {
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
 
-    // The head start: one click earlier than it used to be.
+    // The head start: requested while "Voting as" is still being read.
     expect(mocks.selectVoter).toHaveBeenCalledWith(student.id);
   });
 
@@ -452,7 +464,6 @@ describe('check-in does not block on the session', () => {
     await user.click(await screen.findByRole('button', { name: /start voting/i }));
     await user.type(await screen.findByLabelText(/your name/i), 'One');
     await user.click(await screen.findByRole('button', { name: new RegExp(student.name, 'i') }));
-    await user.click(await screen.findByRole('button', { name: /continue/i }));
     await screen.findByRole('button', { name: /that.s me/i });
 
     refuse(new ApiErrorCtor('ALREADY_VOTED', 'Our records show you have already voted.', 409));

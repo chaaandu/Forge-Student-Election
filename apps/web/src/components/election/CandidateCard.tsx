@@ -111,25 +111,30 @@ export function CandidateCard({
             </span>
           </div>
         )}
-      </div>
 
-      {/* The ballot line: box, then name. */}
-      <div className="bh-candidate__body flex flex-1 items-start gap-3 p-4">
-        <span
-          aria-hidden="true"
-          className="relative mt-0.5 flex shrink-0 items-center justify-center"
-          style={{
-            width: 26,
-            height: 26,
-            border: `3px solid ${selected ? 'var(--on-field)' : 'var(--color-ink)'}`,
-            background: selected ? 'transparent' : 'var(--color-card)',
-          }}
-        >
+        {/*
+          The box sits in the photo's bottom-right corner, the spot the pencil
+          takes on the review screen, so choosing and changing a pick happen
+          in the same place.
+
+          Beside the name it took 34px of every line: on a phone card that
+          left "Shrivastava" about 80px, and it broke mid-word. The bottom
+          corner is torso and background in every one of these portraits, so
+          the box covers no face, which the top corner would.
+
+          It has a solid fill in both states because it sits on a photograph.
+          Chosen, it takes the contest's field, the same colour as the bar
+          across the foot of the card.
+        */}
+        <span aria-hidden="true" className="bh-candidate__box">
           <span className="absolute" style={{ transform: 'translate(1px, -1px)' }}>
             <InkMark marked={selected} size="sm" color="var(--on-field)" />
           </span>
         </span>
+      </div>
 
+      {/* The name, with the whole width of the card to itself. */}
+      <div className="bh-candidate__body flex flex-1 items-start p-4">
         <span className="min-w-0 flex-1">
           <span
             className="bh-candidate__name block"
@@ -173,16 +178,25 @@ export function CandidateCard({
           longer depends on how many stand — which is the only reason the
           photo is a fixed height everywhere else. Here it can be square, and
           must be: a full-width 132px strip cropped the face down to a forehead.
-
-          The name gets the card's full width on its own line, with the box
-          above it. Beside a 26px box, "Shrivastava" had about 80px and broke
-          mid-word.
         */
         @media (max-width: 640px) {
           .bh-photo { height: auto; aspect-ratio: 1 / 1 }
-          .bh-candidate__body { flex-direction: column; gap: 0.5rem; padding: 0.75rem }
+          .bh-candidate__body { padding: 0.75rem }
           .bh-candidate__name { font-size: 1rem }
         }
+        .bh-candidate__box {
+          position: absolute;
+          right: 8px;
+          bottom: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          background: var(--color-card);
+          border: 3px solid var(--color-ink);
+        }
+        .bh-candidate[data-selected="true"] .bh-candidate__box { background: var(--field) }
         .bh-candidate__name { font-size: var(--text-md) }
         .bh-candidate {
           background: var(--color-card);

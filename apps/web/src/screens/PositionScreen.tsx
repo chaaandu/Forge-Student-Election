@@ -117,14 +117,31 @@ export function PositionScreen({
           />
         </div>
 
-        <div className="action-bar flex flex-wrap items-center gap-3 px-6 py-5 sm:px-8">
-          <Button variant="secondary" size="lg" onClick={onBack}>
-            <span aria-hidden="true">←</span> Back
+        {/*
+          One row on a phone, with Back reduced to its arrow.
+
+          At full width the two buttons wrapped onto two rows, and the pinned
+          bar grew to about a fifth of a phone screen, covering the cards it
+          was meant to act on. The arrow keeps its accessible name, "Back".
+        */}
+        <div className="action-bar flex items-center gap-3 px-4 py-4 sm:flex-wrap sm:px-8 sm:py-5">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={onBack}
+            aria-label="Back"
+            className="bh-back shrink-0"
+          >
+            <span aria-hidden="true">←</span>
+            <span aria-hidden="true" className="bh-back__word">
+              Back
+            </span>
           </Button>
 
           <Button
             variant="primary"
             size="lg"
+            className="bh-next"
             onClick={onNext}
             disabled={!selected}
             disabledReason={`Pick a candidate for ${step.title} to continue.`}
@@ -146,6 +163,11 @@ export function PositionScreen({
       </div>
 
       <style>{`
+        @media (max-width: 640px) {
+          .bh-back { padding-inline: 0; width: 62px }
+          .bh-back__word { display: none }
+          .bh-next { flex: 1; min-width: 0; padding-inline: 12px }
+        }
         .bh-step { animation: step-in var(--dur-step) var(--ease-out) both }
         @keyframes step-in {
           from { opacity: 0; transform: translateX(var(--from)) }

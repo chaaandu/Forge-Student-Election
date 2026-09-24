@@ -47,13 +47,20 @@ export function IdentityConfirmScreen({
             crest, and the tag below.
           */}
           <Avatar name={voter.name} size="lg" />
-          <div className="min-w-0 flex-1">
+          {/*
+            On a phone the name takes a line of its own below the avatar and
+            crest. Squeezed between them it had about 110px and was cut to
+            "ABE…". Since the name card on check-in was removed, this is the
+            only screen that shows the voter their name, and the invigilator
+            reads it from across the booth, so it must never be cut short.
+          */}
+          <div className="order-last min-w-0 flex-1 basis-full sm:order-none sm:basis-0">
             <p className="label" style={{ color: onField, opacity: 0.75 }}>
               Voting as
             </p>
             {/* Poster-large on purpose: the invigilator checks this, not the software. */}
             <h1
-              className="poster mt-1 truncate"
+              className="poster mt-1"
               style={{ fontSize: 'clamp(1.75rem, 6vw, 3rem)' }}
             >
               {voter.name}
@@ -62,7 +69,11 @@ export function IdentityConfirmScreen({
               {voter.email}
             </p>
           </div>
-          {house && <HouseCrest house={house} size={64} onField />}
+          {house && (
+            <span className="ml-auto">
+              <HouseCrest house={house} size={64} onField />
+            </span>
+          )}
         </div>
 
         <div className="px-6 py-7 sm:px-8">
