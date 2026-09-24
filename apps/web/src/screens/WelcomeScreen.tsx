@@ -48,7 +48,7 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData, personal }: Wel
       */}
       <div className="absolute inset-0" style={{ background: '#08080a' }} aria-hidden="true" />
 
-      <PaperBackdrop className="absolute inset-0" />
+      <PaperBackdrop className="welcome__paper absolute inset-0" />
 
       {/* Everything below is the real, readable screen. */}
       <div className="relative flex flex-1 flex-col justify-end gap-8 p-4 sm:p-8">
@@ -168,6 +168,26 @@ export function WelcomeScreen({ election, onCheckIn, isSeedData, personal }: Wel
             </div>
           )}
         </div>
+
+        <style>{`
+          /*
+            On a phone, the sheet sits at the top of the screen.
+
+            The scene scales the sheet to fit its frame and centres it. A
+            full-screen phone frame is much taller than the sheet, so the
+            sheet landed in the middle of the screen, behind the panel, with a
+            third of the screen empty above it. The frame is resized, not the
+            scene: the ThreeUI source stays as vendored.
+
+            At 1.4 times as tall as it is wide, the sheet fills the frame's
+            width with about a tenth of the height above it (measured at
+            360, 390 and 430px). Pulling the frame up by that tenth, less
+            20px, puts the top of the sheet 20px from the top of the screen.
+          */
+          @media (max-width: 640px) {
+            .welcome__paper { bottom: auto; height: 140vw; top: calc(20px - 14vw) }
+          }
+        `}</style>
 
         {/*
           No house strip here. The four crests are printed on the ballot sheet
