@@ -36,6 +36,10 @@ export function columnsFor(count: number): number {
  * most of these names onto three lines, and a name a voter has to decipher is a
  * worse trade than a scroll they can already see the end of — the action bar is
  * pinned, so the length of the page costs them nothing.
+ *
+ * "Phone" means up to 640px, the same line CandidateCard draws. It used to be
+ * 480px, which let a large phone — or any phone with its display zoom turned
+ * down — through to two across, and voters saw the faces side by side.
  */
 export function columnsForNarrow(count: number): number {
   return count <= 3 ? Math.max(count, 1) : 2;
@@ -162,7 +166,7 @@ export function CandidateGrid({
           on the desktop plate in the first place.
         */
         .bh-grid { display: grid; grid-template-columns: minmax(0, 300px) }
-        @media (min-width: 480px) {
+        @media (min-width: 641px) {
           .bh-grid { grid-template-columns: repeat(var(--cols-narrow), minmax(0, 300px)) }
         }
         @media (min-width: 940px) {

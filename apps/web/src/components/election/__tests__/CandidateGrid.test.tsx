@@ -116,7 +116,7 @@ describe('CandidateGrid keeps every position the same size', () => {
     expect(declarations.length).toBe(3);
     for (const declaration of declarations) expect(declaration).not.toContain('auto-fit');
 
-    expect(css(4)).toMatch(/@media\s*\(min-width:\s*480px\)/);
+    expect(css(4)).toMatch(/@media\s*\(min-width:\s*641px\)/);
     expect(css(4)).toMatch(/@media\s*\(min-width:\s*940px\)/);
   });
 
